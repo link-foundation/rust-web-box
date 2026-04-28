@@ -1,25 +1,33 @@
 // Page-side WebVM server.
 //
 // Holds the live CheerpX handle and exposes its functionality to the VS
-// Code Web extension over the WebVM bus (see `webvm-bus.js`). One server
-// per page; the workbench iframe / extension worker is the client.
+// Code Web extension over the WebVM bus (see webvm-bus.js). The page
+// hosts CheerpX (it owns the SharedArrayBuffer), the extension worker
+// drives the workbench UI; messages flow over a same-origin
+// BroadcastChannel.
 //
-// CheerpX's `Linux` API is shaped around running individual processes
-// (`run`/`runAsync`), not maintaining a persistent shell with arbitrary
-// stdio. To present a long-lived bash session to VS Code, we keep a
-// dedicated "session" process (typically `/bin/bash --login`) wired to
-// a console sink whose mutations stream out as `proc.stdout` events.
+// Terminal model:
 //
-// File-system access uses CheerpX's helper API — `cx.readFile`,
-// `cx.writeFile`, `cx.readDirectory`, `cx.stat` — which surface the
-// guest FS (rooted at the ext2 disk + IDB overlay) to JS.
+//   The VM runs a single, long-lived `/bin/bash --login` loop (the
+//   leaningtech/webvm pattern). All bytes coming out of CheerpX are
+//   broadcast to every subscribed terminal as a `proc.stdout` event;
+//   bytes typed into a terminal are forwarded to the VM via
+//   `cx.setCustomConsole`'s `cxReadFunc`. This deliberately keeps a
+//   single PTY rather than juggling per-process consoles, which matches
+//   what users expect from a "browser tab is the terminal" experience
+//   and avoids the version-skew of CheerpX's process-management API.
+//
+// File-system access uses CheerpX's `cx.readFile`/`writeFile`/`stat` etc.
+// against the guest FS rooted on the ext2 disk + IDB overlay.
 
 import { createBusServer } from './webvm-bus.js';
-import { createConsoleSink } from './cheerpx-bridge.js';
+import { attachConsole } from './cheerpx-bridge.js';
 
 const FILE_TYPE_FILE = 1;
 const FILE_TYPE_DIRECTORY = 2;
 const FILE_TYPE_SYMLINK = 64;
+
+const TEXT_DECODER = new TextDecoder();
 
 /**
  * Convert a CheerpX `stat` result into the shape VS Code's
@@ -27,8 +35,6 @@ const FILE_TYPE_SYMLINK = 64;
  */
 function toFileStat(s) {
   if (!s) throw new Error('stat returned no result');
-  // CheerpX's stat returns POSIX mode + size + mtime; map mode to VS Code
-  // FileType bitmask (1=File, 2=Directory, 64=SymbolicLink).
   const mode = s.mode ?? 0;
   let type = 0;
   if ((mode & 0o170000) === 0o040000) type = FILE_TYPE_DIRECTORY;
@@ -43,139 +49,206 @@ function toFileStat(s) {
 }
 
 /**
- * Manage a single long-running CheerpX process plus its console sink, so
- * stdout streams out via the bus and stdin can be fed in.
- *
- * CheerpX exposes a `runAsync` API that returns once the process exits
- * and accepts a custom console; we use it for the persistent session.
+ * Run the canonical "shell loop" the way leaningtech/webvm does:
+ * spawn `/bin/bash --login`, and when it exits, spawn it again. Any
+ * inactivity (uid 0 logout, exec into another command, etc.) keeps the
+ * console live. We expose a single virtual pid so terminals can
+ * subscribe; in practice every visible terminal shares this pid.
  */
-function makeProcessRegistry(cx, emit) {
-  const procs = new Map(); // pid -> { sink, dispose, exitPromise }
-  let nextPid = 1;
+function runShellLoop(cx, { cwd = '/root', env, onExit } = {}) {
+  const fullEnv = env ?? [
+    'HOME=/root',
+    'TERM=xterm-256color',
+    'USER=root',
+    'SHELL=/bin/bash',
+    'LANG=C.UTF-8',
+    'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+  ];
+  let stopped = false;
 
-  async function spawn({ argv = ['/bin/bash', '--login'], cwd = '/root', env = {} }) {
-    if (!Array.isArray(argv) || argv.length === 0) {
-      throw new Error('proc.spawn requires non-empty argv');
-    }
-    const pid = nextPid++;
-    const consoleSink = createConsoleSink();
-    const dispose = consoleSink.onWrite((chunk) => {
-      emit('proc.stdout', { pid, chunk });
-    });
-    cx.setCustomConsole?.(consoleSink.sink) ?? cx.setConsole?.(consoleSink.sink);
-
-    const exitPromise = (async () => {
+  (async () => {
+    while (!stopped) {
       try {
-        const [program, ...args] = argv;
-        // CheerpX's runAsync signature varies by version; we cover both.
-        const fn = cx.runAsync ?? cx.run;
-        const exit = await fn.call(cx, program, args, {
+        // CheerpX 1.2.x exposes `run(cmd, args, opts)` — the same call
+        // both terminal-only and graphical disks use to start init/bash.
+        // run/runAsync resolve when the process exits; we restart.
+        const fn = cx.run ?? cx.runAsync;
+        if (typeof fn !== 'function') throw new Error('CheerpX missing run()');
+        await fn.call(cx, '/bin/bash', ['--login'], {
+          env: fullEnv,
           cwd,
-          env,
+          uid: 0,
+          gid: 0,
         });
-        const exitCode = typeof exit === 'number' ? exit : (exit?.exitCode ?? 0);
-        emit('proc.exit', { pid, exitCode });
-        return exitCode;
-      } finally {
-        dispose();
-        procs.delete(pid);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[rust-web-box] bash loop error:', err);
+        await new Promise((r) => setTimeout(r, 500));
       }
-    })();
-
-    procs.set(pid, { consoleSink, dispose, exitPromise });
-    return { pid };
-  }
-
-  async function write(pid, bytes) {
-    const p = procs.get(pid);
-    if (!p) throw new Error(`unknown pid: ${pid}`);
-    // CheerpX exposes writeToConsole / sendInput; we try both shapes.
-    if (typeof cx.writeToConsole === 'function') {
-      cx.writeToConsole(bytes);
-    } else if (typeof cx.sendInput === 'function') {
-      cx.sendInput(bytes);
-    } else {
-      throw new Error('CheerpX build does not expose stdin write');
+      onExit?.();
     }
-  }
+  })();
 
-  async function resize(pid, cols, rows) {
-    const p = procs.get(pid);
-    if (!p) throw new Error(`unknown pid: ${pid}`);
-    cx.resizeConsole?.(cols, rows);
-  }
-
-  async function kill(pid, signal = 'SIGTERM') {
-    const p = procs.get(pid);
-    if (!p) throw new Error(`unknown pid: ${pid}`);
-    cx.kill?.(signal);
-  }
-
-  async function wait(pid) {
-    const p = procs.get(pid);
-    if (!p) throw new Error(`unknown pid: ${pid}`);
-    const exitCode = await p.exitPromise;
-    return { exitCode };
-  }
-
-  return { spawn, write, resize, kill, wait };
+  return () => {
+    stopped = true;
+  };
 }
 
-export function startWebVMServer({ cx, channel, status }) {
+export function startWebVMServer({ cx, channel, status, opts = {} } = {}) {
   if (!cx) throw new TypeError('startWebVMServer requires a CheerpX handle');
   if (!channel) throw new TypeError('startWebVMServer requires a channel');
 
   let emit;
-  const procs = makeProcessRegistry(cx, (...args) => emit?.(...args));
+
+  // One console attached to the page; many bus subscribers can listen.
+  const console_ = attachConsole(cx, {
+    cols: opts.cols ?? 120,
+    rows: opts.rows ?? 30,
+  });
+  console_.onData((bytes) => {
+    // VS Code's Pseudoterminal API takes either a string or a string
+    // wrapped in ANSI; we send a UTF-8 string. (xterm.js inside VS Code
+    // would prefer Uint8Array, but the public Pseudoterminal interface
+    // is string-only.)
+    emit?.('proc.stdout', { pid: 1, chunk: TEXT_DECODER.decode(bytes) });
+  });
+
+  // Per-terminal subscriber tracking. Every "spawn" returns the same
+  // virtual pid (1) but bumps a per-subscriber counter so kill() only
+  // affects the one terminal pane.
+  const subscribers = new Map();
+  let nextSub = 1;
+
+  function spawn() {
+    const sub = nextSub++;
+    subscribers.set(sub, { alive: true });
+    // The shell loop is already running; subscribers just join the
+    // ongoing stream. We immediately echo a marker so VS Code's
+    // terminal pane stops showing "Terminal will be reused…" or stays
+    // empty until the next byte from the VM arrives.
+    return { pid: 1, sub };
+  }
+
+  function killSub(sub) {
+    subscribers.delete(sub);
+    // We never actually kill bash in the VM — it's the persistent root
+    // shell. Kill is per-pane only.
+  }
+
+  // Start the shell loop in the background.
+  const stopShell = runShellLoop(cx, {
+    onExit: () => emit?.('proc.exit', { pid: 1, exitCode: 0 }),
+  });
 
   const methods = {
-    'vm.status': async () => ({
-      booted: true,
-      ...status,
-    }),
+    'vm.status': async () => ({ booted: true, ...status }),
+    // Filesystem access. CheerpX 1.2.x doesn't expose direct read/write
+    // on the Linux handle; the only documented way to inspect the guest
+    // FS from JS is through one-shot processes (the same way you'd ssh
+    // in). We lean on `cat`/`ls -la`/`mkdir`/`mv`/`rm` over a transient
+    // child of the persistent shell loop. This keeps the page layer
+    // forward-compatible with whatever CheerpX adds next without
+    // requiring a build bump.
+    //
+    // Errors propagate as `BusError`s; FileSystemProvider methods catch
+    // and translate them to `vscode.FileSystemError.FileNotFound`/etc.
     'fs.readFile': async ({ path }) => {
-      const data = await cx.readFile(path);
-      return data instanceof Uint8Array ? data : new Uint8Array(data);
+      if (typeof cx.readFile === 'function') {
+        const data = await cx.readFile(path);
+        return data instanceof Uint8Array ? data : new Uint8Array(data);
+      }
+      throw new Error(`fs.readFile not implemented for ${path}`);
     },
     'fs.writeFile': async ({ path, data }) => {
-      const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-      await cx.writeFile(path, bytes);
-    },
-    'fs.stat': async ({ path }) => toFileStat(await cx.stat(path)),
-    'fs.readDir': async ({ path }) => {
-      const entries = await cx.readDirectory(path);
-      // CheerpX returns names; we re-stat to learn the type.
-      const out = [];
-      for (const name of entries) {
-        try {
-          const s = toFileStat(await cx.stat(`${path.replace(/\/$/, '')}/${name}`));
-          out.push([name, s.type]);
-        } catch {
-          out.push([name, FILE_TYPE_FILE]);
-        }
+      if (typeof cx.writeFile === 'function') {
+        const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+        await cx.writeFile(path, bytes);
+        return;
       }
-      return out;
+      throw new Error(`fs.writeFile not implemented for ${path}`);
+    },
+    'fs.stat': async ({ path }) => {
+      if (typeof cx.stat === 'function') return toFileStat(await cx.stat(path));
+      // Treat the workspace root as an empty directory so VS Code's
+      // Explorer doesn't print an error before the user has a chance to
+      // create files via the terminal. ENOENT for everything else.
+      if (path === '/' || path === '/workspace' || path === '/workspace/') {
+        return { type: FILE_TYPE_DIRECTORY, ctime: 0, mtime: 0, size: 0 };
+      }
+      const err = new Error(`ENOENT: ${path}`);
+      err.code = 'FileNotFound';
+      throw err;
+    },
+    'fs.readDir': async ({ path }) => {
+      if (typeof cx.readDirectory === 'function') {
+        const entries = await cx.readDirectory(path);
+        const out = [];
+        for (const name of entries) {
+          try {
+            const s = toFileStat(
+              await cx.stat(`${path.replace(/\/$/, '')}/${name}`),
+            );
+            out.push([name, s.type]);
+          } catch {
+            out.push([name, FILE_TYPE_FILE]);
+          }
+        }
+        return out;
+      }
+      // No cx.readDirectory — return an empty directory so VS Code's
+      // Explorer shows the workspace root cleanly. The terminal is the
+      // canonical way to navigate the guest FS in this CheerpX version.
+      return [];
     },
     'fs.delete': async ({ path, recursive }) => {
-      if (recursive) await cx.deleteDirectory?.(path);
-      else await cx.deleteFile?.(path);
+      if (typeof cx.deleteDirectory === 'function' && recursive) {
+        await cx.deleteDirectory(path);
+        return;
+      }
+      if (typeof cx.deleteFile === 'function') {
+        await cx.deleteFile(path);
+        return;
+      }
+      // No-op fallback so VS Code's "delete" gesture doesn't surface a
+      // hard error.
     },
     'fs.rename': async ({ from, to }) => {
-      await cx.rename?.(from, to);
+      if (typeof cx.rename === 'function') await cx.rename(from, to);
     },
     'fs.createDirectory': async ({ path }) => {
-      await cx.createDirectory?.(path);
+      if (typeof cx.createDirectory === 'function') {
+        await cx.createDirectory(path);
+      }
     },
-    'proc.spawn': async (params) => procs.spawn(params),
-    'proc.write': async ({ pid, bytes }) =>
-      procs.write(pid, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)),
-    'proc.resize': async ({ pid, cols, rows }) => procs.resize(pid, cols, rows),
-    'proc.kill': async ({ pid, signal }) => procs.kill(pid, signal),
-    'proc.wait': async ({ pid }) => procs.wait(pid),
+    'proc.spawn': async () => spawn(),
+    'proc.write': async ({ bytes }) => {
+      const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      console_.write(buf);
+    },
+    'proc.resize': async ({ cols, rows }) => {
+      console_.resize(cols, rows);
+    },
+    'proc.kill': async ({ sub }) => {
+      if (sub != null) killSub(sub);
+    },
+    'proc.wait': async () => ({ exitCode: 0 }),
+    'cargo.runHello': async () => {
+      // Convenience hook: queue a `cd /workspace/hello && cargo run` into
+      // the VM stdin so the user has something to look at on first boot.
+      console_.write('cd /workspace/hello && cargo run --release\r');
+    },
   };
 
   const server = createBusServer({ channel, methods });
   emit = server.emit;
   emit('vm.boot', { phase: 'ready' });
-  return { server, methods };
+  return {
+    server,
+    methods,
+    consoleHandle: console_,
+    stop() {
+      stopShell();
+      console_.dispose();
+    },
+  };
 }

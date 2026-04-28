@@ -1,125 +1,48 @@
-:root {
-  color-scheme: dark light;
-  --bg: #0d1117;
-  --fg: #e6edf3;
-  --muted: #8b949e;
-  --accent: #f97316;
-  --good: #3fb950;
-  --warn: #d29922;
-  --border: #30363d;
+/* Minimal styles for the static shell.
+ *
+ * The page intentionally has *no* boot-screen UI — the workbench fills
+ * the viewport, exactly like vscode.dev. The only decoration we
+ * contribute is a subtle bottom-right toast that appears when boot
+ * actually fails, surfacing the error directly so the user can act on
+ * it.
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  background: #1e1e1e;
+  color: #cccccc;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  background: var(--bg);
-  color: var(--fg);
-  line-height: 1.5;
-  overflow: hidden;
-}
-
-main.boot {
-  max-width: 720px;
-  margin: 4rem auto;
-  padding: 0 1.25rem;
-}
-
-/* Boot overlay (covers the workbench while VS Code Web spins up). */
-.boot-overlay {
+#boot-toast {
   position: fixed;
-  inset: 0;
+  right: 1rem;
+  bottom: 1rem;
   z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  transition: opacity 0.25s ease;
-}
-
-.boot-overlay.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.boot-card {
-  width: 100%;
-  max-width: 520px;
-  margin: 0 1rem;
-  padding: 2rem;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-}
-
-h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.75rem;
-}
-
-.tagline {
-  color: var(--muted);
-  margin: 0 0 1.5rem;
-}
-
-section + section {
-  margin-top: 2rem;
-}
-
-h2 {
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-  margin: 0 0 0.75rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-ol {
-  padding-left: 1.25rem;
-  margin: 0 0 1rem;
-}
-
-li + li {
-  margin-top: 0.4rem;
-}
-
-.hint {
-  color: var(--muted);
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  background: rgba(248, 81, 73, 0.95);
+  color: #fff;
   font-size: 0.85rem;
-  margin: 1rem 0 0;
+  max-width: 360px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  line-height: 1.35;
 }
 
-code {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 0.05em 0.35em;
-  border-radius: 3px;
-  font-size: 0.9em;
+#boot-toast[hidden] {
+  display: none;
 }
 
-strong[data-status] {
-  color: var(--warn);
-}
-
-strong[data-status][data-state="ok"] {
-  color: var(--good);
-}
-
-strong[data-status][data-state="fail"] {
-  color: var(--accent);
-}
-
-em {
-  color: var(--muted);
-  font-style: normal;
+#boot-toast[data-kind="info"] {
+  background: rgba(56, 139, 253, 0.95);
 }

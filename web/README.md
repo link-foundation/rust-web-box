@@ -5,18 +5,18 @@ Static-site root for the in-browser Rust sandbox described in
 
 GitHub Pages publishes this directory after the build step at
 `.github/workflows/pages.yml` runs `web/build/build-workbench.mjs` to
-vendor the upstream `vscode-web` bundle, the CheerpX runtime, and our
-extensions.
+vendor the upstream `vscode-web` bundle, the CheerpX 1.2.11 runtime,
+and our two web extensions.
 
 ## Layout
 
 ```
 web/
-├── index.html                          # workbench entry + boot overlay
+├── index.html                          # workbench entry (no custom UI)
 ├── sw.js                               # SW: cache + COOP/COEP shim
 ├── glue/                               # page-level integration JS
 │   ├── boot.js                         # orchestrator
-│   ├── boot.css                        # boot overlay styling
+│   ├── boot.css                        # bottom-right toast styling
 │   ├── network-shim.js                 # cargo network mediator
 │   ├── cheerpx-bridge.js               # CheerpX loader + Linux boot
 │   ├── webvm-bus.js                    # transport-agnostic RPC
@@ -31,13 +31,16 @@ web/
 ├── tests/                              # unit + smoke tests (`node --test`)
 ├── cheerpx/                            # vendored CheerpX runtime (CI populates)
 ├── vscode-web/                         # vendored VS Code Web bundle (CI populates)
-└── disk/                               # disk image build script + manifest
+└── disk/                               # Alpine + Rust ext2 image build
+    ├── Dockerfile.disk                 # i386 Alpine + bash + rustc + cargo
+    ├── build.sh                        # docker → ext2 export
+    └── manifest.json                   # disk URL + metadata
 ```
 
 ## Local development
 
 ```bash
-# All tests (no deps; 35 tests):
+# All tests (no deps; 47 tests):
 node --test web/tests/
 
 # Build the workbench bundle (needs npm + network):
@@ -46,10 +49,22 @@ node web/build/build-workbench.mjs
 # Local dev server with COOP/COEP headers (CheerpX boots successfully):
 node web/build/dev-server.mjs 8080
 # then open http://localhost:8080
+
+# Build the Alpine + Rust disk image (needs docker + sudo):
+./web/disk/build.sh
+# produces web/disk/rust-alpine.ext2
 ```
+
+## What you should see
+
+A workbench identical to vscode.dev, with a `WebVM bash` terminal pane
+already open. The terminal shows a `[rust-web-box] Booting Linux VM…`
+status while CheerpX boots; once the VM is ready the message becomes
+`Linux VM ready ✓` and bash takes over. Type `cargo run` from
+`/workspace/hello` to compile and run a pre-baked Rust hello-world.
 
 ## Component status
 
 See [`docs/architecture.md`](../docs/architecture.md) for the
-component-by-component table and the mapping to issue #1's acceptance
-criteria.
+component-by-component table and the mapping to issue #1's 11
+acceptance criteria.

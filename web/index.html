@@ -1,46 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+
+    <!-- Mobile tweaks -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="rust-web-box" />
+    <link rel="apple-touch-icon" href="./vscode-web/resources/server/code-192.png" />
+
+    <!-- Disable pinch zooming -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
+    />
+
     <title>rust-web-box</title>
-    <link rel="icon" href="data:," />
+
+    <!-- Workbench Configuration; substituted at build time. -->
+    <meta
+      id="vscode-workbench-web-configuration"
+      data-settings="{&quot;productConfiguration&quot;:{&quot;nameShort&quot;:&quot;rust-web-box&quot;,&quot;nameLong&quot;:&quot;rust-web-box&quot;,&quot;applicationName&quot;:&quot;rust-web-box&quot;,&quot;enableTelemetry&quot;:false},&quot;additionalBuiltinExtensions&quot;:[{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;/extensions/webvm-host&quot;},{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;/extensions/rust-analyzer-web&quot;}],&quot;folderUri&quot;:{&quot;scheme&quot;:&quot;webvm&quot;,&quot;authority&quot;:&quot;&quot;,&quot;path&quot;:&quot;/workspace&quot;},&quot;defaultLayout&quot;:{&quot;panel&quot;:{&quot;visible&quot;:true},&quot;views&quot;:[{&quot;id&quot;:&quot;workbench.view.explorer&quot;,&quot;visible&quot;:true}]}}"
+    />
+    <meta id="vscode-workbench-auth-session" data-settings="" />
+
+    <!-- Icon, manifest, CSS — all served out of the vendored vscode-web. -->
+    <link
+      rel="icon"
+      href="./vscode-web/favicon.ico"
+      type="image/x-icon"
+    />
+    <link
+      rel="manifest"
+      href="./vscode-web/manifest.json"
+      crossorigin="use-credentials"
+    />
+    <link
+      data-name="vs/workbench/workbench.web.main"
+      rel="stylesheet"
+      href="./vscode-web/out/vs/workbench/workbench.web.main.css"
+    />
+
     <link rel="stylesheet" href="./glue/boot.css" />
-
-    <!-- VS Code workbench configuration. Substituted at build time. -->
-    <meta id="vscode-workbench-web-configuration" data-settings="{&quot;productConfiguration&quot;:{&quot;nameShort&quot;:&quot;rust-web-box&quot;,&quot;nameLong&quot;:&quot;rust-web-box&quot;,&quot;applicationName&quot;:&quot;rust-web-box&quot;,&quot;enableTelemetry&quot;:false},&quot;additionalBuiltinExtensions&quot;:[{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;/extensions/webvm-host&quot;},{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;/extensions/rust-analyzer-web&quot;}],&quot;folderUri&quot;:{&quot;scheme&quot;:&quot;webvm&quot;,&quot;authority&quot;:&quot;&quot;,&quot;path&quot;:&quot;/workspace&quot;}}" />
-    <meta id="vscode-workbench-builtin-extensions" data-settings="[]" />
-
-    <link rel="stylesheet" href="./vscode-web/out/vs/workbench/workbench.web.main.internal.css" />
-    <style id="vscode-css-modules" type="text/css" media="screen"></style>
   </head>
+
   <body aria-label="rust-web-box workbench">
-    <div id="boot-overlay" class="boot-overlay" aria-live="polite">
-      <div class="boot-card">
-        <h1>rust-web-box</h1>
-        <p class="tagline">Anonymous in-browser Rust sandbox.</p>
-        <ol id="boot-steps">
-          <li data-step="shell">Static shell <strong>loaded</strong>.</li>
-          <li data-step="shim">Network shim <strong data-status="shim">checking…</strong></li>
-          <li data-step="cheerpx">CheerpX engine <strong data-status="cheerpx">loading…</strong></li>
-          <li data-step="vm">Linux VM <strong data-status="vm">waiting…</strong></li>
-          <li data-step="vscode">VS Code Web <strong data-status="vscode">waiting…</strong></li>
-        </ol>
-        <p class="hint">First load can take 1–2 minutes (≈30 MB editor + ≈400 MB Linux disk). Subsequent loads use the cache.</p>
-      </div>
+    <!-- The workbench mounts directly into <body>; we add no custom UI.
+         A bottom-right toast (hidden by default) surfaces boot errors. -->
+    <div id="boot-toast" hidden role="status" aria-live="polite">
+      <span data-toast-text></span>
     </div>
 
+    <!-- Page-level glue: network shim, CheerpX bridge, WebVM bus.
+         Loaded as a module so the workbench's AMD loader (below)
+         doesn't see it. -->
     <script type="module" src="./glue/boot.js"></script>
+
+    <!--
+      Upstream VS Code Web bootstrap. The order of these scripts matters
+      and matches `vscode-web`'s shipped `workbench.html` exactly. We
+      configure `window.product` from the meta tag above so the AMD
+      loader's `workbench.js` skips its `fetch('product.json')` step (it
+      still works as a fallback if the meta tag is missing).
+    -->
+    <script src="./vscode-web/out/vs/loader.js" onerror="window.__vscodeMissing=true"></script>
+    <script src="./vscode-web/out/vs/webPackagePaths.js" onerror="window.__vscodeMissing=true"></script>
     <script>
-      // VS Code workbench main entry point (vendored).
-      // The bundle reads the meta-tag config above and mounts itself into
-      // <body>. We detect failure (e.g. when the bundle hasn't been
-      // vendored yet) by leaving the boot-overlay visible if no
-      // workbench mounts within 30 s.
-      window._VSCODE_FILE_ROOT = './vscode-web/out/';
+      (function () {
+        if (window.__vscodeMissing) return;
+        var baseUrl = new URL('./vscode-web', window.location.href).toString();
+        if (typeof self.webPackagePaths === 'object') {
+          Object.keys(self.webPackagePaths).forEach(function (key) {
+            self.webPackagePaths[key] =
+              baseUrl + '/node_modules/' + key + '/' + self.webPackagePaths[key];
+          });
+        }
+        // Hydrate window.product from the meta tag so the workbench.js
+        // bootstrap finds it without an extra fetch().
+        try {
+          var meta = document.getElementById('vscode-workbench-web-configuration');
+          if (meta) {
+            var raw = meta.getAttribute('data-settings');
+            var cfg = JSON.parse(raw);
+            // Substitute origin placeholders for our own extensions.
+            if (Array.isArray(cfg.additionalBuiltinExtensions)) {
+              var scheme = location.protocol.replace(':', '');
+              var host = location.host;
+              cfg.additionalBuiltinExtensions.forEach(function (e) {
+                if (e && e.scheme === '{ORIGIN_SCHEME}') e.scheme = scheme;
+                if (e && e.authority === '{ORIGIN_HOST}') e.authority = host;
+              });
+              meta.setAttribute('data-settings', JSON.stringify(cfg));
+            }
+            // workbench.js looks at window.product first, before
+            // fetching product.json. Merge productConfiguration into it
+            // and surface the rest of the config too.
+            window.product = Object.assign(
+              {},
+              cfg.productConfiguration || {},
+              {
+                additionalBuiltinExtensions: cfg.additionalBuiltinExtensions,
+                folderUri: cfg.folderUri,
+                workspaceUri: cfg.workspaceUri,
+                defaultLayout: cfg.defaultLayout,
+              },
+            );
+          }
+        } catch (err) {
+          console.warn('[rust-web-box] workbench config parse failed:', err);
+        }
+
+        require.config({
+          baseUrl: baseUrl + '/out',
+          recordStats: true,
+          paths: self.webPackagePaths,
+        });
+      })();
     </script>
-    <script src="./vscode-web/out/nls.messages.js" onerror="window.__vscodeMissing=true"></script>
-    <script type="module" src="./vscode-web/out/vs/workbench/workbench.web.main.internal.js" onerror="window.__vscodeMissing=true"></script>
+    <script src="./vscode-web/out/vs/workbench/workbench.web.main.nls.js" onerror="window.__vscodeMissing=true"></script>
+    <script src="./vscode-web/out/vs/workbench/workbench.web.main.js" onerror="window.__vscodeMissing=true"></script>
+    <script src="./vscode-web/out/vs/code/browser/workbench/workbench.js" onerror="window.__vscodeMissing=true"></script>
   </body>
 </html>

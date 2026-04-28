@@ -1,37 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { loadCheerpX, bootLinux, createConsoleSink } from '../glue/cheerpx-bridge.js';
-
-test('createConsoleSink: forwards delta writes to listeners', () => {
-  const sink = createConsoleSink();
-  const log = [];
-  sink.onWrite((d) => log.push(d));
-  sink.sink.textContent = 'hello';
-  sink.sink.textContent = 'helloworld';
-  sink.sink.textContent = 'helloworld!';
-  assert.deepEqual(log, ['hello', 'world', '!']);
-});
-
-test('createConsoleSink: dispose stops further notifications', () => {
-  const sink = createConsoleSink();
-  const log = [];
-  const dispose = sink.onWrite((d) => log.push(d));
-  sink.sink.textContent = 'a';
-  dispose();
-  sink.sink.textContent = 'ab';
-  assert.deepEqual(log, ['a']);
-});
-
-test('createConsoleSink: clear resets the buffer', () => {
-  const sink = createConsoleSink();
-  const log = [];
-  sink.onWrite((d) => log.push(d));
-  sink.sink.textContent = 'foo';
-  sink.clear();
-  sink.sink.textContent = 'bar';
-  assert.deepEqual(log, ['foo', 'bar']);
-});
+import {
+  loadCheerpX,
+  bootLinux,
+  attachConsole,
+  resolveDiskUrl,
+} from '../glue/cheerpx-bridge.js';
 
 test('loadCheerpX: prefers vendored module, falls back to CDN', async () => {
   const calls = [];
@@ -70,17 +45,16 @@ test('loadCheerpX: throws aggregated error when both fail', async () => {
 });
 
 test('bootLinux: rejects without CheerpX module', async () => {
-  await assert.rejects(
-    () => bootLinux({}),
-    /requires the CheerpX module/,
-  );
+  await assert.rejects(() => bootLinux({}), /requires the CheerpX module/);
 });
 
-test('bootLinux: chains overlay and surfaces progress', async () => {
+test('bootLinux: builds the WebVM-style mount stack and surfaces progress', async () => {
   const phases = [];
   const cloud = { tag: 'cloud' };
   const idb = { tag: 'idb' };
   const overlay = { tag: 'overlay' };
+  const webDev = { tag: 'web' };
+  const dataDev = { tag: 'data' };
   const cx = { tag: 'cx' };
   const fakeCheerpX = {
     CloudDevice: { create: async () => cloud },
@@ -92,9 +66,17 @@ test('bootLinux: chains overlay and surfaces progress', async () => {
         return overlay;
       },
     },
+    WebDevice: { create: async () => webDev },
+    DataDevice: { create: async () => dataDev },
     Linux: {
       create: async (opts) => {
-        assert.ok(opts.mounts.find((m) => m.path === '/'));
+        // The mount stack has to mirror the leaningtech/webvm reference
+        // so the supported callbacks (cpuActivity, processCreated, ...)
+        // keep working.
+        const paths = opts.mounts.map((m) => m.path);
+        assert.deepEqual(paths.sort(), [
+          '/', '/data', '/dev', '/dev/pts', '/proc', '/sys', '/web',
+        ]);
         return cx;
       },
     },
@@ -107,12 +89,113 @@ test('bootLinux: chains overlay and surfaces progress', async () => {
   });
   assert.equal(result.cx, cx);
   assert.equal(result.cloud, cloud);
-  assert.equal(result.overlay, idb);
   assert.equal(result.root, overlay);
   assert.equal(result.diskUrl, 'wss://example.test/disk.ext2');
   assert.deepEqual(phases, [
     'attaching cloud disk',
     'attaching IndexedDB overlay',
+    'attaching helper devices',
     'starting Linux',
   ]);
+});
+
+test('resolveDiskUrl: uses warm.url when set', async () => {
+  const url = await resolveDiskUrl({
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return { warm: { url: 'wss://warm.example/x.ext2' } };
+      },
+    }),
+  });
+  assert.equal(url, 'wss://warm.example/x.ext2');
+});
+
+test('resolveDiskUrl: falls back to default.url when warm.url is null', async () => {
+  const url = await resolveDiskUrl({
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          warm: { url: null },
+          default: { url: 'wss://disks.webvm.io/something.ext2' },
+        };
+      },
+    }),
+  });
+  assert.equal(url, 'wss://disks.webvm.io/something.ext2');
+});
+
+test('resolveDiskUrl: falls back to hard-coded URL on fetch error', async () => {
+  const url = await resolveDiskUrl({
+    fetchImpl: async () => {
+      throw new Error('network down');
+    },
+  });
+  assert.match(url, /^wss:\/\/disks\.webvm\.io\//);
+});
+
+test('attachConsole: rejects without a Linux handle', () => {
+  assert.throws(() => attachConsole(null), /requires a CheerpX Linux handle/);
+});
+
+test('attachConsole: write() drives cxReadFunc per character', () => {
+  const reads = [];
+  const fakeCx = {
+    setCustomConsole(_writer, cols, rows) {
+      assert.equal(cols, 80);
+      assert.equal(rows, 24);
+      return (charCode) => reads.push(charCode);
+    },
+  };
+  const c = attachConsole(fakeCx);
+  c.write('hi');
+  c.write(new Uint8Array([10, 13]));
+  assert.deepEqual(reads, [
+    'h'.charCodeAt(0),
+    'i'.charCodeAt(0),
+    10,
+    13,
+  ]);
+});
+
+test('attachConsole: onData receives writer output as Uint8Array', () => {
+  let writer;
+  const fakeCx = {
+    setCustomConsole(w) {
+      writer = w;
+      return () => {};
+    },
+  };
+  const c = attachConsole(fakeCx);
+  const seen = [];
+  c.onData((u8) => seen.push(Array.from(u8)));
+  writer(new Uint8Array([1, 2, 3]).buffer, 1);
+  writer(new Uint8Array([9]), 1);
+  // virtual terminal != 1 should be ignored.
+  writer(new Uint8Array([99]), 7);
+  assert.deepEqual(seen, [[1, 2, 3], [9]]);
+});
+
+test('attachConsole: dispose drops listeners', () => {
+  let writer;
+  const fakeCx = {
+    setCustomConsole(w) {
+      writer = w;
+      return () => {};
+    },
+  };
+  const c = attachConsole(fakeCx);
+  const seen = [];
+  c.onData((u8) => seen.push(Array.from(u8)));
+  c.dispose();
+  writer(new Uint8Array([1]), 1);
+  assert.deepEqual(seen, []);
+});
+
+test('attachConsole: throws when CheerpX has no setCustomConsole', () => {
+  assert.throws(
+    () => attachConsole({}),
+    /missing setCustomConsole/,
+  );
 });

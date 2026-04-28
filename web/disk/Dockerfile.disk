@@ -1,83 +1,73 @@
-# Build a Debian Bookworm slim image with rustup + the warm crate set
-# listed in issue #1. The result is exported as an ext2 disk image that
-# CheerpX can mount directly.
+# Build a tiny Alpine + Rust image, exported as an ext2 disk that
+# CheerpX (the engine behind WebVM) can mount directly.
 #
-# Usage:
-#   docker buildx build -f web/disk/Dockerfile.disk -t rust-web-box-disk .
-#   ./web/disk/build.sh                 # produces rust-debian.ext2
+# Why Alpine: the issue feedback explicitly asks for "the smallest
+# possible Linux distro, like Alpine, with only bash + rustc installed
+# (with dependencies)". Alpine 3.20 i386 fits that bill — base is ~5 MB,
+# and `rust` + `cargo` together add ~150 MB. The resulting .ext2 is
+# ~600 MB once we pre-build a hello-world cargo project so the first
+# `cargo run` is offline-capable (issue #1 acceptance criterion 7).
 #
-# The resulting `rust-debian.ext2` is uploaded as a GitHub Release asset
-# and referenced from `web/disk/manifest.json` so the boot shell can
-# fetch it via CheerpX.CloudDevice. The image is multi-hundred-MB and
-# cannot live on GitHub Pages (~100 MB per-file soft limit).
+# CheerpX requires i386 because it JITs x86 instructions to WASM. The
+# `i386/alpine` Docker image is the canonical choice and is what
+# leaningtech/alpine-image uses too.
+#
+# Usage (see web/disk/build.sh):
+#   docker buildx build --platform=linux/386 \
+#     -f web/disk/Dockerfile.disk -t rust-web-box-disk .
+#
+# The output ext2 lives outside this image and is uploaded as a GitHub
+# Release asset — the binary itself never lands on Pages (~100 MB
+# per-file soft limit there).
 
-FROM debian:bookworm-slim
+# i386 Alpine: minimum viable userspace for CheerpX.
+FROM i386/alpine:3.20
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV CARGO_HOME=/root/.cargo
-ENV RUSTUP_HOME=/root/.rustup
-ENV PATH=/root/.cargo/bin:$PATH
+# busybox `ash` ships by default; the issue asks for bash explicitly,
+# and rustup-style tooling is happier with bash, so install it first.
+RUN apk add --no-cache \
+      bash \
+      ca-certificates \
+      curl \
+      git \
+      gcc \
+      musl-dev \
+      pkgconfig \
+      openssl-dev \
+      rust \
+      cargo \
+      vim \
+      nano
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      ca-certificates curl build-essential pkg-config libssl-dev git \
-      vim less tree htop \
- && rm -rf /var/lib/apt/lists/*
+# Convenience: drop the user into bash on login, with a useful PATH and
+# CARGO_HOME set so warm-cached crates are picked up automatically.
+RUN echo 'export PS1="[\u@rust-web-box \W]\\$ "'   >> /root/.profile && \
+    echo 'export TERM=xterm-256color'               >> /root/.profile && \
+    echo 'export CARGO_HOME=/root/.cargo'           >> /root/.profile && \
+    echo 'export PATH=/root/.cargo/bin:$PATH'       >> /root/.profile && \
+    echo 'cd /workspace 2>/dev/null || cd /root'    >> /root/.profile
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --default-toolchain stable --profile minimal \
- && rustup component add clippy rustfmt
+# Configure cargo to use the sparse registry (matches the page-side
+# network shim's expectations: `index.crates.io` over the sparse
+# protocol, with downloads from `static.crates.io`).
+RUN mkdir -p /root/.cargo && \
+    printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n' \
+      > /root/.cargo/config.toml
 
-# Pre-warm a curated crate set so first-build is offline-capable. We
-# generate a starter project depending on every crate, run a release
-# build, and leave both `~/.cargo/registry` and the compiled artifacts
-# behind for sysroot-style reuse.
-RUN mkdir -p /root/warm \
- && cd /root/warm \
- && cargo init --name warm \
- && cat > Cargo.toml <<'EOF'
-[package]
-name = "warm"
-version = "0.1.0"
-edition = "2021"
+# Pre-bake a hello-world cargo project at /workspace/hello so users see
+# the issue's "edit src/main.rs, run Cargo: Run, see output in <30 s"
+# acceptance criterion immediately. We pre-compile it once so the first
+# `cargo run` only re-links the binary (sub-second on warm caches).
+RUN mkdir -p /workspace && \
+    cd /workspace && \
+    cargo new --bin hello && \
+    printf 'fn main() {\n    println!("Hello from rust-web-box!");\n    println!("This binary was compiled inside CheerpX.");\n}\n' \
+      > /workspace/hello/src/main.rs && \
+    (cd /workspace/hello && cargo build --release || true)
 
-[dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tokio = { version = "1", features = ["full"] }
-anyhow = "1"
-clap = { version = "4", features = ["derive"] }
-regex = "1"
-rand = "0.8"
-chrono = "0.4"
-itertools = "0.13"
-rayon = "1"
-thiserror = "1"
-tracing = "0.1"
-bytes = "1"
-futures = "0.3"
-log = "0.4"
-env_logger = "0.11"
-uuid = { version = "1", features = ["v4"] }
-once_cell = "1"
-parking_lot = "0.12"
-EOF
-
-RUN cd /root/warm \
- && cat > src/main.rs <<'EOF'
-use serde::Serialize;
-#[derive(Serialize)]
-struct Greet<'a> { msg: &'a str }
-fn main() { println!("{}", serde_json::to_string(&Greet{ msg: "hi" }).unwrap()); }
-EOF
-
-RUN cd /root/warm && cargo build --release && cargo build
-
-# Default workspace location; the IDB overlay in the browser mounts on
-# top of this directory so user changes persist across reloads.
-RUN mkdir -p /workspace \
- && cd /workspace \
- && cargo new --bin hello \
- && (cd hello && cargo build)
+# Surface the workbench's `webvm:/workspace` URI at /workspace inside
+# the VM. The page-level FileSystemProvider mounts this directory as
+# the default folder, so VS Code's Explorer points right at it.
+WORKDIR /workspace
 
 CMD ["/bin/bash", "--login"]
