@@ -13,19 +13,50 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  padding: 0;
+  height: 100%;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   background: var(--bg);
   color: var(--fg);
   line-height: 1.5;
+  overflow: hidden;
 }
 
 main.boot {
   max-width: 720px;
   margin: 4rem auto;
   padding: 0 1.25rem;
+}
+
+/* Boot overlay (covers the workbench while VS Code Web spins up). */
+.boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity 0.25s ease;
+}
+
+.boot-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-card {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 1rem;
+  padding: 2rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
 }
 
 h1 {
@@ -35,7 +66,7 @@ h1 {
 
 .tagline {
   color: var(--muted);
-  margin: 0 0 2rem;
+  margin: 0 0 1.5rem;
 }
 
 section + section {
@@ -54,11 +85,17 @@ h2 {
 
 ol {
   padding-left: 1.25rem;
-  margin: 0;
+  margin: 0 0 1rem;
 }
 
 li + li {
-  margin-top: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 1rem 0 0;
 }
 
 code {
@@ -70,15 +107,15 @@ code {
   font-size: 0.9em;
 }
 
-strong[data-status="shim"] {
+strong[data-status] {
   color: var(--warn);
 }
 
-strong[data-status="shim"][data-state="ok"] {
+strong[data-status][data-state="ok"] {
   color: var(--good);
 }
 
-strong[data-status="shim"][data-state="fail"] {
+strong[data-status][data-state="fail"] {
   color: var(--accent);
 }
 

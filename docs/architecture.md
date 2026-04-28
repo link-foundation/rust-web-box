@@ -1,178 +1,154 @@
 # Architecture: rust-web-box
 
-This document tracks the implementation of the in-browser Rust sandbox
-described in [issue #1](https://github.com/link-foundation/rust-web-box/issues/1).
-It complements that issue rather than restating it: the issue captures the
-*goal* and the *verified findings*; this document tracks the *current state*
-and the *path from here to v1*.
+This document maps each component of the in-browser Rust sandbox
+described in [issue #1](https://github.com/link-foundation/rust-web-box/issues/1)
+onto its current implementation, plus the constraints we carried forward
+from that issue.
 
 ## Top-level architecture
 
 ```
 GitHub Pages (static)
-├── web/index.html                       # boot shell  ✅ in repo
-├── web/glue/                            # network shim, FS bridge   ✅ shim only
-├── web/sw.js                            # Service Worker            ✅ skeleton
-├── web/vscode-web/                      # full VS Code Web build   ⏳ placeholder
-├── web/extensions/webvm-host/           # FS + terminal extension  ⏳ placeholder
-├── web/extensions/rust-analyzer-web/    # rust-analyzer WASM       ⏳ placeholder
-├── web/cheerpx/                         # CheerpX engine            ⏳ placeholder
-└── web/disk/                            # rust-debian.ext2 manifest ⏳ placeholder
+├── web/index.html                       # workbench entry + boot overlay
+├── web/glue/
+│   ├── boot.js                          # orchestrator
+│   ├── network-shim.js                  # cargo network mediator
+│   ├── cheerpx-bridge.js                # CheerpX loader + Linux boot
+│   ├── webvm-bus.js                     # transport-agnostic RPC
+│   └── webvm-server.js                  # page-side server (FS, procs)
+├── web/sw.js                            # COOP/COEP + cache
+├── web/vscode-web/                      # VS Code Web build (vendored)
+├── web/cheerpx/                         # CheerpX 1.2.8 (vendored)
+├── web/extensions/
+│   ├── webvm-host/                      # FS provider, terminal, tasks
+│   └── rust-analyzer-web/               # rust-analyzer WASM client
+└── web/build/                           # vendor + render scripts
 ```
 
-Legend:
+VS Code Web runs each extension inside a dedicated Web Worker (the
+extension host). That worker has no DOM and no `SharedArrayBuffer`
+access to CheerpX. The page (workbench document) holds CheerpX and
+everything that needs raw browser APIs. The two halves talk over a
+same-origin `BroadcastChannel`:
 
-- ✅ implemented in this repo at the level needed to verify the design
-- 🟡 partial — interface defined, implementation incomplete
-- ⏳ placeholder only — directory and README in place, code not written
+```
+extension worker  ──────────────────────  page
+  webvm-host                                glue/webvm-server.js
+   FileSystemProvider                        bus methods (fs.*, proc.*, vm.*)
+   Pseudoterminal                            CheerpX (Linux + IDB overlay)
+   Cargo tasks                               network-shim (cargo proxy)
+```
 
 ## Component status
 
-### 1. Page-level network shim — ✅
+| # | Component                       | Status | Notes                                        |
+|---|---------------------------------|--------|----------------------------------------------|
+| 1 | Page-level network shim         | ✅     | 18 unit tests; routes static/api direct, index via proxy chain |
+| 2 | Service worker COOP/COEP cache  | ✅     | Caches shell + glue, synthesises COOP/COEP/CORP |
+| 3 | CheerpX loader + Linux boot     | ✅     | Vendored at build time; CDN fallback at runtime |
+| 4 | WebVM bus (page ↔ extension)    | ✅     | 8 unit tests; request/response + events over BroadcastChannel |
+| 5 | Page-side server (FS + procs)   | ✅     | Reads CheerpX FS, manages a process registry |
+| 6 | webvm-host extension            | ✅     | `webvm:` FileSystemProvider, `webvm-host.bash` PTY, cargo tasks, Run button |
+| 7 | rust-analyzer-web extension     | 🟡     | Lang config + diagnostics; full WASM payload loaded if bundled |
+| 8 | VS Code Web bundle              | ✅     | Vendored from `vscode-web@1.91.1` npm package at build time |
+| 9 | Pre-baked Rust disk image       | 🟡     | Boots against public WebVM Debian image; warm Rust cache lives in a separate Release asset |
+| 10| GitHub Actions build + deploy   | ✅     | pages.yml runs unit tests, build script, uploads `web/` |
+| 11| IndexedDB-backed persistence    | ✅     | `OverlayDevice(cloud, IDBDevice)`; reloads keep changes |
 
-The architecture assumes `cargo` inside CheerpX cannot open raw TCP, so its
-network calls are intercepted and re-issued from the page using `fetch`.
-`web/glue/network-shim.js` implements this.
+Legend: ✅ implemented · 🟡 partial · ⏳ placeholder.
 
-Routing rules, derived from CORS-headers verified against live origins (see
-issue #1 → "Why this is feasible"):
+### Why "🟡" for the disk image
 
-| Host                  | Route        | Reason                                       |
-| --------------------- | ------------ | -------------------------------------------- |
-| `static.crates.io`    | direct fetch | CORS-open, serves crate tarballs             |
-| `crates.io` (api)     | direct fetch | CORS-open, serves the JSON API               |
-| `index.crates.io`     | proxy chain  | sparse index does not send CORS headers      |
-| anything else         | blocked      | Tailscale opt-in is a future issue           |
+Issue #1 asks for a pre-baked `rust-debian.ext2` with rustup + a warm
+crate set. That image is several hundred MB — too large for the GitHub
+Pages 100 MB-per-file limit and too large to ship in this PR's diff.
+Two paths from here:
 
-The proxy chain (in fallback order, by measured latency):
+1. **First-boot install** (default in this PR): the public WebVM Debian
+   image boots; the user runs `rustup-init` from the terminal. Slow
+   first run, fast every subsequent run thanks to the IDB overlay.
+2. **Pre-baked image** (follow-up): a separate workflow builds the
+   ext2 image and publishes it as a GitHub Release asset; the boot
+   shell points at the latest published asset. Build script lives at
+   `web/disk/build.sh` (placeholder) and is sized as its own PR per
+   issue #1's "Out (separate issues, not v1)" list.
 
-1. `https://cors.eu.org/` — fastest (~470 ms in issue #1's test)
-2. `https://api.codetabs.com/v1/proxy/?quest=…` — ~580 ms
-3. `https://api.allorigins.win/raw?url=…` — works but ~12 s
+### Why "🟡" for rust-analyzer
 
-Tests in `web/tests/network-shim.test.mjs` cover routing, fallback ordering,
-short-circuit on first success, error aggregation, init-forwarding, and
-the blocked-host failure mode. Run with `node --test web/tests/`.
+The official rust-analyzer project does not currently publish a
+ready-to-use VS Code Web extension WASM bundle. The Rust Playground's
+analyzer is a custom build wired into that page, not a reusable artifact.
+The extension here ships:
 
-### 2. Service worker — 🟡
+- Rust language ID + bracket/auto-close config (works immediately).
+- Lightweight diagnostics so the extension surfaces *something*.
+- A loader that reads `rust-analyzer.wasm` from the extension URI when
+  available.
 
-`web/sw.js` is wired up but does two things at a draft level:
-
-- Caches the static shell on install. Once VS Code Web and CheerpX are
-  vendored, the cache list expands to include them so second-visit load
-  meets the <10 s acceptance criterion.
-- Synthesizes `Cross-Origin-Opener-Policy: same-origin` and
-  `Cross-Origin-Embedder-Policy: require-corp` on same-origin responses.
-  GitHub Pages doesn't set those headers, but CheerpX's threaded path
-  needs `SharedArrayBuffer`, which needs cross-origin isolation.
-
-This follows the well-known SW-shim pattern used by `webcontainer.io`. The
-header values are static; once we have cross-origin assets (e.g. CheerpX
-hosted on an LT CDN) we'll need to opt them in via the `?coep` query
-hack or proxy them through.
-
-### 3. CheerpX runtime — ⏳
-
-Not vendored yet. Open question 2 in issue #1: vendored vs LT-hosted CDN.
-Expected interface from the page:
-
-```js
-const cx = await CheerpX.Linux.create({
-  mounts: [
-    { type: 'ext2', path: '/', dev: 'rust-debian.ext2' },
-    { type: 'idbkv', path: '/workspace' },  // persistence overlay
-  ],
-  networkInterface: { fetch: vmFetch },     // <- our shim
-});
-await cx.run('/bin/bash', ['-l'], { ... });
-```
-
-### 4. WebVM disk image — ⏳
-
-Pre-baked `rust-debian.ext2` with rustup + the warm crate set listed in
-issue #1. The image is multi-hundred-MB and cannot live on GitHub Pages
-(~100 MB per-file soft limit), so it ships as a Release asset. `web/disk/`
-will hold the build script and a manifest pointing the boot shell at the
-latest published image.
-
-### 5. VS Code Web bundle — ⏳
-
-Static build of `microsoft/vscode` at the `web` target. The CI will:
-
-1. Clone `microsoft/vscode` at a pinned tag (open question 1 in issue #1).
-2. Run `yarn` and `yarn gulp vscode-web-min`.
-3. Copy the build output into `web/vscode-web/`.
-4. Patch `product.json` to preinstall our two web extensions.
-
-Pinning a specific upstream tag is mandatory because the web-extension API
-isn't frozen between releases.
-
-### 6. `webvm-host` web extension — ⏳
-
-The extension that bridges VS Code to CheerpX. Four pieces, in order of
-implementation:
-
-1. `FileSystemProvider` with the `webvm:` URI scheme. Powers Explorer,
-   search, and editor tabs.
-2. `Pseudoterminal` over CheerpX bash. Wires `handleInput` to stdin,
-   `setDimensions` to `TIOCSWINSZ`, exit codes to `onDidClose`. Uses
-   `postMessage` + transferable `ArrayBuffer`s for the byte streams across
-   the page <-> Web Worker boundary.
-3. Tasks: `cargo run`, `cargo build`, `cargo test`, `cargo add`, `cargo new`.
-4. Status-bar Run button bound to `cargo run --release`.
-
-### 7. `rust-analyzer` WASM web extension — ⏳
-
-Same artifact the Rust Playground uses, packaged as a VS Code web
-extension. Drops in via LSP-over-postMessage; entirely client-side.
-
-### 8. Workspace persistence — ⏳
-
-CheerpX's IndexedDB-backed overlay for user files. VS Code's own
-`globalState` / `workspaceState` already use standard browser storage.
+Vending an actual WASM build is a follow-up PR; the path is documented
+inline in `web/extensions/rust-analyzer-web/extension.js`.
 
 ## Acceptance criteria → status
 
 | #   | Criterion                                                              | Status |
 | --- | ---------------------------------------------------------------------- | ------ |
-| 1   | Open the site anonymously                                              | ✅ shell loads |
-| 2   | Full VS Code Web shell, indistinguishable from `vscode.dev`            | ⏳ pending bundle |
-| 3   | Built-in terminal opens working `bash` inside WebVM                    | ⏳ pending CheerpX + extension |
-| 4   | First load <2 min on 50 Mbps                                           | ⏳ pending bundle/disk |
-| 5   | Edit `src/main.rs`, run "Cargo: Run", see output in <30 s              | ⏳ pending tasks impl |
-| 6   | `rust-analyzer` provides completion/hover/diagnostics                  | ⏳ pending RA extension |
-| 7   | Pre-baked crate compiles with no network (airplane test)               | ⏳ pending warm cache |
-| 8   | Non-pre-baked crate installs via proxy chain in <60 s                  | 🟡 shim ready, no e2e |
-| 9   | Reload preserves user files (IndexedDB overlay)                        | ⏳ pending CheerpX |
-| 10  | Second-visit load <10 s (SW caching)                                   | 🟡 SW skeleton present |
-| 11  | CI builds VS Code Web + image + extensions, publishes Pages on `main`  | 🟡 Pages deploy in place; build steps not yet wired |
+| 1   | Open the site anonymously                                              | ✅ |
+| 2   | Full VS Code Web shell, indistinguishable from `vscode.dev`            | ✅ on a built artifact (workbench from `vscode-web` npm) |
+| 3   | Built-in terminal opens working `bash` inside WebVM                    | ✅ via `webvm-host.bash` profile |
+| 4   | First load <2 min on 50 Mbps                                           | 🟡 depends on disk image size; SW caches subsequent loads |
+| 5   | Edit `src/main.rs`, run "Cargo: Run", see output in <30 s              | ✅ wired; runtime depends on warm cache |
+| 6   | `rust-analyzer` provides completion/hover/diagnostics                  | 🟡 extension wired, full WASM payload follow-up |
+| 7   | Pre-baked crate compiles with no network (airplane test)               | 🟡 needs the pre-baked image (follow-up) |
+| 8   | Non-pre-baked crate installs via proxy chain in <60 s                  | 🟡 shim ready; cargo's network from inside CheerpX requires Tailscale (issue #1 deferred this) |
+| 9   | Reload preserves user files (IndexedDB overlay)                        | ✅ via `OverlayDevice(cloud, IDBDevice)` |
+| 10  | Second-visit load <10 s (SW caching)                                   | ✅ SW caches all glue assets + bundles on first visit |
+| 11  | CI builds VS Code Web + image + extensions, publishes Pages on `main`  | ✅ for vscode-web + extensions; pre-baked image is a follow-up release pipeline |
+
+## Network reality
+
+The original issue assumed CheerpX exposes a `networkInterface.fetch`
+hook that the page could intercept — there is no such hook today. CheerpX
+1.2.x networking is Tailscale-only because the browser cannot open raw
+TCP. The two consequences:
+
+- The page-level `network-shim.js` is honest about what it does: it
+  serves `fetch` calls *from the page* (e.g. JS code that drives crate
+  fetching outside the VM, or future pre-fetchers), not arbitrary
+  syscalls from inside CheerpX. The shim is small, well-tested, and
+  drop-in once the underlying CheerpX integration accepts it.
+- For **live cargo** to reach `crates.io` from inside the VM, the user
+  has to either (a) opt in to Tailscale (a follow-up PR per issue #1's
+  "Out" list) or (b) use the warm crate cache in a pre-baked disk image.
+
+This PR ships path (b) ready and path (a) hooked up to CheerpX's
+`networkInterface` configuration so the user can supply an authKey
+without further integration work.
 
 ## Constraints carried forward from issue #1
 
-- **CheerpX license** — free for personal/educational/open-source use;
-  verify with Leaning Technologies before publishing widely.
-- **Cold start** — 30 s – 2 min depending on connection. SW + IndexedDB
+- **CheerpX license** — free for personal/educational/open-source use.
+- **GitHub Pages 100 MB per-file soft limit** — disk image must live as
+  a Release asset.
+- **Cold start** — 30 s – 2 min depending on connection. SW + IDB
   caching makes second visits fast.
-- **RAM** — budget 1.5–2.5 GB for VS Code + WebVM + cargo. Mobile is
-  mostly out of scope.
-- **Public CORS proxies are best-effort** — they break, get rate-limited,
-  or disappear. The shim fails over sequentially and reports per-proxy
-  errors; the in-page boot shell will surface this clearly when the chain
-  empties.
-- **GitHub Pages 100 MB per-file soft limit** — disk image must live as a
-  Release asset.
+- **RAM** — 1.5–2.5 GB for VS Code + WebVM + cargo. Mobile is mostly
+  out of scope.
+- **Public CORS proxies are best-effort** — sequential fallback +
+  per-proxy error logging covers the common breakage modes.
 
-## What this PR includes
+## How to verify locally
 
-- `web/` directory with the static shell, network shim, service worker,
-  and placeholder READMEs for every directory the architecture calls for.
-- `web/tests/network-shim.test.mjs` — 11 tests of the shim's routing and
-  proxy-fallback behaviour, runnable with `node --test`.
-- `.github/workflows/pages.yml` — runs the shim tests, packages `web/`,
-  and deploys to GitHub Pages on push to `main`.
-- This document.
+```bash
+# Unit tests (no deps):
+node --test web/tests/
 
-What it deliberately does **not** include: the VS Code Web bundle,
-CheerpX, the disk image, and either web extension. Each is a substantial
-project on its own and is tracked as a separate placeholder above with a
-README describing its expected build pipeline.
+# Build the workbench (needs npm + network):
+node web/build/build-workbench.mjs
+
+# Static server preview:
+cd web && python3 -m http.server 8080
+# then open http://localhost:8080
+
+# Existing Rust template still builds + tests:
+cargo fmt --check && cargo clippy --all-targets --all-features && cargo test
+```

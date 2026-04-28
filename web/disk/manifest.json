@@ -1,0 +1,17 @@
+{
+  "default": {
+    "kind": "cloud",
+    "url": "wss://disks.webvm.io/debian_large_20230522_5044875331.ext2",
+    "size_mb": 6144,
+    "rust": false,
+    "notes": "Public WebVM Debian image. Boot Rust via `rustup-init` from the terminal."
+  },
+  "warm": {
+    "kind": "release-asset",
+    "url": null,
+    "release_tag": null,
+    "size_mb": null,
+    "rust": true,
+    "notes": "Pre-baked rust-debian.ext2 with rustup + the warm crate set. Built by web/disk/build.sh and uploaded to GitHub Releases. Populate the URL in this manifest and the boot shell will switch to it."
+  }
+}

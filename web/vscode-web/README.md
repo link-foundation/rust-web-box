@@ -1,15 +1,21 @@
 # vscode-web/
 
-Static build output of `microsoft/vscode` at the `web` target — i.e. the
-same bundle that powers `vscode.dev`.
+VS Code Web bundle vendored from the `vscode-web` npm package
+(community fork that publishes upstream `microsoft/vscode` `web` builds).
 
-**Not built yet.** When wired up, the CI pipeline:
+CI populates this directory on every Pages build via
+`web/build/build-workbench.mjs`. The pinned version lives in that
+script's `VSCODE_WEB_VERSION` constant.
 
-1. Clones `microsoft/vscode` at a pinned tag (open question 1 in issue #1).
-2. Runs `yarn` and `yarn gulp vscode-web-min`.
-3. Copies the build output here.
-4. Patches `product.json` to preinstall the `webvm-host` and
-   `rust-analyzer-web` web extensions.
+Contents after a build:
 
-The bundle is large (~30 MB shipped JS); the service worker caches it so
-second-visit load stays under the 10 s acceptance criterion.
+- `out/` — the workbench JS, CSS, and NLS messages.
+- `extensions/` — extensions vendored alongside the bundle. The build
+  step also copies `web/extensions/webvm-host` and
+  `web/extensions/rust-analyzer-web` here so they're served at the same
+  origin.
+- `.version` — stamp file the build script uses to detect cache hits.
+
+Bumping the version: edit `VSCODE_WEB_VERSION` in
+`web/build/build-workbench.mjs` and re-run the build script (or push to
+trigger CI).

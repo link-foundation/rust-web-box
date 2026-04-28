@@ -1,19 +1,20 @@
 # extensions/webvm-host/
 
-VS Code web extension that bridges the VS Code shell to the CheerpX VM.
+VS Code Web extension that bridges the workbench to the CheerpX VM.
 
-**Not implemented yet.** Target responsibilities:
+Implements:
 
-1. Register a `webvm:` URI scheme via `FileSystemProvider`. `readFile`,
-   `writeFile`, `stat`, `readDirectory`, and `watch` translate to CheerpX FS
-   calls. The Explorer, search, and editor tabs operate against
-   `webvm:/workspace/...`.
-2. Register a `TerminalProfileProvider` whose `Pseudoterminal` spawns
-   `/bin/bash` inside CheerpX. Wire `handleInput` to stdin, CheerpX stdout
-   to `onDidWrite`, `setDimensions` to `TIOCSWINSZ`, and exit codes to
-   `onDidClose`.
-3. Register tasks: `cargo run`, `cargo build`, `cargo test`, `cargo add`,
-   `cargo new`. Each task spawns inside the same CheerpX terminal with
-   output streamed to the VS Code task panel.
-4. Add a status-bar 'Run' button that invokes the default
-   `cargo run --release` task on the active workspace.
+1. `webvm:` `FileSystemProvider` — `readFile`, `writeFile`, `stat`,
+   `readDirectory`, `createDirectory`, `delete`, `rename`, `watch`.
+   Powers Explorer, search, and editor tabs against `webvm:/workspace`.
+2. `webvm-host.bash` `TerminalProfileProvider`. Spawns `/bin/bash --login`
+   inside CheerpX, wires stdio through the WebVM bus, and resizes the
+   guest pty to match VS Code's xterm widget.
+3. Tasks for `cargo build`, `cargo run`, `cargo test`, `cargo add`,
+   `cargo new`. Each runs in its own pty so the output panel streams.
+4. Status-bar "Cargo Run" button bound to `cargo run --release`.
+
+The extension is a single-file payload — no bundler required. It runs
+in the VS Code extension-host Web Worker and talks to the page-side
+`webvm-server.js` (which holds the live CheerpX handle) over a same-
+origin `BroadcastChannel`.

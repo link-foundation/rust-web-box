@@ -1,0 +1,34 @@
+{
+  "name": "rust-analyzer-web",
+  "displayName": "rust-analyzer (web)",
+  "description": "Client-side Rust language server powered by rust-analyzer compiled to WebAssembly.",
+  "version": "0.1.0",
+  "publisher": "rust-web-box",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "browser": "./extension.js",
+  "extensionKind": [
+    "web"
+  ],
+  "activationEvents": [
+    "onLanguage:rust"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rust",
+        "aliases": ["Rust", "rust"],
+        "extensions": [".rs"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "rust-analyzer-web.restart",
+        "title": "rust-analyzer (web): Restart server"
+      }
+    ]
+  }
+}

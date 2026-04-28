@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   test:
-    name: Test web shim
+    name: Test web shim + bus
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run network-shim tests
+      - name: Run unit tests
         working-directory: web
         run: node --test tests/
 
@@ -43,6 +43,28 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Vendor VS Code Web + CheerpX, render workbench
+        # SKIP_VSCODE_WEB / SKIP_CHEERPX let the build degrade gracefully
+        # in environments without npm/network access; the shell still
+        # ships and surfaces a clear "not vendored" status.
+        run: node web/build/build-workbench.mjs
+        env:
+          SKIP_VSCODE_WEB: ${{ vars.SKIP_VSCODE_WEB || '' }}
+          SKIP_CHEERPX: ${{ vars.SKIP_CHEERPX || '' }}
+
+      - name: Smoke-check artifact contents
+        run: |
+          test -f web/index.html
+          test -f web/glue/boot.js
+          test -f web/glue/network-shim.js
+          test -f web/extensions/webvm-host/extension.js
+          test -f web/extensions/rust-analyzer-web/extension.js
+          ls -la web/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
