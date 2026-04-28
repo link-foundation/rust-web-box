@@ -3,50 +3,53 @@
 Static-site root for the in-browser Rust sandbox described in
 [issue #1](https://github.com/link-foundation/rust-web-box/issues/1).
 
-This is what gets published to GitHub Pages. The CI workflow at
-`.github/workflows/pages.yml` deploys this directory verbatim on every push to
-`main`.
+GitHub Pages publishes this directory after the build step at
+`.github/workflows/pages.yml` runs `web/build/build-workbench.mjs` to
+vendor the upstream `vscode-web` bundle, the CheerpX runtime, and our
+extensions.
 
 ## Layout
 
 ```
 web/
-├── index.html              # boot shell (visible to users)
-├── glue/                   # page-level JS that wires CheerpX <-> fetch
-│   ├── boot.js             # entrypoint: registers SW, runs shim self-check
-│   ├── boot.css            # boot screen styling
-│   └── network-shim.js     # cargo network -> JS fetch (with proxy fallback)
-├── sw.js                   # service worker (caching + COOP/COEP shim)
-├── cheerpx/                # vendored CheerpX engine — placeholder, not vendored yet
-├── vscode-web/             # full VS Code Web build — placeholder, not built yet
+├── index.html                          # workbench entry + boot overlay
+├── sw.js                               # SW: cache + COOP/COEP shim
+├── glue/                               # page-level integration JS
+│   ├── boot.js                         # orchestrator
+│   ├── boot.css                        # boot overlay styling
+│   ├── network-shim.js                 # cargo network mediator
+│   ├── cheerpx-bridge.js               # CheerpX loader + Linux boot
+│   ├── webvm-bus.js                    # transport-agnostic RPC
+│   └── webvm-server.js                 # page-side FS + process server
+├── build/                              # build & dev tooling
+│   ├── build-workbench.mjs             # vendors vscode-web + CheerpX
+│   ├── index.template.html             # workbench entry template
+│   └── dev-server.mjs                  # COOP/COEP-aware dev server
 ├── extensions/
-│   ├── webvm-host/         # FS provider + pseudoterminal — placeholder
-│   └── rust-analyzer-web/  # rust-analyzer WASM web extension — placeholder
-└── disk/                   # `rust-debian.ext2` is fetched from a Release asset at runtime
+│   ├── webvm-host/                     # FS provider, pseudoterminal, cargo tasks
+│   └── rust-analyzer-web/              # Rust language config + WASM loader
+├── tests/                              # unit + smoke tests (`node --test`)
+├── cheerpx/                            # vendored CheerpX runtime (CI populates)
+├── vscode-web/                         # vendored VS Code Web bundle (CI populates)
+└── disk/                               # disk image build script + manifest
 ```
 
-Everything outside `index.html`, `glue/`, and `sw.js` is currently a
-placeholder describing the eventual occupant. Each placeholder directory
-has its own README describing what is expected to live there and the build
-pipeline that will produce it.
+## Local development
 
-## Status of the MVP slice
+```bash
+# All tests (no deps; 35 tests):
+node --test web/tests/
 
-Implemented in this commit:
+# Build the workbench bundle (needs npm + network):
+node web/build/build-workbench.mjs
 
-- Static shell + boot screen.
-- Network shim with verifiable host-routing rules and a sequential CORS-proxy
-  fallback for `index.crates.io`.
-- Service worker with cache-first behaviour and a COOP/COEP shim so the page
-  becomes cross-origin-isolated even when GitHub Pages doesn't set the
-  headers itself.
-- Automated test of the shim's routing logic and proxy fallback (in
-  `web/tests/`, runnable with `node --test`).
-- GitHub Actions workflow that publishes `web/` to GitHub Pages on push.
+# Local dev server with COOP/COEP headers (CheerpX boots successfully):
+node web/build/dev-server.mjs 8080
+# then open http://localhost:8080
+```
 
-Not yet implemented (tracked in `docs/architecture.md`):
+## Component status
 
-- Vendored CheerpX runtime and the WebVM disk image.
-- Vendored VS Code Web build.
-- The `webvm-host` extension (FS provider, pseudoterminal, tasks).
-- The `rust-analyzer` WASM web extension.
+See [`docs/architecture.md`](../docs/architecture.md) for the
+component-by-component table and the mapping to issue #1's acceptance
+criteria.
