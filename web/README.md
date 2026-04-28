@@ -15,12 +15,14 @@ web/
 ├── index.html                          # workbench entry (no custom UI)
 ├── sw.js                               # SW: cache + COOP/COEP shim
 ├── glue/                               # page-level integration JS
-│   ├── boot.js                         # orchestrator
+│   ├── boot.js                         # 2-stage orchestrator
 │   ├── boot.css                        # bottom-right toast styling
 │   ├── network-shim.js                 # cargo network mediator
 │   ├── cheerpx-bridge.js               # CheerpX loader + Linux boot
 │   ├── webvm-bus.js                    # transport-agnostic RPC
-│   └── webvm-server.js                 # page-side FS + process server
+│   ├── workspace-fs.js                 # IDB-backed JS workspace store
+│   ├── workspace-server.js             # stage-1 fs.* methods (pre-VM)
+│   └── webvm-server.js                 # stage-2 server (workspace + VM)
 ├── build/                              # build & dev tooling
 │   ├── build-workbench.mjs             # vendors vscode-web + CheerpX
 │   ├── index.template.html             # workbench entry template
@@ -40,7 +42,7 @@ web/
 ## Local development
 
 ```bash
-# All tests (no deps; 47 tests):
+# All tests (no deps; 66 tests):
 node --test web/tests/
 
 # Build the workbench bundle (needs npm + network):

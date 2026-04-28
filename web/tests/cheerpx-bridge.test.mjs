@@ -48,6 +48,36 @@ test('bootLinux: rejects without CheerpX module', async () => {
   await assert.rejects(() => bootLinux({}), /requires the CheerpX module/);
 });
 
+test('bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails', async () => {
+  const tried = [];
+  const fakeCheerpX = {
+    CloudDevice: {
+      create: async (url) => {
+        tried.push(url);
+        if (url === 'https://example.com/missing.ext2') {
+          throw new Error('fetch failed');
+        }
+        return { tag: 'cloud', url };
+      },
+    },
+    IDBDevice: { create: async () => ({}) },
+    OverlayDevice: { create: async (a) => a },
+    WebDevice: { create: async () => ({}) },
+    DataDevice: { create: async () => ({}) },
+    Linux: { create: async () => ({ tag: 'cx' }) },
+  };
+  const result = await bootLinux({
+    CheerpX: fakeCheerpX,
+    diskUrl: 'https://example.com/missing.ext2',
+    fallbackDiskUrl: 'wss://disks.webvm.io/fallback.ext2',
+  });
+  assert.deepEqual(tried, [
+    'https://example.com/missing.ext2',
+    'wss://disks.webvm.io/fallback.ext2',
+  ]);
+  assert.equal(result.diskUrl, 'wss://disks.webvm.io/fallback.ext2');
+});
+
 test('bootLinux: builds the WebVM-style mount stack and surfaces progress', async () => {
   const phases = [];
   const cloud = { tag: 'cloud' };
@@ -99,7 +129,7 @@ test('bootLinux: builds the WebVM-style mount stack and surfaces progress', asyn
   ]);
 });
 
-test('resolveDiskUrl: uses warm.url when set', async () => {
+test('resolveDiskUrl: uses warm.url when set and probe succeeds', async () => {
   const url = await resolveDiskUrl({
     fetchImpl: async () => ({
       ok: true,
@@ -107,6 +137,7 @@ test('resolveDiskUrl: uses warm.url when set', async () => {
         return { warm: { url: 'wss://warm.example/x.ext2' } };
       },
     }),
+    probe: async () => true,
   });
   assert.equal(url, 'wss://warm.example/x.ext2');
 });
@@ -122,8 +153,30 @@ test('resolveDiskUrl: falls back to default.url when warm.url is null', async ()
         };
       },
     }),
+    probe: async () => true,
   });
   assert.equal(url, 'wss://disks.webvm.io/something.ext2');
+});
+
+test('resolveDiskUrl: falls back to default.url when warm probe fails (404)', async () => {
+  const probed = [];
+  const url = await resolveDiskUrl({
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          warm: { url: 'https://example.com/rust-alpine.ext2' },
+          default: { url: 'wss://disks.webvm.io/fallback.ext2' },
+        };
+      },
+    }),
+    probe: async (u) => {
+      probed.push(u);
+      return false;
+    },
+  });
+  assert.equal(url, 'wss://disks.webvm.io/fallback.ext2');
+  assert.deepEqual(probed, ['https://example.com/rust-alpine.ext2']);
 });
 
 test('resolveDiskUrl: falls back to hard-coded URL on fetch error', async () => {

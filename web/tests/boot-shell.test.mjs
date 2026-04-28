@@ -55,6 +55,8 @@ test('boot shell: glue modules exist', async () => {
     'glue/cheerpx-bridge.js',
     'glue/webvm-bus.js',
     'glue/webvm-server.js',
+    'glue/workspace-fs.js',
+    'glue/workspace-server.js',
   ]) {
     await fs.access(path.join(WEB_ROOT, rel));
   }
@@ -91,10 +93,10 @@ test('boot shell: rust-analyzer-web package.json declares rust language', async 
   assert.deepEqual(rust.extensions, ['.rs']);
 });
 
-test('boot shell: service worker synthesises COOP/COEP headers', async () => {
+test('boot shell: service worker synthesises COOP/COEP headers (credentialless for cross-origin disk)', async () => {
   const sw = await read('sw.js');
   assert.match(sw, /Cross-Origin-Opener-Policy.*same-origin/);
-  assert.match(sw, /Cross-Origin-Embedder-Policy.*require-corp/);
+  assert.match(sw, /Cross-Origin-Embedder-Policy.*credentialless/);
 });
 
 test('boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11', async () => {
@@ -114,10 +116,41 @@ test('boot shell: webvm-host auto-opens a terminal on activation', async () => {
   assert.match(ext, /webvm-host\.openTerminal/);
 });
 
-test('boot shell: disk manifest carries an Alpine warm image entry', async () => {
+test('boot shell: webvm-host auto-opens hello_world.rs on activation', async () => {
+  const ext = await read('extensions/webvm-host/extension.js');
+  assert.match(ext, /openHelloWorld/);
+  assert.match(ext, /webvm:\/workspace\/hello_world\.rs/);
+  assert.match(ext, /vscode\.window\.showTextDocument/);
+});
+
+test('boot shell: workspace-fs seeds hello_world.rs at workspace root', async () => {
+  const wfs = await read('glue/workspace-fs.js');
+  assert.match(wfs, /\/workspace\/hello_world\.rs/);
+  assert.match(wfs, /\/workspace\/hello\/Cargo\.toml/);
+  assert.match(wfs, /\/workspace\/hello\/src\/main\.rs/);
+});
+
+test('boot shell: webvm-server mirrors workspace into the guest via heredocs', async () => {
+  const srv = await read('glue/webvm-server.js');
+  assert.match(srv, /heredocForFile/);
+  assert.match(srv, /primeGuestWorkspace/);
+  assert.match(srv, /ls -la \/workspace/);
+});
+
+test('boot shell: boot.js stages workspace-only server before VM is up', async () => {
+  const boot = await read('glue/boot.js');
+  assert.match(boot, /workspaceOnlyMethods/);
+  assert.match(boot, /openWorkspaceFS/);
+  assert.match(boot, /bringUpWorkspace/);
+  assert.match(boot, /bringUpVM/);
+});
+
+test('boot shell: disk manifest carries an Alpine warm image entry pointing to disk-latest', async () => {
   const m = JSON.parse(await read('disk/manifest.json'));
   assert.equal(m.warm.alpine, true);
   assert.equal(m.warm.rust, true);
+  assert.equal(m.warm.release_tag, 'disk-latest');
+  assert.match(m.warm.url, /\/releases\/download\/disk-latest\/rust-alpine\.ext2$/);
 });
 
 test('boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world', async () => {
@@ -146,4 +179,14 @@ test('boot shell: disk-image workflow exists and triggers on workflow_dispatch',
   );
   assert.match(wf, /workflow_dispatch/);
   assert.match(wf, /rust-alpine\.ext2/);
+});
+
+test('boot shell: disk-image workflow auto-publishes to disk-latest on push to main', async () => {
+  const wf = await fs.readFile(
+    path.resolve(WEB_ROOT, '..', '.github', 'workflows', 'disk-image.yml'),
+    'utf8',
+  );
+  assert.match(wf, /disk-latest/);
+  assert.match(wf, /gh release upload/);
+  assert.match(wf, /github\.event_name == 'push'/);
 });

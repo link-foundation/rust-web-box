@@ -111,17 +111,29 @@ export function createBusClient({
 }
 
 /**
- * Server-side handler. Methods is an object mapping method name -> async
+ * Server-side handler. `methods` is an object mapping method name -> async
  * handler (params) -> result. Errors are caught and forwarded as
  * structured error responses so the client can surface them.
+ *
+ * Returns an object with:
+ *   * `emit(topic, payload)`: broadcast an event.
+ *   * `setMethods(next)`: hot-swap the method table. Used to upgrade
+ *     from a workspace-only stage to a full VM-backed server when
+ *     CheerpX finishes booting, without re-registering an extra
+ *     message listener (which would double-respond to every request).
+ *   * `dispose()`: detach the listener; subsequent messages are ignored.
  */
 export function createBusServer({ channel, methods = {} } = {}) {
   if (!channel) throw new TypeError('createBusServer requires a channel');
 
-  channel.addEventListener('message', async (ev) => {
+  let active = true;
+  let table = methods;
+
+  const onMessage = async (ev) => {
     const msg = ev.data;
+    if (!active) return;
     if (!msg || msg.kind !== 'request') return;
-    const handler = methods[msg.method];
+    const handler = table[msg.method];
     if (!handler) {
       channel.postMessage({
         id: msg.id,
@@ -143,13 +155,23 @@ export function createBusServer({ channel, methods = {} } = {}) {
         },
       });
     }
-  });
+  };
+  channel.addEventListener('message', onMessage);
 
   function emit(topic, payload) {
     channel.postMessage({ kind: 'event', topic, payload });
   }
 
-  return { emit };
+  function setMethods(next) {
+    table = next ?? {};
+  }
+
+  function dispose() {
+    active = false;
+    try { channel.removeEventListener('message', onMessage); } catch {}
+  }
+
+  return { emit, setMethods, dispose };
 }
 
 /**

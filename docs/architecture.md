@@ -11,11 +11,13 @@ from that issue.
 GitHub Pages (static)
 ├── web/index.html                       # workbench entry (no custom UI)
 ├── web/glue/
-│   ├── boot.js                          # orchestrator (CheerpX → VS Code)
+│   ├── boot.js                          # 2-stage orchestrator (workspace → VM)
 │   ├── network-shim.js                  # cargo network mediator
 │   ├── cheerpx-bridge.js                # CheerpX loader + Linux boot
 │   ├── webvm-bus.js                     # transport-agnostic RPC
-│   └── webvm-server.js                  # page-side server (FS, procs)
+│   ├── workspace-fs.js                  # IDB-backed JS workspace store
+│   ├── workspace-server.js              # stage-1 fs.* methods (pre-VM)
+│   └── webvm-server.js                  # stage-2 server (workspace + VM)
 ├── web/sw.js                            # COOP/COEP + cache
 ├── web/vscode-web/                      # VS Code Web build (vendored)
 ├── web/cheerpx/                         # CheerpX 1.2.11 (vendored)
@@ -25,6 +27,29 @@ GitHub Pages (static)
 ├── web/disk/                            # Alpine + Rust image build
 └── web/build/                           # vendor + render scripts
 ```
+
+## Workspace model — JS-side store + guest mirror
+
+The workspace lives **in the browser**, not in CheerpX. `workspace-fs.js`
+opens an IndexedDB-backed file store on page load and seeds it with the
+hello-world Rust project (`/workspace/hello_world.rs`,
+`/workspace/hello/Cargo.toml`, `/workspace/hello/src/main.rs`,
+`/workspace/README.md`). The `webvm:` `FileSystemProvider` reads/writes
+this store directly via the bus, so VS Code's Explorer populates **the
+moment the workbench mounts** — no waiting for the 30+ second CheerpX
+boot.
+
+When the VM finishes booting, `webvm-server.js` mirrors the JS-side
+workspace into the guest's `/workspace/` directory using `cat <<EOF`
+heredocs sent through the persistent bash session, then `cd`s into
+`/workspace` and runs `ls -la` so the user sees the populated directory
+in the terminal. Subsequent saves from the editor write to both stores:
+JS-side immediately, guest-side via heredoc-on-stdin.
+
+This is why the page can show a working Explorer + editor + open file
+the moment VS Code mounts — the alternative (gating the workspace on
+CheerpX mounting an ext2 over the network) gives the user an empty
+folder for half a minute.
 
 The page **looks identical to vscode.dev**. There is no custom UI: the
 workbench fills the viewport, the only chrome we add is a hidden

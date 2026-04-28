@@ -137,3 +137,42 @@ test('bus: server throws on missing channel', () => {
     /requires a channel/,
   );
 });
+
+test('bus: setMethods hot-swaps the handler table', async () => {
+  const [c, s] = makeChannelPair();
+  const server = createBusServer({
+    channel: s,
+    methods: {
+      'vm.status': async () => ({ booted: false, stage: 'workspace-only' }),
+    },
+  });
+  const client = createBusClient({ channel: c });
+  const before = await client.request('vm.status');
+  assert.equal(before.booted, false);
+
+  // Hot-swap to a "vm-up" table; a fresh request should hit the new
+  // table without us re-registering a second message listener.
+  server.setMethods({
+    'vm.status': async () => ({ booted: true, diskUrl: 'wss://x' }),
+    'fs.stat': async ({ path }) => ({ type: 1, path }),
+  });
+  const after = await client.request('vm.status');
+  assert.deepEqual(after, { booted: true, diskUrl: 'wss://x' });
+  const stat = await client.request('fs.stat', { path: '/workspace' });
+  assert.deepEqual(stat, { type: 1, path: '/workspace' });
+});
+
+test('bus: dispose stops handling new requests', async () => {
+  const [c, s] = makeChannelPair();
+  const server = createBusServer({
+    channel: s,
+    methods: { ping: async () => 'pong' },
+  });
+  const client = createBusClient({ channel: c, timeoutMs: 25 });
+  assert.equal(await client.request('ping'), 'pong');
+  server.dispose();
+  await assert.rejects(
+    () => client.request('ping'),
+    (err) => err instanceof BusError && err.code === 'TIMEOUT',
+  );
+});

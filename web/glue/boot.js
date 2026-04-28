@@ -6,20 +6,27 @@
 // pane (rendered by the webvm-host extension), not as a custom HTML
 // overlay. A tiny corner toast appears only if booting actually fails.
 //
-// Steps, in order:
+// Boot order (each step decoupled from the next so VS Code can show a
+// populated workspace immediately, even while CheerpX is still
+// downloading):
+//
 //   1. Self-check the network shim (routes static/proxy/blocked correctly).
 //   2. Register the COOP/COEP service worker so SharedArrayBuffer is
 //      available for CheerpX threading.
-//   3. Patch the workbench config so VS Code Web finds our extensions
-//      against the current origin.
-//   4. Load CheerpX (vendored, falling back to CDN).
-//   5. Boot the Linux VM (Alpine + Rust + IDB overlay).
-//   6. Open the WebVM ↔ extension bus.
+//   3. Patch the workbench config so VS Code Web finds our extensions.
+//   4. Open the JS-side workspace (IDB-backed) and start serving its
+//      contents over the bus IMMEDIATELY. The Explorer populates from
+//      this — the user sees `hello_world.rs` the moment the page loads.
+//   5. (Background) Load CheerpX, boot Linux, then upgrade the bus to
+//      the full server with terminal support. The workspace is mirrored
+//      into the VM at this point so `cargo run` works.
 
 import { createNetworkShim, classifyHost } from './network-shim.js';
 import { loadCheerpX, bootLinux } from './cheerpx-bridge.js';
 import { startWebVMServer } from './webvm-server.js';
-import { openBroadcastChannel } from './webvm-bus.js';
+import { workspaceOnlyMethods } from './workspace-server.js';
+import { createBusServer, openBroadcastChannel } from './webvm-bus.js';
+import { openWorkspaceFS } from './workspace-fs.js';
 
 const shim = createNetworkShim();
 globalThis.__rustWebBox = globalThis.__rustWebBox || {};
@@ -86,7 +93,40 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-async function bringUpVM() {
+async function bringUpWorkspace() {
+  let workspace;
+  try {
+    workspace = await openWorkspaceFS();
+  } catch (err) {
+    setToast(`Workspace store unavailable: ${err?.message ?? err}`, 'error');
+    throw err;
+  }
+
+  let channel;
+  try {
+    channel = openBroadcastChannel();
+  } catch (err) {
+    setToast(`Bus init failed: ${err?.message ?? err}`, 'error');
+    throw err;
+  }
+
+  // Stage 1 method table: serves fs.* immediately so the Explorer
+  // populates without waiting on CheerpX.
+  const busServer = createBusServer({
+    channel,
+    methods: workspaceOnlyMethods({ workspace }),
+  });
+  // Tell any extensions that started up first that the bus is alive.
+  busServer.emit('vm.boot', { phase: 'workspace-ready' });
+
+  globalThis.__rustWebBox.busChannel = channel;
+  globalThis.__rustWebBox.workspace = workspace;
+  globalThis.__rustWebBox.busServer = busServer;
+  return { workspace, channel, busServer };
+}
+
+async function bringUpVM({ workspace, channel, busServer }) {
+  busServer.emit('vm.boot', { phase: 'loading-cheerpx' });
   let CheerpX;
   try {
     CheerpX = await loadCheerpX();
@@ -95,15 +135,14 @@ async function bringUpVM() {
     return null;
   }
 
+  busServer.emit('vm.boot', { phase: 'booting-linux' });
   let vm;
   try {
     vm = await bootLinux({
       CheerpX,
       onProgress: (phase) => {
-        // Surface VM boot phases on window for tests/devtools, but don't
-        // render a UI overlay — the terminal pane handles user-visible
-        // status.
         globalThis.__rustWebBox.vmPhase = phase;
+        try { busServer.emit('vm.boot', { phase }); } catch {}
       },
     });
   } catch (err) {
@@ -111,22 +150,15 @@ async function bringUpVM() {
     return null;
   }
 
-  let channel;
-  try {
-    channel = openBroadcastChannel();
-  } catch (err) {
-    setToast(`Bus init failed: ${err?.message ?? err}`, 'error');
-    return null;
-  }
-
+  // Stage 2: hot-swap to the full server (workspace + terminal).
   startWebVMServer({
     cx: vm.cx,
-    channel,
+    busServer,
+    workspace,
     status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
   });
 
   globalThis.__rustWebBox.vm = vm;
-  globalThis.__rustWebBox.busChannel = channel;
   return vm;
 }
 
@@ -150,4 +182,17 @@ function watchVSCode() {
 }
 
 watchVSCode();
-bringUpVM();
+
+(async () => {
+  try {
+    const ws = await bringUpWorkspace();
+    // Bring up the VM in the background; the workspace is already
+    // serving fs.* requests so VS Code's Explorer populates on its own
+    // schedule.
+    bringUpVM(ws);
+  } catch (err) {
+    // bringUpWorkspace already surfaces a toast; nothing more to do.
+    // eslint-disable-next-line no-console
+    console.warn('[rust-web-box] boot failed:', err);
+  }
+})();

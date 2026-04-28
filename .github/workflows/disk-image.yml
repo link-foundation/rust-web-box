@@ -14,8 +14,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to upload the .ext2 to (e.g. disk-2026-04-29).'
+        description: 'Release tag to upload the .ext2 to (default: disk-latest, a rolling tag).'
         required: false
+        default: 'disk-latest'
 
 jobs:
   build:
@@ -57,26 +58,35 @@ jobs:
             || (echo "missing /bin/bash in image" && exit 1)
           sudo umount "$MNT"
 
-      - name: Upload as workflow artifact (PR builds + main)
+      - name: Upload as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: rust-alpine-ext2
           path: web/disk/rust-alpine.ext2
           if-no-files-found: error
-          # Workflow artifacts cap at 10 GB; the image is ~600 MB so
-          # this is fine. Retention is 14 days by default.
+          # Workflow artifacts cap at 10 GB; the image is ~600 MB.
           retention-days: 14
 
-      - name: Publish as Release asset
-        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+      # On main and on workflow_dispatch we publish the image to a
+      # rolling release tag so the static site can fetch it. The
+      # default tag (`disk-latest`) is what `web/disk/manifest.json`
+      # points to, so a successful main build automatically publishes
+      # the disk that GitHub Pages will serve.
+      - name: Publish as Release asset (rolling tag)
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/main'
+          || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ inputs.release_tag }}"
-          # Create the release if it doesn't exist; ignore failures
-          # (re-running the workflow against an existing tag is fine).
+          TAG="${{ github.event.inputs.release_tag || 'disk-latest' }}"
+          # Recreate the release each time so download URLs stay
+          # stable but the asset is fresh. Skip if release already
+          # exists; we just upload --clobber.
           gh release create "$TAG" \
             --title "Disk image: $TAG" \
-            --notes "rust-alpine.ext2 produced by .github/workflows/disk-image.yml" \
+            --notes "rust-alpine.ext2 produced by .github/workflows/disk-image.yml @ ${{ github.sha }}" \
+            --target "$GITHUB_SHA" \
             || true
           gh release upload "$TAG" web/disk/rust-alpine.ext2 --clobber
+          echo "Released to https://github.com/${{ github.repository }}/releases/tag/$TAG"

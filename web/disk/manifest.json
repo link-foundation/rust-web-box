@@ -4,15 +4,15 @@
     "url": "wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2",
     "size_mb": 6144,
     "rust": false,
-    "notes": "Public WebVM Debian image. Used as a fallback so the page boots even before the rust-alpine release pipeline has run; cargo/rustup work from inside via apt + curl."
+    "notes": "Public WebVM Debian image. Used as a fallback so the page boots even before the rust-alpine release pipeline has run; cargo/rustup work from inside via apt + curl. The page-side workspace store still serves /workspace/hello_world.rs to the Explorer regardless of which disk is mounted."
   },
   "warm": {
     "kind": "release-asset",
-    "url": null,
-    "release_tag": null,
+    "url": "https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2",
+    "release_tag": "disk-latest",
     "size_mb": null,
     "rust": true,
     "alpine": true,
-    "notes": "Pre-baked rust-alpine.ext2 — i386 Alpine + bash + rustc + cargo + a hello-world Cargo project under /workspace/hello. Built by web/disk/build.sh and uploaded to GitHub Releases by .github/workflows/disk-image.yml. Populate `url` here once the release asset is published; the boot shell will switch to it automatically."
+    "notes": "Pre-baked rust-alpine.ext2 — i386 Alpine + bash + rustc + cargo + a hello-world Cargo project under /workspace/hello. Built by web/disk/build.sh and uploaded as the rolling 'disk-latest' release asset on every push to main by .github/workflows/disk-image.yml. The boot shell tries this first; if it 404s (e.g. before the workflow has run), the page falls back to `default` so the workbench and terminal still come up."
   }
 }

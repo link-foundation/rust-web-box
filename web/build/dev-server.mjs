@@ -69,7 +69,11 @@ async function serve(req, res) {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Content-Length': stat.size,
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Cross-Origin-Embedder-Policy': 'require-corp',
+    // `credentialless` lets CheerpX stream the cross-origin Alpine
+    // disk image from GitHub Releases without requiring CORP headers
+    // on the upstream. Still gives us crossOriginIsolated===true
+    // (SharedArrayBuffer + WASM threading) on this origin.
+    'Cross-Origin-Embedder-Policy': 'credentialless',
     'Cross-Origin-Resource-Policy': 'same-origin',
   });
   const fileHandle = await fs.open(fsPath);

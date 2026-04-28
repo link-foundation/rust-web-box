@@ -3,22 +3,23 @@
 // Runs in the extension-host Web Worker. Connects to the page-side
 // `webvm-server` over a same-origin BroadcastChannel and exposes:
 //
-//   * `webvm:` URI scheme via FileSystemProvider (powers Explorer, search,
-//     editor tabs, save/open).
+//   * `webvm:` URI scheme via FileSystemProvider (powers Explorer,
+//     search, editor tabs, save/open).
 //   * `webvm-host.bash` terminal profile, backed by the persistent
-//     CheerpX bash session. Shows a "Booting Linux VM..." status message
+//     CheerpX bash session. Shows a "Booting Linux VM…" status message
 //     in the terminal pane until vm.status reports the VM is booted.
 //   * Cargo task provider + commands (Cargo: Run/Build/Test/Add/New).
 //   * Status-bar Run button bound to `cargo run --release`.
-//   * Auto-opens a terminal on activation so the user lands in a working
-//     bash exactly the way the issue's "Ctrl+\` opens a working bash"
-//     acceptance criterion demands.
+//   * Auto-opens a terminal AND auto-opens `hello_world.rs` on
+//     activation so the user lands in a working editor + bash
+//     immediately, exactly the way the issue's "edit src/main.rs, run
+//     Cargo: Run, see output" acceptance criterion demands.
 //
 // Single-file payload — VS Code Web extensions are served as static
 // files so a tiny vanilla-JS module avoids the bundler hop.
 
 const CHANNEL_NAME = 'rust-web-box/webvm-bus';
-const VM_BOOT_MAX_MS = 90_000;
+const VM_BOOT_MAX_MS = 180_000;
 
 // --- Bus client (mirrors web/glue/webvm-bus.js, inlined to keep this
 // extension a single-file payload that can be served as a builtin) -----
@@ -94,11 +95,13 @@ function makeFileSystemProvider(vscode, bus) {
   return {
     onDidChangeFile: onDidChangeEmitter.event,
     watch() {
-      // Polling watcher; CheerpX doesn't surface inotify yet.
+      // Polling watcher; the page-side workspace store fires onChange
+      // events but we don't propagate them across the bus yet.
       return new vscode.Disposable(() => {});
     },
     async stat(uri) {
-      return await bus.request('fs.stat', { path: pathFromUri(uri) });
+      const r = await bus.request('fs.stat', { path: pathFromUri(uri) });
+      return r;
     },
     async readDirectory(uri) {
       return await bus.request('fs.readDir', { path: pathFromUri(uri) });
@@ -115,6 +118,7 @@ function makeFileSystemProvider(vscode, bus) {
       await bus.request('fs.writeFile', {
         path: pathFromUri(uri),
         data: Array.from(content),
+        options,
       });
       onDidChangeEmitter.fire([
         {
@@ -146,11 +150,6 @@ function makeFileSystemProvider(vscode, bus) {
 }
 
 // --- Pseudoterminal ----------------------------------------------------
-//
-// One Pseudoterminal per visible terminal pane, all backed by the same
-// page-side bash session. We synthesise a "Booting Linux VM..." banner
-// while we wait for `vm.status` to come back (issue feedback: terminal
-// must show loading status until ready).
 
 function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
   const writeEmitter = new vscode.EventEmitter();
@@ -161,7 +160,7 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
   let dimsPending = null;
   let opened = false;
 
-  function ansi(s) { return `[${s}`; }
+  function ansi(s) { return `\x1b[${s}`; }
   const RESET = ansi('0m');
   const DIM = ansi('2m');
   const BOLD = ansi('1m');
@@ -181,13 +180,20 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         `${BOLD}rust-web-box${RESET} — anonymous in-browser Rust sandbox\r\n`,
       );
       writeEmitter.fire(
-        `${DIM}Powered by CheerpX (${
-          'leaningtech/webvm'
-        }) and VS Code Web.${RESET}\r\n\r\n`,
+        `${DIM}Powered by CheerpX (leaningtech/webvm) and VS Code Web.${RESET}\r\n\r\n`,
       );
       status('Booting Linux VM…');
 
       let booted = false;
+      let lastPhase = '';
+      const phaseDispose = bus.on('vm.boot', (p) => {
+        if (booted) return;
+        const phase = p?.phase;
+        if (!phase || phase === lastPhase) return;
+        lastPhase = phase;
+        if (phase === 'workspace-ready' || phase === 'ready') return;
+        status(`VM stage: ${phase}…`);
+      });
       const tick = setInterval(() => {
         if (booted) return;
         writeEmitter.fire(`${DIM}.${RESET}`);
@@ -205,15 +211,17 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         ]);
         booted = true;
         clearInterval(tick);
+        phaseDispose?.();
         writeEmitter.fire('\r\n');
         status(`Linux VM ready ${GREEN}✓${RESET}`);
         if (result?.diskUrl) {
           status(`disk: ${DIM}${result.diskUrl}${RESET}`);
         }
-        status('Type `cargo run` from /workspace/hello to compile a Rust hello world.');
+        status('Workspace mirrored to /workspace — try `cargo run` in /workspace/hello.');
         writeEmitter.fire('\r\n');
       } catch (err) {
         clearInterval(tick);
+        phaseDispose?.();
         writeEmitter.fire(
           `\r\n[rust-web-box] failed to reach the VM: ${err?.message ?? err}\r\n`,
         );
@@ -226,8 +234,6 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         if (payload?.chunk) writeEmitter.fire(payload.chunk);
       });
       exitDispose = bus.on('proc.exit', () => {
-        // The shell loop restarts bash automatically; surface a tiny
-        // marker so the user sees something happened.
         writeEmitter.fire(`\r\n${DIM}[bash exited — respawning…]${RESET}\r\n`);
       });
 
@@ -253,11 +259,9 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         await bus.request('proc.resize', dimsPending).catch(() => {});
       }
 
-      // Tap the user into a friendly starting directory + greet bash.
-      // Sending Enter wakes up the prompt the loop just printed.
-      bus
-        .request('proc.write', { bytes: Array.from(textEncoder.encode('cd /workspace/hello 2>/dev/null || cd /root\n')) })
-        .catch(() => {});
+      // Trigger the page-side workspace prime so the guest gets the
+      // user's current files. This is idempotent.
+      bus.request('workspace.prime', {}).catch(() => {});
     },
 
     close() {
@@ -322,8 +326,7 @@ function makeCargoPty(vscode, bus, { vmReadyPromise }, command, args = [], cwd =
         closeEmitter.fire(1);
         return;
       }
-      // Drive the persistent shell to run the command. We send a
-      // `cd && cargo …` line; the shell echoes back through proc.stdout.
+      // Drive the persistent shell to run the command.
       const line = `cd ${cwd} && cargo ${command} ${args.join(' ')}\n`;
       bus
         .request('proc.write', {
@@ -410,13 +413,11 @@ function activate(context) {
   // Track when the VM has reported itself ready so terminals (and tasks)
   // can reliably gate their work behind boot completion.
   const vmReadyPromise = (async () => {
-    // The page broadcasts `vm.boot { phase: 'ready' }` on startup; if we
-    // missed it (the extension activated late), fall back to polling
-    // `vm.status` until it succeeds.
     let resolved = false;
     return new Promise((resolve) => {
       const off = bus.on('vm.boot', (p) => {
-        if (resolved || p?.phase !== 'ready') return;
+        if (resolved) return;
+        if (p?.phase !== 'ready') return;
         resolved = true;
         off?.();
         bus.request('vm.status').then(resolve).catch(() => resolve({ booted: true }));
@@ -431,9 +432,7 @@ function activate(context) {
             clearInterval(tick);
             resolve(s);
           }
-        } catch {
-          // page hasn't booted yet — keep polling
-        }
+        } catch {}
         if (!resolved && Date.now() - start > VM_BOOT_MAX_MS) {
           clearInterval(tick);
         }
@@ -441,7 +440,9 @@ function activate(context) {
     });
   })();
 
-  // FileSystemProvider
+  // FileSystemProvider — registers immediately so the Explorer can
+  // populate from the JS-side workspace store on first paint, no
+  // CheerpX dependency.
   const fs = makeFileSystemProvider(vscode, bus);
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider('webvm', fs, {
@@ -503,6 +504,9 @@ function activate(context) {
       });
       term.show();
     }),
+    vscode.commands.registerCommand('webvm-host.openHelloWorld', () =>
+      openHelloWorld(vscode),
+    ),
   );
 
   // Status-bar Run button (criterion 5 in issue #1)
@@ -516,6 +520,16 @@ function activate(context) {
   runBtn.show();
   context.subscriptions.push(runBtn);
 
+  // Auto-open hello_world.rs so the user lands directly in the editor.
+  // Issue feedback: "hello_world.rs should be preopened or open as soon
+  // as file system is ready and integrated with vscode."
+  setTimeout(() => {
+    openHelloWorld(vscode).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn('[webvm-host] auto-open hello_world failed:', err);
+    });
+  }, 200);
+
   // Auto-open a terminal so the user lands in a working bash without
   // any extra clicks. Issue criterion 3: "Built-in Terminal opens a
   // working `bash` inside WebVM."
@@ -527,11 +541,10 @@ function activate(context) {
       });
       term.show();
     } catch (err) {
-      // Best-effort; surface but don't crash extension activation.
       // eslint-disable-next-line no-console
       console.warn('[webvm-host] auto-terminal failed:', err);
     }
-  }, 250);
+  }, 350);
 
   vmReadyPromise.then(
     (status) => {
@@ -546,6 +559,28 @@ function activate(context) {
       );
     },
   );
+}
+
+async function openHelloWorld(vscode) {
+  // Try the well-known seeded paths in order; first one that stats
+  // wins. We tolerate ENOENT because the user could have deleted the
+  // file in a previous session — IDB persists their edits.
+  const candidates = [
+    'webvm:/workspace/hello_world.rs',
+    'webvm:/workspace/hello/src/main.rs',
+    'webvm:/workspace/README.md',
+  ];
+  for (const u of candidates) {
+    const uri = vscode.Uri.parse(u);
+    try {
+      await vscode.workspace.fs.stat(uri);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(doc, { preview: false });
+      return;
+    } catch {
+      // try next candidate
+    }
+  }
 }
 
 function deactivate() {}
