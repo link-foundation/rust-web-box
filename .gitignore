@@ -55,3 +55,4 @@ doc/
 *.log
 logs/
 ci-logs/
+.playwright-mcp/
