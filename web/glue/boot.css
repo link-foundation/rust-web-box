@@ -1,0 +1,88 @@
+:root {
+  color-scheme: dark light;
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --muted: #8b949e;
+  --accent: #f97316;
+  --good: #3fb950;
+  --warn: #d29922;
+  --border: #30363d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+main.boot {
+  max-width: 720px;
+  margin: 4rem auto;
+  padding: 0 1.25rem;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+}
+
+.tagline {
+  color: var(--muted);
+  margin: 0 0 2rem;
+}
+
+section + section {
+  margin-top: 2rem;
+}
+
+h2 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+ol {
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+li + li {
+  margin-top: 0.35rem;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.05em 0.35em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+strong[data-status="shim"] {
+  color: var(--warn);
+}
+
+strong[data-status="shim"][data-state="ok"] {
+  color: var(--good);
+}
+
+strong[data-status="shim"][data-state="fail"] {
+  color: var(--accent);
+}
+
+em {
+  color: var(--muted);
+  font-style: normal;
+}

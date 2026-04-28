@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>rust-web-box</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./glue/boot.css" />
+  </head>
+  <body>
+    <main class="boot">
+      <h1>rust-web-box</h1>
+      <p class="tagline">
+        Anonymous, in-browser Rust sandbox. Full VS Code Web UI + WebVM
+        (CheerpX) + live <code>crates.io</code>.
+      </p>
+
+      <section class="status" id="status">
+        <h2>Boot status</h2>
+        <ol id="boot-steps">
+          <li data-step="shell">Static shell <strong>loaded</strong>.</li>
+          <li data-step="shim">Network shim <strong data-status="shim">checking…</strong></li>
+          <li data-step="vscode">VS Code Web bundle <em>not yet vendored</em>.</li>
+          <li data-step="cheerpx">CheerpX engine <em>not yet vendored</em>.</li>
+          <li data-step="disk">Debian + Rust disk image <em>not yet built</em>.</li>
+        </ol>
+      </section>
+
+      <section class="notes">
+        <h2>What this page is right now</h2>
+        <p>
+          This is the foundation slice for issue #1: the static-shell scaffold,
+          the page-level network shim that mediates traffic between
+          <code>cargo</code> in the WebVM and the open web, and a CI deploy to
+          GitHub Pages. It is <strong>not</strong> the full sandbox yet — see
+          <code>docs/architecture.md</code> for the breakdown of what is in place
+          and what remains.
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="./glue/boot.js"></script>
+  </body>
+</html>
