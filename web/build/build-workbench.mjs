@@ -229,20 +229,22 @@ async function copyExtension(srcRel, destRel, name) {
 
 function buildExtensionPointers() {
   // additionalBuiltinExtensions: pointers to our two extensions, both
-  // served from the same origin under `extensions/<name>`. {ORIGIN_*}
-  // placeholders are substituted at runtime so the same artifact works
-  // under both Pages (`https://link-foundation.github.io/rust-web-box/`)
-  // and a local dev server.
+  // served from the same origin under `<base>/extensions/<name>`.
+  // {ORIGIN_*} substitute the live scheme + host; {BASE_PATH} substitutes
+  // the directory the page is served from (e.g. `/rust-web-box` on
+  // GitHub Pages, empty on a root-mounted dev server) — without this,
+  // VS Code Web requests `/extensions/...` and 404s on Pages, which
+  // is the root cause of issue #3.
   return [
     {
       scheme: '{ORIGIN_SCHEME}',
       authority: '{ORIGIN_HOST}',
-      path: '/extensions/webvm-host',
+      path: '{BASE_PATH}/extensions/webvm-host',
     },
     {
       scheme: '{ORIGIN_SCHEME}',
       authority: '{ORIGIN_HOST}',
-      path: '/extensions/rust-analyzer-web',
+      path: '{BASE_PATH}/extensions/rust-analyzer-web',
     },
   ];
 }

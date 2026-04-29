@@ -27,11 +27,21 @@ import { startWebVMServer } from './webvm-server.js';
 import { workspaceOnlyMethods } from './workspace-server.js';
 import { createBusServer, openBroadcastChannel } from './webvm-bus.js';
 import { openWorkspaceFS } from './workspace-fs.js';
+import { applyWorkbenchPlaceholders } from './workbench-config.js';
+import { createDebug, dumpRuntime } from './debug.js';
+
+const debugOpts = {
+  search: location.search,
+  storage: typeof localStorage !== 'undefined' ? localStorage : null,
+};
+const dbgBoot = createDebug('boot', debugOpts);
+const dbgWorkbench = createDebug('workbench', debugOpts);
 
 const shim = createNetworkShim();
 globalThis.__rustWebBox = globalThis.__rustWebBox || {};
 globalThis.__rustWebBox.shim = shim;
 globalThis.__rustWebBox.classifyHost = classifyHost;
+globalThis.__rustWebBox.dump = () => dumpRuntime(globalThis);
 
 const toast = document.getElementById('boot-toast');
 const toastText = toast?.querySelector('[data-toast-text]');
@@ -48,10 +58,22 @@ function hideToast() {
   toast.hidden = true;
 }
 
-// Substitute {ORIGIN_SCHEME}/{ORIGIN_HOST} placeholders in the workbench
-// configuration so VS Code Web resolves our extensions against the
-// current origin. The build step writes URI components into the meta
-// tag using literal placeholders so the rendered HTML is portable.
+// Substitute {ORIGIN_SCHEME}/{ORIGIN_HOST}/{BASE_PATH} placeholders in
+// the workbench configuration so VS Code Web resolves our extensions
+// against the current origin AND the directory the page is served from.
+// The build step writes URI components into the meta tag using literal
+// placeholders so the rendered HTML is portable.
+//
+// Why {BASE_PATH} matters: under GitHub Pages our document is at
+// `/rust-web-box/`, but `additionalBuiltinExtensions[].path` is a
+// host-absolute URL path. Without prefixing the deploy base, the
+// browser asks for `https://host/extensions/...` and 404s silently —
+// the workbench then has no FileSystemProvider for `webvm:`, no
+// terminal profile, and the user sees an empty Welcome page (issue #3).
+//
+// This runs as a defensive backstop for the inline copy in
+// index.html — both copies must agree, otherwise the inline copy wins
+// (it executes before this module loads).
 (function patchWorkbenchConfig() {
   const meta = document.getElementById('vscode-workbench-web-configuration');
   if (!meta) return;
@@ -59,15 +81,14 @@ function hideToast() {
   if (!raw || raw === '"not-built"') return;
   try {
     const cfg = JSON.parse(raw);
-    if (Array.isArray(cfg.additionalBuiltinExtensions)) {
-      const scheme = location.protocol.replace(':', '');
-      const host = location.host;
-      for (const ext of cfg.additionalBuiltinExtensions) {
-        if (typeof ext !== 'object') continue;
-        if (ext.scheme === '{ORIGIN_SCHEME}') ext.scheme = scheme;
-        if (ext.authority === '{ORIGIN_HOST}') ext.authority = host;
-      }
-    }
+    const ctx = {
+      scheme: location.protocol.replace(':', ''),
+      host: location.host,
+      basePath: new URL('./', location.href).pathname.replace(/\/$/, ''),
+    };
+    dbgWorkbench('substituting placeholders with', ctx);
+    applyWorkbenchPlaceholders(cfg, ctx);
+    dbgWorkbench('extensions resolved to', cfg.additionalBuiltinExtensions);
     meta.setAttribute('data-settings', JSON.stringify(cfg));
   } catch (err) {
     console.warn('[rust-web-box] could not patch workbench config:', err);
@@ -127,6 +148,7 @@ async function bringUpWorkspace() {
 
 async function bringUpVM({ workspace, channel, busServer }) {
   busServer.emit('vm.boot', { phase: 'loading-cheerpx' });
+  dbgBoot('loading CheerpX');
   let CheerpX;
   try {
     CheerpX = await loadCheerpX();
@@ -136,12 +158,14 @@ async function bringUpVM({ workspace, channel, busServer }) {
   }
 
   busServer.emit('vm.boot', { phase: 'booting-linux' });
+  dbgBoot('CheerpX loaded; booting Linux');
   let vm;
   try {
     vm = await bootLinux({
       CheerpX,
       onProgress: (phase) => {
         globalThis.__rustWebBox.vmPhase = phase;
+        dbgBoot('vm phase', phase);
         try { busServer.emit('vm.boot', { phase }); } catch {}
       },
     });
@@ -149,6 +173,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
     setToast(`Linux VM failed to boot: ${err?.message ?? err}`, 'error');
     return null;
   }
+  dbgBoot('VM booted with disk', vm.diskUrl);
 
   // Stage 2: hot-swap to the full server (workspace + terminal).
   startWebVMServer({
