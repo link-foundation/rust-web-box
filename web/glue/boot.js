@@ -28,11 +28,20 @@ import { workspaceOnlyMethods } from './workspace-server.js';
 import { createBusServer, openBroadcastChannel } from './webvm-bus.js';
 import { openWorkspaceFS } from './workspace-fs.js';
 import { applyWorkbenchPlaceholders } from './workbench-config.js';
+import { createDebug, dumpRuntime } from './debug.js';
+
+const debugOpts = {
+  search: location.search,
+  storage: typeof localStorage !== 'undefined' ? localStorage : null,
+};
+const dbgBoot = createDebug('boot', debugOpts);
+const dbgWorkbench = createDebug('workbench', debugOpts);
 
 const shim = createNetworkShim();
 globalThis.__rustWebBox = globalThis.__rustWebBox || {};
 globalThis.__rustWebBox.shim = shim;
 globalThis.__rustWebBox.classifyHost = classifyHost;
+globalThis.__rustWebBox.dump = () => dumpRuntime(globalThis);
 
 const toast = document.getElementById('boot-toast');
 const toastText = toast?.querySelector('[data-toast-text]');
@@ -72,11 +81,14 @@ function hideToast() {
   if (!raw || raw === '"not-built"') return;
   try {
     const cfg = JSON.parse(raw);
-    applyWorkbenchPlaceholders(cfg, {
+    const ctx = {
       scheme: location.protocol.replace(':', ''),
       host: location.host,
       basePath: new URL('./', location.href).pathname.replace(/\/$/, ''),
-    });
+    };
+    dbgWorkbench('substituting placeholders with', ctx);
+    applyWorkbenchPlaceholders(cfg, ctx);
+    dbgWorkbench('extensions resolved to', cfg.additionalBuiltinExtensions);
     meta.setAttribute('data-settings', JSON.stringify(cfg));
   } catch (err) {
     console.warn('[rust-web-box] could not patch workbench config:', err);
@@ -136,6 +148,7 @@ async function bringUpWorkspace() {
 
 async function bringUpVM({ workspace, channel, busServer }) {
   busServer.emit('vm.boot', { phase: 'loading-cheerpx' });
+  dbgBoot('loading CheerpX');
   let CheerpX;
   try {
     CheerpX = await loadCheerpX();
@@ -145,12 +158,14 @@ async function bringUpVM({ workspace, channel, busServer }) {
   }
 
   busServer.emit('vm.boot', { phase: 'booting-linux' });
+  dbgBoot('CheerpX loaded; booting Linux');
   let vm;
   try {
     vm = await bootLinux({
       CheerpX,
       onProgress: (phase) => {
         globalThis.__rustWebBox.vmPhase = phase;
+        dbgBoot('vm phase', phase);
         try { busServer.emit('vm.boot', { phase }); } catch {}
       },
     });
@@ -158,6 +173,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
     setToast(`Linux VM failed to boot: ${err?.message ?? err}`, 'error');
     return null;
   }
+  dbgBoot('VM booted with disk', vm.diskUrl);
 
   // Stage 2: hot-swap to the full server (workspace + terminal).
   startWebVMServer({
