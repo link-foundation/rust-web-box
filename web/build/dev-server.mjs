@@ -9,7 +9,12 @@
 // script serves `web/` with the right headers so local dev mirrors the
 // Pages deployment from cycle one.
 //
-// Usage: `node web/build/dev-server.mjs [port]`
+// Usage: `node web/build/dev-server.mjs [port] [--base=/rust-web-box]`
+//
+// `--base=/something` makes the server respond only under that path
+// prefix and 404 anything else — exactly mirroring how GitHub Pages
+// serves us at https://link-foundation.github.io/rust-web-box/. This
+// is what catches issue-#3-style sub-path bugs locally before deploy.
 
 import http from 'node:http';
 import path from 'node:path';
@@ -18,7 +23,20 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(__dirname, '..');
-const PORT = parseInt(process.argv[2] || process.env.PORT || '8080', 10);
+
+const positional = [];
+let basePrefix = '';
+for (const arg of process.argv.slice(2)) {
+  if (arg.startsWith('--base=')) {
+    basePrefix = arg.slice('--base='.length);
+    if (basePrefix && !basePrefix.startsWith('/')) basePrefix = '/' + basePrefix;
+    if (basePrefix.endsWith('/')) basePrefix = basePrefix.slice(0, -1);
+  } else {
+    positional.push(arg);
+  }
+}
+const PORT = parseInt(positional[0] || process.env.PORT || '8080', 10);
+const BASE_PREFIX = basePrefix || process.env.BASE_PREFIX || '';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -46,6 +64,22 @@ async function serve(req, res) {
     res.writeHead(400).end('bad request');
     return;
   }
+  // Sub-path mode: redirect bare-root visits to the prefix so reload
+  // semantics match Pages, then strip the prefix before serving.
+  if (BASE_PREFIX) {
+    if (urlPath === '/' || urlPath === '') {
+      res.writeHead(302, { Location: `${BASE_PREFIX}/` });
+      res.end();
+      return;
+    }
+    if (!urlPath.startsWith(BASE_PREFIX + '/') && urlPath !== BASE_PREFIX) {
+      // Mirror Pages: anything outside the prefix is 404, even if a
+      // file with the same name exists in the WEB_ROOT.
+      res.writeHead(404).end('not found (outside base)');
+      return;
+    }
+    urlPath = urlPath.slice(BASE_PREFIX.length) || '/';
+  }
   if (urlPath.endsWith('/')) urlPath += 'index.html';
   const fsPath = path.join(WEB_ROOT, urlPath);
   if (!fsPath.startsWith(WEB_ROOT)) {
@@ -60,7 +94,7 @@ async function serve(req, res) {
     return;
   }
   if (stat.isDirectory()) {
-    res.writeHead(302, { Location: `${urlPath}/` });
+    res.writeHead(302, { Location: `${BASE_PREFIX}${urlPath}/` });
     res.end();
     return;
   }
@@ -87,6 +121,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`rust-web-box dev server: http://localhost:${PORT}/`);
-  console.log(`(serving ${WEB_ROOT} with COOP/COEP headers)`);
+  console.log(`rust-web-box dev server: http://localhost:${PORT}${BASE_PREFIX}/`);
+  console.log(`(serving ${WEB_ROOT} with COOP/COEP headers${BASE_PREFIX ? `, base=${BASE_PREFIX}` : ''})`);
 });
