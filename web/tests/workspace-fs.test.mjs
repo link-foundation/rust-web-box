@@ -57,3 +57,19 @@ test('workspace-fs: seed paths all begin with /workspace', () => {
     );
   }
 });
+
+test('workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue #5)', () => {
+  // VS Code probes these files on workspace open. Without seeds the
+  // workbench logs a flood of ENOENT errors per probe cycle. Pin them
+  // here so a refactor of SEED_FILES can't accidentally drop them.
+  for (const name of ['settings.json', 'tasks.json', 'launch.json']) {
+    const p = `/workspace/.vscode/${name}`;
+    assert.ok(DEFAULT_SEED[p], `expected ${p} in default seed`);
+    // Each must be parseable JSON (with comments stripped for settings).
+    const stripped = DEFAULT_SEED[p].replace(/\/\/.*$/gm, '');
+    assert.doesNotThrow(
+      () => JSON.parse(stripped),
+      `${p} should be valid JSON (comments allowed for settings.json)`,
+    );
+  }
+});
