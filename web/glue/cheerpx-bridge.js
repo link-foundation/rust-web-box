@@ -66,39 +66,72 @@ export async function loadCheerpX({
 }
 
 /**
- * Probe a URL to see if it resolves (200 / non-404).
+ * Probe a URL to see if CheerpX's XHR-based loader can actually read it.
  *
- * The warm Alpine+Rust image is published as a release asset on this
- * repo, which may or may not exist (depending on whether the disk-image
- * workflow has run yet). We use `mode: 'no-cors'` so a missing asset
- * doesn't surface as a noisy CORS error in the devtools console; the
- * tradeoff is the response is opaque, so we use a tiny range request
- * and treat any non-throwing fetch as "asset reachable".
+ * Why this matters (issue #3, root cause #2): the warm Alpine+Rust image
+ * is published as a GitHub Releases asset. The asset itself is reachable,
+ * but the redirect target (`release-assets.githubusercontent.com`) does
+ * not advertise `Access-Control-Allow-Origin`, so XHR (which has no
+ * `no-cors` mode) is blocked by the browser. The previous implementation
+ * used `mode: 'no-cors'` and treated an opaque response as success — that
+ * told us "the URL is fetchable" but NOT "the URL is JS-readable", so we
+ * happily passed CORS-blocked URLs to `CloudDevice.create()` and only
+ * found out at mount time.
+ *
+ * The new probe issues a real `cors`-mode request: if the browser exposes
+ * a readable response (`type === 'basic'` or `'cors'`), XHR will succeed
+ * too. If CORS is blocked, fetch throws and we return `{ ok: false,
+ * reason: 'cors' }` so the caller can log a structured diagnostic.
+ *
+ * Returns `{ ok, reason }` rather than a bare boolean so callers can
+ * distinguish "missing" (404) from "CORS-blocked" (the issue-#3 case)
+ * when surfacing diagnostics.
  */
-async function probeUrl(url, fetchImpl) {
-  if (!url || typeof fetchImpl !== 'function') return false;
+export async function probeUrl(url, fetchImpl) {
+  if (!url || typeof fetchImpl !== 'function') {
+    return { ok: false, reason: 'invalid-input' };
+  }
+  // Non-HTTP(S) URLs (wss://, ws://) can't be probed with fetch — assume
+  // usable; the CloudDevice will surface its own error if not.
+  if (!/^https?:/i.test(url)) {
+    return { ok: true, reason: 'non-http' };
+  }
+  let ctrl = null;
+  let timer = null;
   try {
-    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = ctrl && setTimeout(() => ctrl.abort(), 6000);
-    // GET with Range: bytes=0-0 — minimal payload, supported by the
-    // GitHub Releases redirect target. `mode: 'no-cors'` swallows the
-    // CORS preflight error that would otherwise show in the console
-    // when the asset is missing on a release that hasn't been built
-    // yet; we only need to know "does this fetch resolve at all".
+    ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    timer = ctrl && setTimeout(() => ctrl.abort(), 6000);
+    // GET with Range: bytes=0-0 — one-byte payload, supported by the
+    // GitHub Releases redirect target. `mode: 'cors'` (the default) is
+    // deliberate: if the browser refuses to expose the response, fetch
+    // throws and we know XHR will fail too. That's the whole point.
     const res = await fetchImpl(url, {
       method: 'GET',
       headers: { Range: 'bytes=0-0' },
-      mode: 'no-cors',
+      mode: 'cors',
       redirect: 'follow',
       signal: ctrl?.signal,
     });
     if (timer) clearTimeout(timer);
-    // For opaque responses (no-cors) we can't read .ok or .status, so
-    // a successful fetch with a non-zero `type` is the best we can do.
-    if (res.type === 'opaque' || res.type === 'opaqueredirect') return true;
-    return res.ok || res.status === 405;
-  } catch {
-    return false;
+    if (res.type === 'opaque' || res.type === 'opaqueredirect') {
+      // Shouldn't happen under mode:'cors', but guard anyway — opaque
+      // means JS can't read the bytes, which is exactly what XHR needs.
+      return { ok: false, reason: 'opaque' };
+    }
+    if (res.status === 404) return { ok: false, reason: 'not-found' };
+    if (res.ok || res.status === 206 || res.status === 405) {
+      return { ok: true, reason: 'reachable' };
+    }
+    return { ok: false, reason: `http-${res.status}` };
+  } catch (err) {
+    if (timer) clearTimeout(timer);
+    // A `TypeError` from fetch under `mode: 'cors'` typically means the
+    // response was blocked by CORS — same outcome we'd get from XHR.
+    const reason =
+      err?.name === 'AbortError' ? 'timeout' :
+      err?.name === 'TypeError' ? 'cors-or-network' :
+      'fetch-error';
+    return { ok: false, reason };
   }
 }
 
@@ -115,6 +148,7 @@ export async function resolveDiskUrl({
   manifestUrl = './disk/manifest.json',
   fetchImpl = globalThis.fetch?.bind(globalThis),
   probe = probeUrl,
+  logger = console,
 } = {}) {
   if (typeof fetchImpl !== 'function') return FALLBACK_DISK_URL;
   try {
@@ -122,17 +156,32 @@ export async function resolveDiskUrl({
     if (!res.ok) throw new Error(`manifest HTTP ${res.status}`);
     const m = await res.json();
     if (m?.warm?.url) {
-      const ok = await probe(m.warm.url, fetchImpl);
+      const result = await probe(m.warm.url, fetchImpl);
+      // Tolerate legacy probes that returned a bare boolean.
+      const ok = typeof result === 'object' ? result.ok : !!result;
       if (ok) return m.warm.url;
-      // eslint-disable-next-line no-console
-      console.info(
-        '[rust-web-box] warm disk not yet published, falling back to default disk',
-      );
+      const reason = typeof result === 'object' ? result.reason : 'unknown';
+      // Structured diagnostic: distinguish "asset not built yet" from
+      // "asset is built but CORS-blocked" (issue #3, root cause #2).
+      // Hosting outside disks.webvm.io requires CORS; surfacing this
+      // explicitly saves future maintainers a 30-minute debugging trip.
+      if (reason === 'cors-or-network' || reason === 'opaque') {
+        logger?.warn?.(
+          `[rust-web-box] warm disk ${m.warm.url} is reachable but CORS-blocked ` +
+          `(reason: ${reason}); falling back to default disk. ` +
+          `Custom disks must be served with Access-Control-Allow-Origin — see ` +
+          `docs/case-studies/issue-3/analysis-disk-cors.md`,
+        );
+      } else {
+        logger?.info?.(
+          `[rust-web-box] warm disk ${m.warm.url} unavailable ` +
+          `(reason: ${reason}); falling back to default disk`,
+        );
+      }
     }
     if (m?.default?.url) return m.default.url;
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[rust-web-box] disk manifest unavailable, using fallback:', err);
+    logger?.warn?.('[rust-web-box] disk manifest unavailable, using fallback:', err);
   }
   return FALLBACK_DISK_URL;
 }
