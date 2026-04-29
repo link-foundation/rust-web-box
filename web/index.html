@@ -3,6 +3,16 @@
   <head>
     <meta charset="utf-8" />
 
+    <!--
+      Cross-origin isolation bootstrap. MUST be the first executable
+      script in <head> — it registers the service worker and forces a
+      one-shot reload when `crossOriginIsolated` is false, so the next
+      navigation gets COOP/COEP synthesized by the SW. Without this,
+      the workbench loads but CheerpX fails with DataCloneError on the
+      first SharedArrayBuffer transfer to its worker. Issue #7.
+    -->
+    <script src="./glue/coi-bootstrap.js"></script>
+
     <!-- Mobile tweaks -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

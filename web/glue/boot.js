@@ -108,11 +108,11 @@ function hideToast() {
   }
 })();
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {
-    /* SW registration is best-effort */
-  });
-}
+// Service worker registration is owned by `./coi-bootstrap.js`, which
+// runs as a classic <script> in <head> before this module loads. It
+// registers `./sw.js`, then forces a one-shot reload if the page is
+// not yet `crossOriginIsolated` so the next navigation receives the
+// SW-synthesized COOP/COEP headers. Issue #7 root-cause fix.
 
 async function bringUpWorkspace() {
   let workspace;
