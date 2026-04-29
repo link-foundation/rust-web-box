@@ -20,7 +20,7 @@
     <!-- Workbench Configuration; substituted at build time. -->
     <meta
       id="vscode-workbench-web-configuration"
-      data-settings="{&quot;productConfiguration&quot;:{&quot;nameShort&quot;:&quot;rust-web-box&quot;,&quot;nameLong&quot;:&quot;rust-web-box&quot;,&quot;applicationName&quot;:&quot;rust-web-box&quot;,&quot;enableTelemetry&quot;:false},&quot;additionalBuiltinExtensions&quot;:[{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;/extensions/webvm-host&quot;},{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;/extensions/rust-analyzer-web&quot;}],&quot;folderUri&quot;:{&quot;scheme&quot;:&quot;webvm&quot;,&quot;authority&quot;:&quot;&quot;,&quot;path&quot;:&quot;/workspace&quot;},&quot;defaultLayout&quot;:{&quot;panel&quot;:{&quot;visible&quot;:true},&quot;views&quot;:[{&quot;id&quot;:&quot;workbench.view.explorer&quot;,&quot;visible&quot;:true}]}}"
+      data-settings="{&quot;productConfiguration&quot;:{&quot;nameShort&quot;:&quot;rust-web-box&quot;,&quot;nameLong&quot;:&quot;rust-web-box&quot;,&quot;applicationName&quot;:&quot;rust-web-box&quot;,&quot;enableTelemetry&quot;:false},&quot;additionalBuiltinExtensions&quot;:[{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;{BASE_PATH}/extensions/webvm-host&quot;},{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;{BASE_PATH}/extensions/rust-analyzer-web&quot;}],&quot;folderUri&quot;:{&quot;scheme&quot;:&quot;webvm&quot;,&quot;authority&quot;:&quot;&quot;,&quot;path&quot;:&quot;/workspace&quot;},&quot;defaultLayout&quot;:{&quot;panel&quot;:{&quot;visible&quot;:true},&quot;views&quot;:[{&quot;id&quot;:&quot;workbench.view.explorer&quot;,&quot;visible&quot;:true}]}}"
     />
     <meta id="vscode-workbench-auth-session" data-settings="" />
 
@@ -82,13 +82,31 @@
           if (meta) {
             var raw = meta.getAttribute('data-settings');
             var cfg = JSON.parse(raw);
-            // Substitute origin placeholders for our own extensions.
+            // Substitute origin + base-path placeholders for our own
+            // extensions. `additionalBuiltinExtensions[].path` is a
+            // host-absolute URL path, so on a sub-path deployment
+            // (GitHub Pages → /rust-web-box/) it must be prefixed with
+            // the directory the page is served from. Without this the
+            // browser asks for /extensions/webvm-host/package.json and
+            // GitHub Pages 404s, which silently breaks the workbench.
             if (Array.isArray(cfg.additionalBuiltinExtensions)) {
               var scheme = location.protocol.replace(':', '');
               var host = location.host;
+              var basePath = new URL('./', location.href).pathname.replace(/\/$/, '');
               cfg.additionalBuiltinExtensions.forEach(function (e) {
-                if (e && e.scheme === '{ORIGIN_SCHEME}') e.scheme = scheme;
-                if (e && e.authority === '{ORIGIN_HOST}') e.authority = host;
+                if (!e) return;
+                if (e.scheme === '{ORIGIN_SCHEME}') e.scheme = scheme;
+                if (e.authority === '{ORIGIN_HOST}') e.authority = host;
+                if (typeof e.path === 'string') {
+                  if (e.path.indexOf('{BASE_PATH}') === 0) {
+                    e.path = basePath + e.path.slice('{BASE_PATH}'.length);
+                  } else if (basePath && e.path.indexOf(basePath + '/') !== 0 && e.path.indexOf('/extensions/') === 0) {
+                    // Backward compat: legacy paths without a {BASE_PATH}
+                    // placeholder still get rewritten so the bug can't
+                    // re-emerge silently.
+                    e.path = basePath + e.path;
+                  }
+                }
               });
               meta.setAttribute('data-settings', JSON.stringify(cfg));
             }
