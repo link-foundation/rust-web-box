@@ -29,8 +29,9 @@
 //   the version-skew of CheerpX's process-management API.
 
 import { attachConsole } from './cheerpx-bridge.js';
+import { createLfToCrlfNormaliser } from './terminal-stream.js';
 
-const TEXT_DECODER = new TextDecoder();
+const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });
 const TEXT_ENCODER = new TextEncoder();
 
 /**
@@ -186,8 +187,16 @@ export function startWebVMServer({ cx, busServer, status, workspace, opts = {} }
     cols: opts.cols ?? 120,
     rows: opts.rows ?? 30,
   });
+  // Streaming decoder so multi-byte UTF-8 split across CheerpX writes
+  // doesn't decode to U+FFFD. Stateful CRLF normaliser so xterm.js
+  // (under VS Code's Pseudoterminal) renders bash output without the
+  // staircase indentation that bare-LF would otherwise produce.
+  const stdoutDecoder = new TextDecoder('utf-8', { fatal: false });
+  const normaliseCrlf = createLfToCrlfNormaliser();
   console_.onData((bytes) => {
-    busServer.emit('proc.stdout', { pid: 1, chunk: TEXT_DECODER.decode(bytes) });
+    const text = stdoutDecoder.decode(bytes, { stream: true });
+    if (!text) return;
+    busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(text) });
   });
 
   function writeStr(s) {

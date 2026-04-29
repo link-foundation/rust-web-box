@@ -137,6 +137,16 @@ test('boot shell: webvm-server mirrors workspace into the guest via heredocs', a
   assert.match(srv, /ls -la \/workspace/);
 });
 
+test('boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout', async () => {
+  // Without this the terminal pane staircases output (each line indents
+  // further to the right) because bash inside CheerpX has no kernel TTY
+  // performing ONLCR mapping. Asserting the wire-up here keeps the
+  // regression from sneaking back in via a refactor.
+  const srv = await read('glue/webvm-server.js');
+  assert.match(srv, /createLfToCrlfNormaliser/);
+  assert.match(srv, /normaliseCrlf\(/);
+});
+
 test('boot shell: boot.js stages workspace-only server before VM is up', async () => {
   const boot = await read('glue/boot.js');
   assert.match(boot, /workspaceOnlyMethods/);
