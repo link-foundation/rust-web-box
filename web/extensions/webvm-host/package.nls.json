@@ -1,0 +1,4 @@
+{
+  "displayName": "WebVM Host",
+  "description": "Bridges VS Code Web to the CheerpX-powered Linux VM running in the page."
+}

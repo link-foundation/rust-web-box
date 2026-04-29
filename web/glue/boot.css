@@ -1,0 +1,48 @@
+/* Minimal styles for the static shell.
+ *
+ * The page intentionally has *no* boot-screen UI — the workbench fills
+ * the viewport, exactly like vscode.dev. The only decoration we
+ * contribute is a subtle bottom-right toast that appears when boot
+ * actually fails, surfacing the error directly so the user can act on
+ * it.
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  background: #1e1e1e;
+  color: #cccccc;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#boot-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 9999;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  background: rgba(248, 81, 73, 0.95);
+  color: #fff;
+  font-size: 0.85rem;
+  max-width: 360px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  line-height: 1.35;
+}
+
+#boot-toast[hidden] {
+  display: none;
+}
+
+#boot-toast[data-kind="info"] {
+  background: rgba(56, 139, 253, 0.95);
+}

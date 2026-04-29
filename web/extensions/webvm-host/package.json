@@ -1,0 +1,48 @@
+{
+  "name": "webvm-host",
+  "displayName": "WebVM Host",
+  "description": "Bridges VS Code Web to the CheerpX-powered Linux VM running in the page.",
+  "version": "0.1.0",
+  "publisher": "rust-web-box",
+  "license": "Unlicense",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "browser": "./extension.js",
+  "extensionKind": [
+    "web"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onFileSystem:webvm",
+    "onTerminalProfile:webvm-host.bash"
+  ],
+  "contributes": {
+    "commands": [
+      { "command": "webvm-host.cargo.run", "title": "Cargo: Run", "category": "Rust" },
+      { "command": "webvm-host.cargo.build", "title": "Cargo: Build", "category": "Rust" },
+      { "command": "webvm-host.cargo.test", "title": "Cargo: Test", "category": "Rust" },
+      { "command": "webvm-host.cargo.add", "title": "Cargo: Add Crate", "category": "Rust" },
+      { "command": "webvm-host.cargo.new", "title": "Cargo: New Project", "category": "Rust" },
+      { "command": "webvm-host.openTerminal", "title": "WebVM: Open Terminal" }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "cargo-webvm",
+        "properties": {
+          "command": { "type": "string", "description": "Cargo subcommand" },
+          "args": { "type": "array", "description": "Extra arguments" },
+          "cwd": { "type": "string", "description": "Working directory inside the VM" }
+        }
+      }
+    ],
+    "terminal": {
+      "profiles": [
+        {
+          "id": "webvm-host.bash",
+          "title": "WebVM bash"
+        }
+      ]
+    }
+  }
+}

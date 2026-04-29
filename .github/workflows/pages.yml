@@ -1,0 +1,85 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test web shim + bus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run unit tests
+        working-directory: web
+        run: node --test tests/
+
+  build:
+    name: Build static site
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Vendor VS Code Web + CheerpX, render workbench
+        # SKIP_VSCODE_WEB / SKIP_CHEERPX let the build degrade gracefully
+        # in environments without npm/network access; the shell still
+        # ships and surfaces a clear "not vendored" status.
+        run: node web/build/build-workbench.mjs
+        env:
+          SKIP_VSCODE_WEB: ${{ vars.SKIP_VSCODE_WEB || '' }}
+          SKIP_CHEERPX: ${{ vars.SKIP_CHEERPX || '' }}
+
+      - name: Smoke-check artifact contents
+        run: |
+          test -f web/index.html
+          test -f web/glue/boot.js
+          test -f web/glue/network-shim.js
+          test -f web/extensions/webvm-host/extension.js
+          test -f web/extensions/rust-analyzer-web/extension.js
+          ls -la web/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
