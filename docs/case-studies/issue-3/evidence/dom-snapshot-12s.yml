@@ -1,0 +1,204 @@
+- generic "rust-web-box workbench" [ref=e1]:
+  - application [ref=e2]:
+    - generic [ref=e6]:
+      - generic [ref=e8]:
+        - toolbar [ref=e16]:
+          - button "Go Back (Ctrl+Alt+-)" [disabled] [ref=e247]: 
+          - button "Go Forward (Ctrl+Shift+-)" [disabled] [ref=e248]: 
+          - toolbar [ref=e251] [cursor=pointer]:
+            - listitem [ref=e252]:
+              - generic [ref=e253]: 
+              - generic [ref=e254]: workspace
+        - toolbar "Title actions" [ref=e29]:
+          - checkbox "Toggle Primary Side Bar (Ctrl+B)" [checked] [ref=e255] [cursor=pointer]: 
+          - checkbox "Toggle Panel (Ctrl+J)" [ref=e256] [cursor=pointer]: 
+          - checkbox "Toggle Secondary Side Bar (Ctrl+Alt+B)" [ref=e257] [cursor=pointer]: 
+          - button "Customize Layout..." [ref=e258] [cursor=pointer]: 
+      - generic [ref=e38]:
+        - generic [ref=e40]:
+          - menubar [ref=e41]:
+            - menuitem "Application Menu" [ref=e42]:
+              - generic [ref=e43] [cursor=pointer]: 
+          - tablist "Active View Switcher" [ref=e46]:
+            - tab "Explorer (Ctrl+Shift+E)" [expanded] [selected] [ref=e47] [cursor=pointer]:
+              - generic "Explorer (Ctrl+Shift+E)" [ref=e48]: 
+            - tab "Search (Ctrl+Shift+F)" [ref=e49] [cursor=pointer]:
+              - generic "Search (Ctrl+Shift+F)" [ref=e50]: 
+            - tab "Source Control (Ctrl+Shift+G)" [ref=e51] [cursor=pointer]:
+              - generic "Source Control (Ctrl+Shift+G)" [ref=e52]: 
+            - tab "Run and Debug (Ctrl+Shift+D)" [ref=e53] [cursor=pointer]:
+              - generic "Run and Debug (Ctrl+Shift+D)" [ref=e54]: 
+            - tab "Extensions (Ctrl+Shift+X)" [ref=e55] [cursor=pointer]:
+              - generic "Extensions (Ctrl+Shift+X)" [ref=e56]: 
+          - toolbar "Manage" [ref=e59]:
+            - button "Accounts" [ref=e60] [cursor=pointer]:
+              - generic "Accounts" [ref=e61]: 
+            - button "Manage" [ref=e62] [cursor=pointer]:
+              - generic "Manage" [ref=e63]: 
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - heading "Explorer" [level=2] [ref=e67]
+            - toolbar "Explorer actions" [ref=e71]:
+              - button "Views and More Actions..." [ref=e261] [cursor=pointer]: 
+            - generic:
+              - generic:
+                - generic:
+                  - toolbar
+          - generic [ref=e79]:
+            - generic [ref=e81]:
+              - 'button "Explorer Section: workspace" [expanded] [ref=e82] [cursor=pointer]':
+                - generic [ref=e83]: 
+                - text: 
+                - 'heading "Explorer Section: workspace" [level=3] [ref=e84]': workspace
+                - text:    
+              - tree "Files Explorer" [ref=e87]:
+                - treeitem "workspace" [ref=e89] [cursor=pointer]:
+                  - 'generic "/workspace • Unable to resolve workspace folder (ENOPRO: No file system provider found for resource ''webvm:/workspace'')" [ref=e92]':
+                    - generic [ref=e95]: workspace
+                    - text: "!"
+            - button "Outline Section" [ref=e98] [cursor=pointer]:
+              - generic [ref=e99]: 
+              - text: 
+              - heading "Outline" [level=3] [ref=e100]
+              - text:  
+            - button "Timeline Section" [ref=e103] [cursor=pointer]:
+              - generic [ref=e104]: 
+              - text: 
+              - heading "Timeline" [level=3] [ref=e105]
+              - text:    
+        - main [ref=e113]:
+          - generic [ref=e121]:
+            - generic [ref=e123] [cursor=pointer]:
+              - tablist [ref=e124]:
+                - tab "Welcome, preview" [selected] [ref=e125]:
+                  - generic "Welcome" [ref=e126]:
+                    - generic [ref=e128]: Welcome
+                  - toolbar "Tab actions" [ref=e131]:
+                    - button "Close (Ctrl+W)" [ref=e132]: 
+              - toolbar "Editor actions" [ref=e136]:
+                - button "Split Editor Right (Ctrl+\\) [Alt] Split Editor Down" [ref=e137]: 
+                - button "More Actions..." [ref=e140]: 
+            - document "Overview of how to get up to speed with your editor." [ref=e143]:
+              - generic [ref=e144]:
+                - generic [ref=e146]:
+                  - generic [ref=e147]:
+                    - heading "Code - OSS" [level=1] [ref=e148]
+                    - paragraph [ref=e149]: Editing evolved
+                  - generic [ref=e150]:
+                    - generic [ref=e151]:
+                      - heading "Start" [level=2] [ref=e152]
+                      - list [ref=e153]:
+                        - listitem [ref=e154]:
+                          - button " New File..." [disabled] [ref=e155] [cursor=pointer]:
+                            - generic [ref=e156]: 
+                            - text: New File...
+                        - listitem [ref=e157]:
+                          - button " Open File..." [disabled] [ref=e158] [cursor=pointer]:
+                            - generic [ref=e159]: 
+                            - text: Open File...
+                        - listitem [ref=e160]:
+                          - button " Open Repository..." [disabled] [ref=e161] [cursor=pointer]:
+                            - generic [ref=e162]: 
+                            - text: Open Repository...
+                    - generic [ref=e163]:
+                      - heading "Recent" [level=2] [ref=e164]
+                      - list [ref=e165]:
+                        - generic [ref=e166]:
+                          - text: You have no recent folders,
+                          - button "open a folder" [ref=e167] [cursor=pointer]
+                          - text: to start.
+                  - generic [ref=e169]:
+                    - heading "Walkthroughs" [level=2] [ref=e170]
+                    - list [ref=e171]:
+                      - button " Get Started with VS Code for the Web Customize your editor, learn the basics, and start coding" [disabled] [ref=e172]:
+                        - generic [ref=e174]: 
+                        - heading "Get Started with VS Code for the Web" [level=3] [ref=e176]
+                        - generic [ref=e177]: Customize your editor, learn the basics, and start coding
+                      - button " Learn the Fundamentals" [disabled] [ref=e178]:
+                        - generic [ref=e179]:
+                          - generic [ref=e180]: 
+                          - heading "Learn the Fundamentals" [level=3] [ref=e181]
+                  - paragraph [ref=e183]:
+                    - checkbox "When checked, this page will be shown on startup." [checked] [ref=e184] [cursor=pointer]: 
+                    - generic [ref=e185] [cursor=pointer]: Show welcome page on startup
+                - generic [ref=e186]:
+                  - button " Welcome" [ref=e187] [cursor=pointer]:
+                    - generic [ref=e188]: 
+                    - text: Welcome
+                  - generic [ref=e189]:
+                    - generic [ref=e191]:
+                      - heading "Get Started with VS Code for the Web" [level=2] [ref=e192]
+                      - paragraph [ref=e194]: Customize your editor, learn the basics, and start coding
+                    - list [ref=e195]:
+                      - generic [ref=e196]:
+                        - 'button " Choose your theme The right theme helps you focus on your code, is easy on your eyes, and is simply more fun to use. Browse Color Themes Tip: Use keyboard shortcut (Ctrl+K Ctrl+T)" [expanded] [active] [ref=e197]':
+                          - checkbox "" [ref=e198] [cursor=pointer]
+                          - generic [ref=e199]:
+                            - heading "Choose your theme" [level=3] [ref=e200]
+                            - generic [ref=e201]:
+                              - paragraph [ref=e202]: The right theme helps you focus on your code, is easy on your eyes, and is simply more fun to use.
+                              - button "Browse Color Themes" [ref=e204] [cursor=pointer]:
+                                - generic [ref=e205]: Browse Color Themes
+                              - generic [ref=e206]:
+                                - text: "Tip: Use keyboard shortcut"
+                                - generic [ref=e207]: (Ctrl+K Ctrl+T)
+                        - button " Just the right amount of UI" [ref=e208]:
+                          - checkbox "" [ref=e209]
+                          - heading "Just the right amount of UI" [level=3] [ref=e211]
+                        - button " Code with extensions" [ref=e212]:
+                          - checkbox "" [ref=e213]
+                          - heading "Code with extensions" [level=3] [ref=e215]
+                        - button " Unlock productivity with the Command Palette" [ref=e216]:
+                          - checkbox "" [ref=e217]
+                          - heading "Unlock productivity with the Command Palette" [level=3] [ref=e219]
+                        - button " Quickly navigate between your files" [ref=e220]:
+                          - checkbox "" [ref=e221]
+                          - heading "Quickly navigate between your files" [level=3] [ref=e223]
+                      - generic [ref=e224]:
+                        - button " Mark Done" [ref=e225] [cursor=pointer]:
+                          - generic [ref=e226]: 
+                          - text: Mark Done
+                        - button "Next Section " [ref=e227] [cursor=pointer]:
+                          - text: Next Section
+                          - generic [ref=e228]: 
+                    - iframe [ref=e230]:
+                      - document [active] [ref=f3e1]:
+                        - iframe [ref=f3e2]:
+                          - document [active] [ref=f4e1]:
+                            - generic [ref=f4e2]:
+                              - generic [ref=f4e3]:
+                                - generic [ref=f4e4]:
+                                  - generic [ref=f4e5] [cursor=pointer]:
+                                    - img [ref=f4e6]
+                                    - text: Dark Modern
+                                  - generic [ref=f4e7] [cursor=pointer]:
+                                    - img [ref=f4e8]
+                                    - text: Light Modern
+                                - generic [ref=f4e9]:
+                                  - generic [ref=f4e10] [cursor=pointer]:
+                                    - img [ref=f4e11]
+                                    - text: Dark High Contrast
+                                  - generic [ref=f4e12] [cursor=pointer]:
+                                    - img [ref=f4e13]
+                                    - text: Light High Contrast
+                              - generic [ref=f4e14] [cursor=pointer]: See More Themes...
+      - status [ref=e232]:
+        - generic [ref=e233]:
+          - generic "remote" [ref=e234]:
+            - button "remote" [ref=e235] [cursor=pointer]:
+              - generic [ref=e236]: 
+          - generic "No Problems" [ref=e237]:
+            - button "No Problems" [ref=e238] [cursor=pointer]:
+              - generic [ref=e239]: 
+              - text: "0"
+              - generic [ref=e240]: 
+              - text: "0"
+        - generic [ref=e241]:
+          - generic "Notifications" [ref=e242]:
+            - button "Notifications" [ref=e243] [cursor=pointer]:
+              - generic [ref=e244]: 
+          - 'generic "Layout: us" [ref=e245]':
+            - 'button "Layout: us" [ref=e246] [cursor=pointer]'
+    - generic:
+      - alert
+      - alert
