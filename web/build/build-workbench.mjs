@@ -167,6 +167,12 @@ async function vendorCheerpX() {
     'cxcore.js',
     'cxcore-no-return-call.js',
     'cxcore.wasm',
+    // Loaded when the browser lacks WebAssembly tail-call support
+    // (Safari, older Chromium). Omitting it makes cxcore-no-return-call.js
+    // 404 on its sibling .wasm and CheerpX init crashes with
+    // `expected magic word 00 61 73 6d, found 3c 21 44 4f` (the 4 bytes
+    // are `<!DO`, GitHub Pages' SPA-404 HTML).
+    'cxcore-no-return-call.wasm',
     'cxbridge.js',
     'cxbridge.wasm',
     'cheerpOS.js',

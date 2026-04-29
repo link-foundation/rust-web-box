@@ -82,6 +82,45 @@ const SEED_FILES = {
       '  (or click the **Cargo Run** status-bar button).',
       '',
     ].join('\n'),
+  // VS Code reads `.vscode/{settings,tasks,launch}.json` immediately on
+  // workspace open. Without these the workbench logs three ENOENT errors
+  // *per probe cycle* (issue #5). Seed empty-but-valid stubs so the
+  // probes succeed. Users can edit them like normal files.
+  '/workspace/.vscode/settings.json':
+    [
+      '{',
+      '  // Workspace settings for rust-web-box.',
+      '  // Edit freely — changes persist in your browser\'s IndexedDB.',
+      '  "files.autoSave": "afterDelay",',
+      '  "editor.formatOnSave": false,',
+      '  "rust-analyzer.checkOnSave": false',
+      '}',
+      '',
+    ].join('\n'),
+  '/workspace/.vscode/tasks.json':
+    [
+      '{',
+      '  "version": "2.0.0",',
+      '  "tasks": [',
+      '    {',
+      '      "label": "cargo run",',
+      '      "type": "shell",',
+      '      "command": "cd /workspace/hello && cargo run",',
+      '      "problemMatcher": ["$rustc"],',
+      '      "group": { "kind": "build", "isDefault": true }',
+      '    }',
+      '  ]',
+      '}',
+      '',
+    ].join('\n'),
+  '/workspace/.vscode/launch.json':
+    [
+      '{',
+      '  "version": "0.2.0",',
+      '  "configurations": []',
+      '}',
+      '',
+    ].join('\n'),
 };
 
 const TYPE_FILE = 1;

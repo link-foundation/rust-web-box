@@ -44,6 +44,19 @@ function makeStubServer(vscode, name) {
 async function tryLoadAnalyzer(vscode, context) {
   try {
     const wasmUri = vscode.Uri.joinPath(context.extensionUri, 'rust-analyzer.wasm');
+    // HEAD-probe before readFile so the network panel doesn't show a
+    // bright-red 404 every page load when the artifact isn't bundled
+    // (issue #5). VS Code Web's `workspace.fs.readFile` for an
+    // http(s)-backed extensionUri always issues a GET, so the only way
+    // to avoid the 404 noise is to check first.
+    if (typeof fetch === 'function') {
+      try {
+        const probe = await fetch(wasmUri.toString(), { method: 'HEAD' });
+        if (!probe.ok) return null;
+      } catch {
+        return null;
+      }
+    }
     const bytes = await vscode.workspace.fs.readFile(wasmUri);
     if (!bytes || bytes.byteLength < 1024) return null;
     // Instantiating the actual rust-analyzer WASM goes here. The upstream
