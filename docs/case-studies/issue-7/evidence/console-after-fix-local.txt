@@ -1,0 +1,14 @@
+Total messages: 12 (Errors: 10, Warnings: 2)
+
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.css:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/vscode-web/out/vs/loader.js:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/vscode-web/out/vs/webPackagePaths.js:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.nls.js:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/vscode-web/out/vs/code/browser/workbench/workbench.js:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/vscode-web/favicon.ico:0
+[ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8765/rust-web-box/cheerpx/cx.esm.js:0
+[WARNING] [rust-web-box] CheerpX served from CDN; vendored copy not found: TypeError: Failed to fetch dynamically imported module: http://localhost:8765/rust-web-box/cheerpx/cx.esm.js @ http://localhost:8765/rust-web-box/glue/cheerpx-bridge.js:51
+[ERROR] Access to fetch at 'https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2' from origin 'http://localhost:8765' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:8765/rust-web-box/:0
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2:0
+[WARNING] [rust-web-box] warm disk https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2 is reachable but CORS-blocked (reason: cors-or-network); falling back to default disk. Custom disks must be served with Access-Control-Allow-Origin — see docs/case-studies/issue-3/analysis-disk-cors.md @ http://localhost:8765/rust-web-box/glue/cheerpx-bridge.js:168
