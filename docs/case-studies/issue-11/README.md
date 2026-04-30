@@ -1,151 +1,163 @@
-# Case Study: Issue #11 - Apply Best Practices from Other Repositories
+# Case Study: Issue #11 - Quiet WebVM Workspace Priming
 
 ## Summary
 
-This case study analyzes best practices discovered in several link-foundation repositories and applies them to the `rust-ai-driven-development-pipeline-template`. The goal is to improve the Rust CI/CD pipeline by incorporating lessons learned from real-world issues.
+Issue #11 reported that the main WebVM terminal became noisy immediately
+after boot. The visible console showed the implementation's workspace
+setup commands, repeated heredoc continuation prompts, and a final
+directory listing before the user typed anything. The requested outcome
+was a quieter terminal while still allowing the setup work to run through
+a temporary script outside the user-visible workspace.
 
-## Referenced Pull Requests
+The fix moves workspace priming and later editor-save mirroring out of
+the interactive bash stream. `boot.js` now passes the CheerpX
+`DataDevice` to `webvm-server.js`; `webvm-server.js` stages short shell
+scripts under the `/data` mount, executes them with `cx.run('/bin/sh',
+...)`, removes the temporary script, and only then starts the visible
+login shell in `/workspace`.
 
-| Repository | PR | Title | Key Fix |
-|------------|-----|-------|---------|
-| [link-foundation/start](https://github.com/link-foundation/start) | [#58](https://github.com/link-foundation/start/pull/58) | fix: Use 'close' event instead of 'exit' for reliable stdout capture | CI/CD changelog check bug fix |
-| [link-foundation/lino-env](https://github.com/link-foundation/lino-env) | [#27](https://github.com/link-foundation/lino-env/pull/27) | fix(rust): remove deprecated set-output GitHub Actions command | Removed deprecated `::set-output` |
-| [link-foundation/lino-env](https://github.com/link-foundation/lino-env) | [#25](https://github.com/link-foundation/lino-env/pull/25) | fix(rust): fix manual release workflow_dispatch not running | Fixed job skipping issue |
-| [link-foundation/lino-env](https://github.com/link-foundation/lino-env) | [#23](https://github.com/link-foundation/lino-env/pull/23) | feat: add crates.io publishing support to Rust CI/CD workflow | Added crates.io publishing |
+## Evidence Collected
 
-## Best Practices Identified
+All issue data and local verification logs are stored under
+[`evidence/`](./evidence/):
 
-### 1. Remove Deprecated `set-output` Command (PR #27)
+| File | Purpose |
+|------|---------|
+| [`issue-11.json`](./evidence/issue-11.json) | Full GitHub issue payload captured with `gh issue view`. |
+| [`issue-11-comments.json`](./evidence/issue-11-comments.json) | Issue comments from the GitHub API; the issue had no comments when captured. |
+| [`pr-12-initial.json`](./evidence/pr-12-initial.json) | Initial draft PR metadata before this fix. |
+| [`reported-terminal-transcript.md`](./evidence/reported-terminal-transcript.md) | The noisy console transcript from the issue body. |
+| [`related-prs-workspace-terminal.json`](./evidence/related-prs-workspace-terminal.json) | Related merged PR search results for workspace and terminal behavior. |
+| [`related-prs-cheerpx-webvm.json`](./evidence/related-prs-cheerpx-webvm.json) | Related merged PR search results for CheerpX/WebVM changes. |
+| [`related-prs-terminal-noise.json`](./evidence/related-prs-terminal-noise.json) | Related merged PR search results for terminal-noise terms. |
+| [`focused-before.log`](./evidence/focused-before.log) | Reproducing tests before the implementation; expected to fail. |
+| [`focused-after.log`](./evidence/focused-after.log) | Focused tests after the implementation; expected to pass. |
+| [`focused-current.log`](./evidence/focused-current.log) | Current focused WebVM regression test run. |
+| [`web-tests.log`](./evidence/web-tests.log) | Full JavaScript test suite run for `web/tests`. |
+| [`build-workbench.log`](./evidence/build-workbench.log) | Local Pages build command for the static workbench. |
+| [`cargo-fmt-check.log`](./evidence/cargo-fmt-check.log) | Rust formatting check output. |
+| [`cargo-clippy.log`](./evidence/cargo-clippy.log) | Rust Clippy check output. |
+| [`cargo-test.log`](./evidence/cargo-test.log) | Rust test output. |
+| [`check-file-size.log`](./evidence/check-file-size.log) | Repository file-size guard output. |
+| [`git-diff-check.log`](./evidence/git-diff-check.log) | Whitespace validation output. |
 
-**Problem**: The `::set-output` command was deprecated by GitHub in October 2022 and will eventually be disabled.
+## Timeline
 
-**Root Cause**: The `setOutput()` function in version-and-commit.mjs was using both:
-1. The new `GITHUB_OUTPUT` environment file approach (correct)
-2. The deprecated `::set-output` stdout command (causes warnings)
+| Time (UTC) | Event |
+|------------|-------|
+| 2026-04-30T05:11:32Z | Issue #11 opened with a terminal transcript showing setup commands and heredoc prompts in the main console. |
+| 2026-04-30T05:12:30Z | Draft PR #12 opened from `issue-11-49cb7d5e5371` with placeholder content. |
+| 2026-04-30 | Issue evidence, PR metadata, and related PR search results were captured into this case-study folder. |
+| 2026-04-30 | Reproducing tests were added for quiet workspace priming and DataDevice wiring. The focused test run failed against the old implementation. |
+| 2026-04-30 | Workspace priming and guest file sync were moved from visible terminal input to temporary scripts staged on CheerpX `/data`. |
+| 2026-04-30 | Focused tests passed after the fix. |
 
-**Solution**: Remove the deprecated `console.log(`::set-output...`)` line and replace with a plain log for visibility.
+## Requirements From The Issue
 
-**References**:
-- [GitHub Changelog: Deprecating save-state and set-output commands](https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/)
-- [GitHub Actions Update on save-state and set-output commands](https://github.blog/changelog/2023-07-24-github-actions-update-on-save-state-and-set-output-commands/)
+1. Minimize the main console output so it contains as few distractions as
+   possible.
+2. If setup commands must still run, execute them through a temporary
+   script outside the user-visible workspace.
+3. Download logs and issue data into `docs/case-studies/issue-11`.
+4. Build a deep case study that reconstructs timeline, requirements,
+   root causes, possible solutions, and relevant existing components.
+5. Search online for additional facts and data.
+6. If another repository or project is at fault, report an upstream issue
+   with a reproducible example, workaround, and suggested fix.
+7. If root cause cannot be found, add debug or verbose output for a later
+   iteration.
+8. Complete the work in one pull request.
 
-### 2. Enforce Changelog Fragment Requirement (PR #27, #58)
+## Root Causes
 
-**Problem**: The changelog fragment check only produced a warning (`::warning::` with `exit 0`) when source code changed without a changelog entry, allowing PRs to pass without proper documentation.
+1. The old workspace prime path wrote each setup command into the same
+   `cx.setCustomConsole` input function that receives user keystrokes.
+   Because terminal subscribers also listened to the same CheerpX output,
+   setup commands appeared in the user's terminal scrollback.
+2. `stty -echo` was only a partial workaround. It can reduce input echo
+   after bash processes the command, but it does not hide all interactive
+   shell prompts. Heredocs still put bash into continuation-prompt mode,
+   so each multiline file produced visible `>` prompts.
+3. The initial prime script used one heredoc per seeded file. That
+   multiplied the amount of prompt noise in proportion to the workspace
+   seed size.
+4. The boot path marked the VM ready and attached the user-visible shell
+   around the same time as the setup stream, so setup output and usable
+   terminal output were mixed.
+5. Later editor save/delete/rename/create-directory sync operations also
+   used interactive console input, so the same class of noise could recur
+   after boot.
+6. The existing `docs/case-studies/issue-11` folder contained unrelated
+   CI template material and did not document the actual rust-web-box
+   issue.
 
-**Root Cause**: Using `exit 0` (success) instead of `exit 1` (failure) in the changelog check.
+## Solution
 
-**Solution**: Change `::warning::` to `::error::` and `exit 0` to `exit 1` to properly fail CI when changelog fragments are missing.
+The selected solution uses a component already mounted by rust-web-box:
+CheerpX `DataDevice`.
 
-### 3. Fix workflow_dispatch Job Skipping (PR #25)
+1. `boot.js` passes `vm.dataDevice` to `startWebVMServer`.
+2. `webvm-server.js` builds a shell script for workspace priming from the
+   JS-side workspace snapshot.
+3. The script is written to DataDevice at a path such as
+   `/rust-web-box-workspace-prime.sh`, which appears in the guest as
+   `/data/rust-web-box-workspace-prime.sh`.
+4. CheerpX runs the script non-interactively with `/bin/sh` via
+   `cx.run`, then removes the temporary script with `/bin/rm -f`.
+5. The visible `/bin/bash --login` loop starts only after priming
+   completes, with its working directory set to `/workspace`.
+6. Editor-side file mutations reuse the same DataDevice script runner
+   instead of injecting commands into the visible terminal.
+7. `vm.status` now exposes `workspacePrimed` and
+   `workspacePrimeError`, and the VS Code host terminal reports mirror
+   failures instead of silently claiming success.
 
-**Problem**: When triggering the workflow via `workflow_dispatch`, the `detect-changes` job is intentionally skipped. However, jobs with `needs: [detect-changes]` are also skipped due to GitHub Actions' default behavior.
+## Alternatives Considered
 
-**Root Cause**: When a job dependency is skipped, the dependent job is also skipped - even if its own `if` condition would evaluate to true. This is documented in [GitHub Actions Runner Issue #491](https://github.com/actions/runner/issues/491).
+| Option | Result |
+|--------|--------|
+| Keep the interactive heredoc stream and tune `stty`, `PS1`, or `PS2` | Rejected. It is fragile and still uses the user's console as a setup transport. |
+| Clear the terminal after setup | Rejected. It hides evidence after the fact and can still flash noisy setup output during boot. |
+| Use xterm.js `convertEol` or stream normalization only | Not sufficient. That helps line-ending rendering, but it does not stop command echo or bash continuation prompts. |
+| Stage a temporary script on CheerpX `/data` and run it with `cx.run` | Selected. It matches the issue request, uses documented CheerpX APIs, and keeps setup outside `/workspace` and outside the interactive terminal stream. |
 
-**Solution**: Add `always() && !cancelled()` to job conditions to ensure they run properly when dependencies are skipped, plus explicit checks for `needs.job.result == 'success'`.
+## Upstream Issue Decision
 
-**References**:
-- [GitHub Actions Runner Issue #491](https://github.com/actions/runner/issues/491)
-- [GitHub Actions Runner Issue #2205](https://github.com/actions/runner/issues/2205)
-- [GitHub Community Discussion #45058](https://github.com/orgs/community/discussions/45058)
+No upstream issue was filed. The observed behavior is a local
+integration problem: rust-web-box was intentionally feeding setup commands
+into the same console API that backs the user terminal. CheerpX
+`setCustomConsole` and xterm.js were behaving according to their
+documented roles. CheerpX `DataDevice.writeFile` already provides a
+documented way to stage files for non-interactive execution.
 
-### 4. Add Release Mode Options (PR #25)
+## Verification
 
-**Problem**: The Rust workflow only had one release mode (instant), while the JavaScript workflow had both "instant" and "changelog-pr" modes.
+The regression tests prove the old failure mode and the new behavior:
 
-**Solution**: Add `release_mode` workflow input with options:
-- `instant` (default): Direct release that goes through lint/test/build verification
-- `changelog-pr`: Creates a pull request with a changelog fragment for review
+```bash
+node --test web/tests/webvm-server.test.mjs web/tests/boot-shell.test.mjs
+node --test web/tests
+node web/build/build-workbench.mjs
+cargo fmt --check
+cargo clippy --all-targets --all-features
+cargo test
+rust-script scripts/check-file-size.rs
+git diff --check
+```
 
-### 5. Add crates.io Publishing Support (PR #23)
+The pre-fix run in [`focused-before.log`](./evidence/focused-before.log)
+failed because the implementation still typed priming commands into the
+terminal and did not pass a DataDevice into `webvm-server.js`. The
+post-fix run in [`focused-after.log`](./evidence/focused-after.log)
+passed after the implementation staged `/data` scripts and avoided
+terminal input during workspace priming.
 
-**Problem**: The Rust workflow only created GitHub releases but didn't publish to crates.io.
+## Related Files
 
-**Solution**: Add crates.io publishing step with:
-- `CARGO_TOKEN` secret environment variable for authentication
-- "Publish to Crates.io" step in both `auto-release` and `manual-release` jobs
-- Graceful handling of "already exists" case to avoid failing when version already published
-
-**Note on Trusted Publishing**: crates.io now supports [Trusted Publishing](https://crates.io/docs/trusted-publishing) which uses OIDC for secure, tokenless publishing. This is the recommended approach for new setups but requires `rust-lang/crates-io-auth-action@v1`.
-
-### 6. Update Release Script for Better Flexibility (PR #23)
-
-**Problem**: The `create-github-release.mjs` script had hardcoded tag prefix and didn't support crates.io links.
-
-**Solution**: Add options to the script:
-- `--tag-prefix`: Support different tag formats (e.g., "v" or "rust-v")
-- `--crates-io-url`: Include crates.io link in release notes
-
-## Timeline of Events
-
-### October 11, 2022
-GitHub announces deprecation of `set-output` and `save-state` commands.
-
-### May 31, 2023
-Originally planned disablement date for deprecated commands.
-
-### July 24, 2023
-GitHub postpones removal due to significant usage still observed.
-
-### January 2026
-Issues identified in link-foundation repositories:
-- Issue #26 (lino-env): CI/CD deprecation warnings
-- Issue #24 (lino-env): Manual release not working
-- Issue #22 (lino-env): Add crates.io publishing
-- Issue #57 (start): macOS stdout capture issue (led to discovering changelog check bug)
-
-### January 2026 (PRs Merged)
-- PR #23: crates.io publishing support
-- PR #25: workflow_dispatch fix
-- PR #27: set-output deprecation fix
-- PR #58: macOS stdout capture fix + changelog check enforcement
-
-## Files in This Case Study
-
-- [README.md](./README.md) - This overview document
-- [analysis-set-output.md](./analysis-set-output.md) - Detailed analysis of set-output deprecation
-- [analysis-workflow-dispatch.md](./analysis-workflow-dispatch.md) - Detailed analysis of job skipping issue
-- [analysis-crates-io.md](./analysis-crates-io.md) - Detailed analysis of crates.io publishing
-- [online-research.md](./online-research.md) - Online research findings
-
-## Changes Applied to This Template
-
-Based on the analysis, the following changes were applied to this repository:
-
-1. **scripts/version-and-commit.mjs**: Removed deprecated `::set-output` command
-2. **.github/workflows/release.yml**:
-   - Changed changelog check from warning to error (`exit 1`)
-   - Added `always() && !cancelled()` to job conditions
-   - Added `release_mode` input with "instant" and "changelog-pr" options
-   - Added crates.io publishing steps
-   - Added `CARGO_TOKEN` environment variable
-3. **scripts/create-github-release.mjs**: Added `--tag-prefix` and `--crates-io-url` options
-
-## Key Takeaways
-
-1. **Test failure paths**: CI checks should be tested to ensure they actually fail when they should
-2. **Use consistent approaches**: Apply the same patterns across all workflows (JS and Rust)
-3. **Verify CI annotations**: Using `::warning::` instead of `::error::` is a hint that the check might not be enforced
-4. **Understand GitHub Actions behavior**: The `needs` dependency behavior with skipped jobs is subtle and well-documented
-5. **Use `always()` carefully**: Combine with `!cancelled()` and explicit result checks for safety
-6. **Stay current with deprecations**: Regularly check for deprecated GitHub Actions commands
-
-## References
-
-### GitHub Documentation
-- [Workflow syntax for GitHub Actions](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions)
-- [Using jobs in a workflow](https://docs.github.com/actions/using-jobs/using-jobs-in-a-workflow)
-- [Using conditions to control job execution](https://docs.github.com/en/actions/using-jobs/using-conditions-to-control-job-execution)
-
-### GitHub Changelog
-- [Deprecating save-state and set-output commands](https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/)
-- [Update on save-state and set-output commands](https://github.blog/changelog/2023-07-24-github-actions-update-on-save-state-and-set-output-commands/)
-
-### GitHub Issues
-- [Runner Issue #491: Job-level "if" condition not evaluated correctly](https://github.com/actions/runner/issues/491)
-- [Runner Issue #2205: Jobs skipped when NEEDS job ran successfully](https://github.com/actions/runner/issues/2205)
-
-### crates.io
-- [Trusted Publishing Documentation](https://crates.io/docs/trusted-publishing)
-- [RFC #3691: Trusted Publishing for crates.io](https://rust-lang.github.io/rfcs/3691-trusted-publishing-cratesio.html)
+- [`web/glue/boot.js`](../../../web/glue/boot.js)
+- [`web/glue/webvm-server.js`](../../../web/glue/webvm-server.js)
+- [`web/extensions/webvm-host/extension.js`](../../../web/extensions/webvm-host/extension.js)
+- [`web/tests/webvm-server.test.mjs`](../../../web/tests/webvm-server.test.mjs)
+- [`web/tests/boot-shell.test.mjs`](../../../web/tests/boot-shell.test.mjs)
+- [`analysis-terminal-noise.md`](./analysis-terminal-noise.md)
+- [`online-research.md`](./online-research.md)
