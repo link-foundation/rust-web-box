@@ -1,0 +1,26 @@
+    Checking utf8parse v0.2.2
+    Checking is_terminal_polyfill v1.70.2
+    Checking anstyle-query v1.1.5
+    Checking colorchoice v1.0.5
+    Checking anstyle v1.0.14
+    Checking strsim v0.11.1
+    Checking anstyle-parse v0.2.7
+    Checking clap_lex v1.1.0
+    Checking dtor v0.0.6
+    Checking serde_core v1.0.228
+    Checking ctor v0.4.3
+    Checking thiserror v1.0.69
+    Checking memchr v2.8.0
+    Checking lino-env v0.1.0
+    Checking dotenvy v0.15.7
+    Checking anstream v0.6.21
+    Checking regex-syntax v0.8.10
+    Checking clap_builder v4.5.60
+    Checking aho-corasick v1.1.4
+    Checking regex-automata v0.4.14
+    Checking serde v1.0.228
+    Checking clap v4.5.60
+    Checking lino-arguments v0.3.0
+    Checking example-sum-package-name v0.7.0 (/tmp/gh-issue-solver-1777529899350)
+    Checking regex v1.12.3
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.74s

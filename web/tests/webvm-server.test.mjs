@@ -94,9 +94,9 @@ test('webvm-server: bare-LF stdout is normalised to CRLF on the wire', async () 
   // Replay the exact `ls -la /workspace` output the screenshot showed.
   const raw =
     'total 0\n' +
+    '-rw-r--r-- 1 root root  114 Apr 30 06:17 Cargo.toml\n' +
     '-rw-r--r-- 1 root root  387 Apr 28 22:47 README.md\n' +
-    'drwxr-xr-x 3 root root 4096 Apr 28 22:47 hello\n' +
-    '-rw-r--r-- 1 root root  399 Apr 28 22:47 hello_world.rs\n';
+    'drwxr-xr-x 2 root root 4096 Apr 30 06:17 src\n';
   state.writer(new TextEncoder().encode(raw), 1);
 
   // Wait a microtask for the emit to flush.
@@ -105,9 +105,9 @@ test('webvm-server: bare-LF stdout is normalised to CRLF on the wire', async () 
   assert.ok(stdoutEvents.length > 0, 'expected at least one proc.stdout event');
   const combined = stdoutEvents.map((e) => e.payload.chunk).join('');
   assert.match(combined, /total 0\r\n/);
+  assert.match(combined, /Cargo\.toml\r\n/);
   assert.match(combined, /README\.md\r\n/);
-  assert.match(combined, /hello\r\n/);
-  assert.match(combined, /hello_world\.rs\r\n/);
+  assert.match(combined, /src\r\n/);
   // Crucially: no lone LF anywhere.
   assert.equal(/[^\r]\n/.test(combined), false);
 });
@@ -168,17 +168,24 @@ test('webvm-server: primes /workspace through a /data script, not terminal input
   await server.bootTask;
 
   assert.equal(state.lastInput.length, 0, 'workspace prime must not type into bash');
-  assert.equal(dataState.writes.length, 1, 'expected a staged /data script');
-  assert.equal(dataState.writes[0].filename, '/rust-web-box-workspace-prime.sh');
-  assert.match(dataState.writes[0].contents, /cat > '\/workspace\/hello\.txt'/);
-  assert.match(dataState.writes[0].contents, /hello/);
+  assert.equal(dataState.writes.length, 2, 'expected shell setup and workspace prime scripts');
+  assert.equal(dataState.writes[0].filename, '/rust-web-box-shell-profile.sh');
+  assert.match(dataState.writes[0].contents, /\/root\/\.bash_profile/);
+  assert.equal(dataState.writes[1].filename, '/rust-web-box-workspace-prime.sh');
+  assert.match(dataState.writes[1].contents, /cat > '\/workspace\/hello\.txt'/);
+  assert.match(dataState.writes[1].contents, /hello/);
   assert.deepEqual(
-    state.runCalls.map((c) => [c.cmd, c.args[0]]).slice(0, 3),
+    state.runCalls.map((c) => [c.cmd, c.args[0]]).slice(0, 4),
     [
+      ['/bin/sh', '/data/rust-web-box-shell-profile.sh'],
+      ['/bin/rm', '-f'],
       ['/bin/sh', '/data/rust-web-box-workspace-prime.sh'],
       ['/bin/rm', '-f'],
-      ['/bin/bash', '--login'],
     ],
+  );
+  assert.deepEqual(
+    state.runCalls.map((c) => [c.cmd, c.args[0]]).slice(4, 5),
+    [['/bin/bash', '--login']],
   );
   assert.ok(
     busServer.events.some((e) => e.topic === 'vm.boot' && e.payload?.phase === 'ready'),
@@ -200,10 +207,10 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   });
 
   assert.equal(state.lastInput.length, 0, 'file sync must not use console input');
-  assert.equal(dataState.writes.length, 2, 'expected prime and save scripts');
-  assert.equal(dataState.writes[1].filename, '/rust-web-box-workspace-sync.sh');
-  assert.match(dataState.writes[1].contents, /cat > '\/workspace\/new-file\.txt'/);
-  assert.match(dataState.writes[1].contents, /saved/);
+  assert.equal(dataState.writes.length, 3, 'expected shell setup, prime, and save scripts');
+  assert.equal(dataState.writes[2].filename, '/rust-web-box-workspace-sync.sh');
+  assert.match(dataState.writes[2].contents, /cat > '\/workspace\/new-file\.txt'/);
+  assert.match(dataState.writes[2].contents, /saved/);
 });
 
 // Make sure makeChannelPair stays referenced; it's exported in case

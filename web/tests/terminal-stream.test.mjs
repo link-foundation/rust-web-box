@@ -24,14 +24,15 @@ test('lfToCrlf: matches the staircase repro from the screenshot', () => {
   // the end of the previous line, indenting every subsequent line.
   const raw =
     'total 0\n' +
+    '-rw-r--r-- 1 root root  114 Apr 30 06:17 Cargo.toml\n' +
     '-rw-r--r-- 1 root root  387 Apr 28 22:47 README.md\n' +
-    'drwxr-xr-x 3 root root 4096 Apr 28 22:47 hello\n' +
-    '-rw-r--r-- 1 root root  399 Apr 28 22:47 hello_world.rs\n';
+    'drwxr-xr-x 2 root root 4096 Apr 30 06:17 src\n';
   const out = lfToCrlf(raw);
   // Every newline must be CRLF after normalisation.
   assert.match(out, /total 0\r\n/);
+  assert.match(out, /Cargo\.toml\r\n/);
   assert.match(out, /README\.md\r\n/);
-  assert.match(out, /hello_world\.rs\r\n/);
+  assert.match(out, /src\r\n/);
   // No lone LF left anywhere.
   assert.equal(/[^\r]\n/.test(out), false);
 });

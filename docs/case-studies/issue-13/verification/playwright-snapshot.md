@@ -1,0 +1,9 @@
+- generic "rust-web-box workbench" [ref=e1]:
+  - application [ref=e2]:
+    - generic [ref=e6]:
+      - generic [ref=e8]
+      - generic [ref=e38]
+      - status [ref=e343]
+    - generic:
+      - alert
+      - alert

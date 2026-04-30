@@ -1,0 +1,31 @@
+repo root: /tmp/gh-issue-solver-1777529899350
+web root: /tmp/gh-issue-solver-1777529899350/web
+[vscode-web] vendoring vscode-web@1.91.1
+vscode-web-1.91.1.tgz
+[ext] vendored webvm-host -> /tmp/gh-issue-solver-1777529899350/web/vscode-web/extensions/webvm-host
+[ext] vendored rust-analyzer-web -> /tmp/gh-issue-solver-1777529899350/web/vscode-web/extensions/rust-analyzer-web
+[cheerpx] vendoring cheerpx@1.2.11 from CDN
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cx_esm.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cx_esm.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cx.esm.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cx.esm.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cx.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cx.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cxcore.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cxcore.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cxcore-no-return-call.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cxcore-no-return-call.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cxcore.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cxcore.wasm ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cxcore-no-return-call.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cxcore-no-return-call.wasm ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cxbridge.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cxbridge.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cxbridge.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cxbridge.wasm ... skipped (HTTP 204, body=false)
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cheerpOS.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cheerpOS.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cheerpOS.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cheerpOS.wasm ... skipped (HTTP 204, body=false)
+  fetch https://cxrtnc.leaningtech.com/1.2.11/cx.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/cx.wasm ... skipped (HTTP 204, body=false)
+  fetch https://cxrtnc.leaningtech.com/1.2.11/fail.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/fail.wasm ... skipped (HTTP 204, body=false)
+  fetch https://cxrtnc.leaningtech.com/1.2.11/workerclock.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/workerclock.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/tun/direct.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/tun/direct.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/tun/tailscale_tun_auto.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/tun/tailscale_tun_auto.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/tun/tailscale_tun.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/tun/tailscale_tun.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/tun/tailscale_tun.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/tun/tailscale_tun.wasm ... skipped (HTTP 204, body=false)
+  fetch https://cxrtnc.leaningtech.com/1.2.11/tun/wasm_exec.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/tun/wasm_exec.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/tun/ipstack.js -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/tun/ipstack.js ... ok
+  fetch https://cxrtnc.leaningtech.com/1.2.11/tun/ipstack.wasm -> /tmp/gh-issue-solver-1777529899350/web/cheerpx/tun/ipstack.wasm ... ok
+[product] wrote /tmp/gh-issue-solver-1777529899350/web/product.json
+[index] wrote /tmp/gh-issue-solver-1777529899350/web/index.html
+[build] done

@@ -10,7 +10,7 @@
 // the moment the FileSystemProvider registers. If we wait for CheerpX
 // (30+ seconds), the Explorer shows a loading spinner and the
 // workspace looks empty — exactly the screenshot complaint on PR #2.
-// Serving the JS-side workspace immediately makes hello_world.rs
+// Serving the JS-side workspace immediately makes src/main.rs
 // visible in <1 s.
 
 export function workspaceOnlyMethods({ workspace } = {}) {

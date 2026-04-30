@@ -43,21 +43,43 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           ./web/disk/build.sh
 
-      - name: Smoke-test the image (mount + ls)
+      - name: Smoke-test the image (mount + cargo run)
         run: |
-          set -e
+          set -euo pipefail
           MNT=$(mktemp -d)
-          sudo mount -o loop,ro web/disk/rust-alpine.ext2 "$MNT"
+          sudo mount -o loop web/disk/rust-alpine.ext2 "$MNT"
+          cleanup() {
+            sudo umount "$MNT" || true
+            rmdir "$MNT" || true
+          }
+          trap cleanup EXIT
           ls -la "$MNT"
-          test -f "$MNT/workspace/hello/Cargo.toml" \
-            || (echo "missing /workspace/hello/Cargo.toml in image" && exit 1)
-          test -f "$MNT/workspace/hello/src/main.rs" \
-            || (echo "missing /workspace/hello/src/main.rs in image" && exit 1)
+          test -f "$MNT/workspace/Cargo.toml" \
+            || (echo "missing /workspace/Cargo.toml in image" && exit 1)
+          test -f "$MNT/workspace/src/main.rs" \
+            || (echo "missing /workspace/src/main.rs in image" && exit 1)
           test -x "$MNT/usr/bin/cargo" \
             || (echo "missing /usr/bin/cargo in image" && exit 1)
+          test -x "$MNT/usr/bin/tree" \
+            || (echo "missing /usr/bin/tree in image" && exit 1)
           test -x "$MNT/bin/bash" \
             || (echo "missing /bin/bash in image" && exit 1)
-          sudo umount "$MNT"
+          sudo chroot "$MNT" /bin/bash -lc '
+            set -euo pipefail
+            tree --version
+            cargo --version
+            cd /workspace
+            cargo_output=$(cargo run --release 2>&1) || {
+              status=$?
+              printf "%s\n" "$cargo_output"
+              exit "$status"
+            }
+            printf "%s\n" "$cargo_output"
+            [[ "$cargo_output" == *"Hello from rust-web-box!"* ]] \
+              || (echo "missing hello output from cargo run" && exit 1)
+            [[ "$cargo_output" == *"This binary was compiled inside CheerpX."* ]] \
+              || (echo "missing CheerpX output from cargo run" && exit 1)
+          '
 
       - name: Upload as workflow artifact
         uses: actions/upload-artifact@v4

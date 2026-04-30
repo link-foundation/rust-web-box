@@ -21,13 +21,107 @@ const DB_NAME = 'rust-web-box-workspace';
 const DB_VERSION = 1;
 const STORE = 'files';
 
-// Default workspace seed: a hello-world Rust project the user can
-// `cargo run` immediately. The issue feedback explicitly asks for
-// `hello_world.rs` to be visible in the file browser, ideally
-// pre-opened. We give the user both: a top-level `hello_world.rs` for
-// quick edits, and a proper Cargo project at `hello/` so `cargo run`
-// works without scaffolding.
+// Default workspace seed: a minimal Cargo project rooted directly at
+// `/workspace`, so the terminal starts in the same directory the user
+// edits in VS Code and plain `cargo run` works without `cd hello`.
 const SEED_FILES = {
+  '/workspace/Cargo.toml':
+    [
+      '[package]',
+      'name = "hello"',
+      'version = "0.1.0"',
+      'edition = "2021"',
+      '',
+      '[[bin]]',
+      'name = "hello"',
+      'path = "src/main.rs"',
+      '',
+      '[dependencies]',
+      '',
+    ].join('\n'),
+  '/workspace/src/main.rs':
+    [
+      '// Entry point built by `cargo run` from /workspace.',
+      '// Edit and save; changes mirror into the VM on every save.',
+      '',
+      'fn main() {',
+      '    println!("Hello from rust-web-box!");',
+      '    println!("Compiled by Rust inside the browser via CheerpX.");',
+      '}',
+      '',
+    ].join('\n'),
+  '/workspace/README.md':
+    [
+      '# rust-web-box workspace',
+      '',
+      'This workspace lives inside your browser. Files persist in IndexedDB',
+      'and are mirrored into the in-browser Linux VM at `/workspace/` so',
+      '`cargo run` from the terminal sees the same content.',
+      '',
+      '## Try it',
+      '',
+      '* Open `src/main.rs` and run `cargo run` from the terminal',
+      '  (or click the **Cargo Run** status-bar button).',
+      '',
+    ].join('\n'),
+  // VS Code reads `.vscode/{settings,tasks,launch}.json` immediately on
+  // workspace open. Without these the workbench logs three ENOENT errors
+  // *per probe cycle* (issue #5). Seed empty-but-valid stubs so the
+  // probes succeed. Users can edit them like normal files.
+  '/workspace/.vscode/settings.json':
+    [
+      '{',
+      '  // Workspace settings for rust-web-box.',
+      '  // Edit freely — changes persist in your browser\'s IndexedDB.',
+      '  "files.autoSave": "afterDelay",',
+      '  "editor.formatOnSave": false,',
+      '  "rust-analyzer.checkOnSave": false',
+      '}',
+      '',
+    ].join('\n'),
+  '/workspace/.vscode/tasks.json':
+    [
+      '{',
+      '  "version": "2.0.0",',
+      '  "tasks": [',
+      '    {',
+      '      "label": "cargo run",',
+      '      "type": "shell",',
+      '      "command": "cargo run",',
+      '      "problemMatcher": ["$rustc"],',
+      '      "group": { "kind": "build", "isDefault": true }',
+      '    }',
+      '  ]',
+      '}',
+      '',
+    ].join('\n'),
+  '/workspace/.vscode/launch.json':
+    [
+      '{',
+      '  "version": "0.2.0",',
+      '  "configurations": []',
+      '}',
+      '',
+    ].join('\n'),
+  '/workspace/.vscode/tasks.json':
+    [
+      '{',
+      '  "version": "2.0.0",',
+      '  "tasks": [',
+      '    {',
+      '      "label": "cargo run",',
+      '      "type": "shell",',
+      '      "command": "cd /workspace/hello && cargo run",',
+      '      "problemMatcher": ["$rustc"],',
+      '      "group": { "kind": "build", "isDefault": true }',
+      '    }',
+      '  ]',
+      '}',
+      '',
+    ].join('\n'),
+};
+
+const LEGACY_SEED_FILES = {
   '/workspace/hello_world.rs':
     [
       '// hello_world.rs — the entry point for the rust-web-box sandbox.',
@@ -80,45 +174,6 @@ const SEED_FILES = {
       '* Open `hello_world.rs` for a one-file demo.',
       '* Open `hello/src/main.rs` and run `cargo run` from the terminal',
       '  (or click the **Cargo Run** status-bar button).',
-      '',
-    ].join('\n'),
-  // VS Code reads `.vscode/{settings,tasks,launch}.json` immediately on
-  // workspace open. Without these the workbench logs three ENOENT errors
-  // *per probe cycle* (issue #5). Seed empty-but-valid stubs so the
-  // probes succeed. Users can edit them like normal files.
-  '/workspace/.vscode/settings.json':
-    [
-      '{',
-      '  // Workspace settings for rust-web-box.',
-      '  // Edit freely — changes persist in your browser\'s IndexedDB.',
-      '  "files.autoSave": "afterDelay",',
-      '  "editor.formatOnSave": false,',
-      '  "rust-analyzer.checkOnSave": false',
-      '}',
-      '',
-    ].join('\n'),
-  '/workspace/.vscode/tasks.json':
-    [
-      '{',
-      '  "version": "2.0.0",',
-      '  "tasks": [',
-      '    {',
-      '      "label": "cargo run",',
-      '      "type": "shell",',
-      '      "command": "cd /workspace/hello && cargo run",',
-      '      "problemMatcher": ["$rustc"],',
-      '      "group": { "kind": "build", "isDefault": true }',
-      '    }',
-      '  ]',
-      '}',
-      '',
-    ].join('\n'),
-  '/workspace/.vscode/launch.json':
-    [
-      '{',
-      '  "version": "0.2.0",',
-      '  "configurations": []',
-      '}',
       '',
     ].join('\n'),
 };
@@ -200,30 +255,101 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
     return await tx(db, 'readonly', (s) => reqToPromise(s.getAll()));
   }
 
-  // Seed if the store is empty (or if specific seed files are absent
-  // and the user has never touched them — we never overwrite existing
-  // entries, so reloading after edits doesn't lose work).
+  async function putSeedFile(path, content) {
+    const bytes = new TextEncoder().encode(content);
+    const dirs = collectDirs(path);
+    for (const d of dirs) {
+      if (!have.has(d)) {
+        await putEntry({ path: d, type: TYPE_DIR, size: 0, mtime: Date.now() });
+        have.add(d);
+      }
+    }
+    await putEntry({
+      path,
+      type: TYPE_FILE,
+      size: bytes.byteLength,
+      mtime: Date.now(),
+      data: bytes,
+    });
+    have.add(path);
+  }
+
+  function textOfEntry(entry) {
+    const bytes = entry?.data instanceof Uint8Array
+      ? entry.data
+      : new Uint8Array(entry?.data ?? []);
+    return new TextDecoder().decode(bytes);
+  }
+
+  async function replaceIfUnchanged(path, oldText, newText) {
+    const entry = await getEntry(path);
+    if (!entry || entry.type !== TYPE_FILE || textOfEntry(entry) !== oldText) return false;
+    await putSeedFile(path, newText);
+    return true;
+  }
+
+  async function deleteIfUnchanged(path, oldText) {
+    const entry = await getEntry(path);
+    if (!entry || entry.type !== TYPE_FILE || textOfEntry(entry) !== oldText) return false;
+    await deleteEntry(path);
+    have.delete(path);
+    return true;
+  }
+
+  async function deleteDirIfEmpty(path) {
+    const all = await listAll();
+    const prefix = path + '/';
+    if (all.some((e) => e.path.startsWith(prefix))) return false;
+    const entry = await getEntry(path);
+    if (entry?.type === TYPE_DIR) {
+      await deleteEntry(path);
+      have.delete(path);
+      return true;
+    }
+    return false;
+  }
+
+  async function migrateLegacyWorkspace() {
+    const legacy = have.has('/workspace/hello_world.rs') || have.has('/workspace/hello/Cargo.toml');
+    if (!legacy) return;
+    for (const path of ['/workspace/Cargo.toml', '/workspace/src/main.rs']) {
+      if (!have.has(path) && seed[path]) await putSeedFile(path, seed[path]);
+    }
+    if (seed['/workspace/README.md']) {
+      await replaceIfUnchanged(
+        '/workspace/README.md',
+        LEGACY_SEED_FILES['/workspace/README.md'],
+        seed['/workspace/README.md'],
+      );
+    }
+    if (seed['/workspace/.vscode/tasks.json']) {
+      await replaceIfUnchanged(
+        '/workspace/.vscode/tasks.json',
+        LEGACY_SEED_FILES['/workspace/.vscode/tasks.json'],
+        seed['/workspace/.vscode/tasks.json'],
+      );
+    }
+    for (const path of [
+      '/workspace/hello_world.rs',
+      '/workspace/hello/Cargo.toml',
+      '/workspace/hello/src/main.rs',
+    ]) {
+      await deleteIfUnchanged(path, LEGACY_SEED_FILES[path]);
+    }
+    await deleteDirIfEmpty('/workspace/hello/src');
+    await deleteDirIfEmpty('/workspace/hello');
+  }
+
+  // Seed new stores, and migrate old default workspaces without
+  // overwriting user-created root project files.
   const existing = await listAll();
   const have = new Set(existing.map((e) => e.path));
   if (existing.length === 0) {
     for (const [path, content] of Object.entries(seed)) {
-      const bytes = new TextEncoder().encode(content);
-      const dirs = collectDirs(path);
-      for (const d of dirs) {
-        if (!have.has(d)) {
-          await putEntry({ path: d, type: TYPE_DIR, size: 0, mtime: Date.now() });
-          have.add(d);
-        }
-      }
-      await putEntry({
-        path,
-        type: TYPE_FILE,
-        size: bytes.byteLength,
-        mtime: Date.now(),
-        data: bytes,
-      });
-      have.add(path);
+      await putSeedFile(path, content);
     }
+  } else {
+    await migrateLegacyWorkspace();
   }
 
   async function ensureDirChain(path) {

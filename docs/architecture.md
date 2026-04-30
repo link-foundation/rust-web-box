@@ -31,9 +31,9 @@ GitHub Pages (static)
 ## Workspace model — JS-side store + guest mirror
 
 The workspace lives **in the browser**, not in CheerpX. `workspace-fs.js`
-opens an IndexedDB-backed file store on page load and seeds it with the
-hello-world Rust project (`/workspace/hello_world.rs`,
-`/workspace/hello/Cargo.toml`, `/workspace/hello/src/main.rs`,
+opens an IndexedDB-backed file store on page load and seeds it with a
+minimal hello-world Cargo project rooted directly at `/workspace`
+(`/workspace/Cargo.toml`, `/workspace/src/main.rs`,
 `/workspace/README.md`). The `webvm:` `FileSystemProvider` reads/writes
 this store directly via the bus, so VS Code's Explorer populates **the
 moment the workbench mounts** — no waiting for the 30+ second CheerpX
@@ -83,9 +83,9 @@ Powered by CheerpX (leaningtech/webvm) and VS Code Web.
 …………
 [rust-web-box] Linux VM ready ✓
 [rust-web-box] disk: ./disk/rust-alpine.ext2
-[rust-web-box] Type `cargo run` from /workspace/hello to compile a Rust hello world.
+[rust-web-box] Workspace mirrored to /workspace — try `cargo run`.
 
-root@:~#
+root@rust-web-box:/workspace#
 ```
 
 The status updates inline (no separate boot screen) — the user is
@@ -103,7 +103,7 @@ exactly where they would be with `vscode.dev` plus a working terminal.
 | 6 | webvm-host extension            | ✅     | Auto-opens terminal with "Booting…" loading status, `webvm:` FS, cargo tasks, Run button |
 | 7 | rust-analyzer-web extension     | 🟡     | Lang config + diagnostics; full WASM payload loaded if bundled |
 | 8 | VS Code Web bundle              | ✅     | Vendored from `vscode-web@1.91.1`; AMD-loader bootstrap matches vscode.dev exactly |
-| 9 | Pre-baked Alpine + Rust disk    | ✅     | `web/disk/Dockerfile.disk` — i386 Alpine + bash + rustc + cargo + `/workspace/hello` |
+| 9 | Pre-baked Alpine + Rust disk    | ✅     | `web/disk/Dockerfile.disk` - i386 Alpine + bash + tree + rustc + cargo + root `/workspace` Cargo project |
 | 10| GitHub Actions build + deploy   | ✅     | `pages.yml` (workbench + Pages + disk chunks) + `disk-image.yml` (ext2 release asset source) |
 | 11| IndexedDB-backed persistence    | ✅     | `OverlayDevice(cloud, IDBDevice)`; reloads keep changes |
 
@@ -117,16 +117,16 @@ disk-image build pipeline (`web/disk/Dockerfile.disk`) starts from
 `i386/alpine:3.20` (CheerpX requires i386 because it JITs x86 to WASM)
 and installs only `bash`, `ca-certificates`, `curl`, `git`, `gcc`,
 `musl-dev`, `pkgconfig`, `openssl-dev`, `rust`, `cargo`, `vim`, and
-`nano`. We pre-bake a `cargo new --bin hello` project at
-`/workspace/hello` and run `cargo build --release` inside the image so
-the first `cargo run` only re-links the binary — sub-second on warm
-caches, well under the issue's 30 s acceptance bar.
+`nano`, plus `tree` for quick workspace inspection. We pre-bake a
+minimal Cargo project at `/workspace` and run `cargo build --release`
+inside the image so the first `cargo run` only re-links the binary,
+well under the issue's 30 s acceptance bar on a warm disk.
 
-Until the first disk-image release is staged into the Pages artifact,
-the boot shell falls back to the public WebVM Debian image so the
-terminal still comes up against a real userspace; users wanting Rust
-before the Alpine chunks are deployed can run `apt-get install rustc
-cargo` from the terminal.
+The committed manifest still keeps the public WebVM Debian disk as a
+development fallback. Production Pages builds are stricter: the staging
+step must download the rolling release asset and generate same-origin
+CheerpX GitHubDevice chunks, or the build fails. That prevents Pages
+from silently deploying a sandbox without `cargo` or `tree`.
 
 ### Why "🟡" for rust-analyzer
 
@@ -153,7 +153,7 @@ inline in `web/extensions/rust-analyzer-web/extension.js`.
 | 4   | First load <2 min on 50 Mbps                                           | 🟡 depends on disk image size; SW caches subsequent loads |
 | 5   | Edit `src/main.rs`, run "Cargo: Run", see output in <30 s              | ✅ wired; runtime depends on warm cache (Alpine image pre-builds hello-world) |
 | 6   | `rust-analyzer` provides completion/hover/diagnostics                  | 🟡 extension wired, full WASM payload follow-up |
-| 7   | Pre-baked crate compiles with no network (airplane test)               | ✅ Alpine image carries `rust` + `cargo` + pre-built `hello` project |
+| 7   | Pre-baked crate compiles with no network (airplane test)               | ✅ Alpine image carries `rust` + `cargo` + pre-built root Cargo project |
 | 8   | Non-pre-baked crate installs via proxy chain in <60 s                  | 🟡 shim ready; cargo's network from inside CheerpX needs Tailscale (issue #1 deferred) |
 | 9   | Reload preserves user files (IndexedDB overlay)                        | ✅ via `OverlayDevice(cloud, IDBDevice)` |
 | 10  | Second-visit load <10 s (SW caching)                                   | ✅ SW caches all glue assets + bundles on first visit |

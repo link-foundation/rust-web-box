@@ -5,7 +5,7 @@
 # possible Linux distro, like Alpine, with only bash + rustc installed
 # (with dependencies)". Alpine 3.20 i386 fits that bill — base is ~5 MB,
 # and `rust` + `cargo` together add ~150 MB. The resulting .ext2 is
-# ~600 MB once we pre-build a hello-world cargo project so the first
+# ~600 MB once we pre-build the root hello-world cargo project so the first
 # `cargo run` is offline-capable (issue #1 acceptance criterion 7).
 #
 # CheerpX requires i386 because it JITs x86 instructions to WASM. The
@@ -37,16 +37,20 @@ RUN apk add --no-cache \
       openssl-dev \
       rust \
       cargo \
+      tree \
       vim \
       nano
 
 # Convenience: drop the user into bash on login, with a useful PATH and
 # CARGO_HOME set so warm-cached crates are picked up automatically.
-RUN echo 'export PS1="[\u@rust-web-box \W]\\$ "'   >> /root/.profile && \
-    echo 'export TERM=xterm-256color'               >> /root/.profile && \
-    echo 'export CARGO_HOME=/root/.cargo'           >> /root/.profile && \
-    echo 'export PATH=/root/.cargo/bin:$PATH'       >> /root/.profile && \
-    echo 'cd /workspace 2>/dev/null || cd /root'    >> /root/.profile
+RUN printf '%s\n' \
+      'export PS1="root@rust-web-box:\w# "' \
+      'export TERM=xterm-256color' \
+      'export CARGO_HOME=/root/.cargo' \
+      'export PATH=/root/.cargo/bin:$PATH' \
+      'cd /workspace 2>/dev/null || cd /root' \
+      > /root/.bash_profile && \
+    cp /root/.bash_profile /root/.profile
 
 # Configure cargo to use the sparse registry (matches the page-side
 # network shim's expectations: `index.crates.io` over the sparse
@@ -55,16 +59,18 @@ RUN mkdir -p /root/.cargo && \
     printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n' \
       > /root/.cargo/config.toml
 
-# Pre-bake a hello-world cargo project at /workspace/hello so users see
-# the issue's "edit src/main.rs, run Cargo: Run, see output in <30 s"
-# acceptance criterion immediately. We pre-compile it once so the first
-# `cargo run` only re-links the binary (sub-second on warm caches).
-RUN mkdir -p /workspace && \
-    cd /workspace && \
-    cargo new --bin hello && \
+# Pre-bake a hello-world cargo project at /workspace so users can edit
+# `src/main.rs` and run plain `cargo run` from the opened terminal.
+# We pre-compile it once so the first `cargo run` only re-links the
+# binary (sub-second on warm caches). The build is intentionally fatal:
+# a broken disk image must fail CI instead of shipping a no-cargo box.
+RUN mkdir -p /workspace/src && \
+    printf '[package]\nname = "hello"\nversion = "0.1.0"\nedition = "2021"\n\n[[bin]]\nname = "hello"\npath = "src/main.rs"\n\n[dependencies]\n' \
+      > /workspace/Cargo.toml && \
     printf 'fn main() {\n    println!("Hello from rust-web-box!");\n    println!("This binary was compiled inside CheerpX.");\n}\n' \
-      > /workspace/hello/src/main.rs && \
-    (cd /workspace/hello && cargo build --release || true)
+      > /workspace/src/main.rs && \
+    cd /workspace && \
+    cargo build --release
 
 # Surface the workbench's `webvm:/workspace` URI at /workspace inside
 # the VM. The page-level FileSystemProvider mounts this directory as

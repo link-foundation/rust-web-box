@@ -10,10 +10,10 @@
 //     in the terminal pane until vm.status reports the VM is booted.
 //   * Cargo task provider + commands (Cargo: Run/Build/Test/Add/New).
 //   * Status-bar Run button bound to `cargo run --release`.
-//   * Auto-opens a terminal AND auto-opens `hello_world.rs` on
-//     activation so the user lands in a working editor + bash
-//     immediately, exactly the way the issue's "edit src/main.rs, run
-//     Cargo: Run, see output" acceptance criterion demands.
+//   * Auto-opens a terminal AND auto-opens `src/main.rs` on activation
+//     so the user lands in a working editor + bash immediately, exactly
+//     the way the issue's "edit src/main.rs, run Cargo: Run, see
+//     output" acceptance criterion demands.
 //
 // Single-file payload — VS Code Web extensions are served as static
 // files so a tiny vanilla-JS module avoids the bundler hop.
@@ -219,8 +219,10 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         }
         if (result?.workspacePrimeError) {
           status(`Workspace mirror failed: ${result.workspacePrimeError}`);
+        } else if (result?.shellPrepareError) {
+          status(`Shell preparation failed: ${result.shellPrepareError}`);
         } else {
-          status('Workspace mirrored to /workspace — try `cargo run` in /workspace/hello.');
+          status('Workspace mirrored to /workspace — try `cargo run`.');
         }
         writeEmitter.fire('\r\n');
       } catch (err) {
@@ -298,7 +300,7 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
 
 // --- Cargo tasks -------------------------------------------------------
 
-function makeCargoPty(vscode, bus, { vmReadyPromise }, command, args = [], cwd = '/workspace/hello') {
+function makeCargoPty(vscode, bus, { vmReadyPromise }, command, args = [], cwd = '/workspace') {
   const writeEmitter = new vscode.EventEmitter();
   const closeEmitter = new vscode.EventEmitter();
   let sub = null;
@@ -358,7 +360,7 @@ function makeCargoPty(vscode, bus, { vmReadyPromise }, command, args = [], cwd =
 }
 
 function makeCargoTasks(vscode, bus, ctx) {
-  function buildExecution(command, args = [], cwd = '/workspace/hello') {
+  function buildExecution(command, args = [], cwd = '/workspace') {
     return new vscode.CustomExecution(async () =>
       makeCargoPty(vscode, bus, ctx, command, args, cwd),
     );
@@ -524,13 +526,11 @@ function activate(context) {
   runBtn.show();
   context.subscriptions.push(runBtn);
 
-  // Auto-open hello_world.rs so the user lands directly in the editor.
-  // Issue feedback: "hello_world.rs should be preopened or open as soon
-  // as file system is ready and integrated with vscode."
+  // Auto-open src/main.rs so the user lands directly in the editor.
   setTimeout(() => {
     openHelloWorld(vscode).catch((err) => {
       // eslint-disable-next-line no-console
-      console.warn('[webvm-host] auto-open hello_world failed:', err);
+      console.warn('[webvm-host] auto-open source failed:', err);
     });
   }, 200);
 
@@ -570,8 +570,8 @@ async function openHelloWorld(vscode) {
   // wins. We tolerate ENOENT because the user could have deleted the
   // file in a previous session — IDB persists their edits.
   const candidates = [
-    'webvm:/workspace/hello_world.rs',
-    'webvm:/workspace/hello/src/main.rs',
+    'webvm:/workspace/src/main.rs',
+    'webvm:/workspace/Cargo.toml',
     'webvm:/workspace/README.md',
   ];
   for (const u of candidates) {
