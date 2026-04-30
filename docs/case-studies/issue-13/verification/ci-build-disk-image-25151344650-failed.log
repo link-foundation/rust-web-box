@@ -1,0 +1,826 @@
+Build rust-alpine.ext2	Set up job	﻿2026-04-30T06:41:59.2036225Z Current runner version: '2.334.0'
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2069386Z ##[group]Runner Image Provisioner
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2070235Z Hosted Compute Agent
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2070831Z Version: 20260213.493
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2071537Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2072487Z Build Date: 2026-02-13T00:28:41Z
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2073118Z Worker ID: {7b394cc0-1949-43a8-8c49-c52bf09abf30}
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2073887Z Azure Region: northcentralus
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2074448Z ##[endgroup]
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2076207Z ##[group]Operating System
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2076906Z Ubuntu
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2077359Z 24.04.4
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2077842Z LTS
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2078308Z ##[endgroup]
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2078840Z ##[group]Runner Image
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2079384Z Image: ubuntu-24.04
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2079944Z Version: 20260413.86.1
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2080921Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2082874Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2083800Z ##[endgroup]
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2084878Z ##[group]GITHUB_TOKEN Permissions
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2087057Z Actions: write
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2087595Z Contents: write
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2088102Z Metadata: read
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2088717Z ##[endgroup]
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2090673Z Secret source: Actions
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2091617Z Prepare workflow directory
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2493327Z Prepare all required actions
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.2545807Z Getting action download info
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.6301552Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+Build rust-alpine.ext2	Set up job	2026-04-30T06:41:59.7437453Z Download action repository 'docker/setup-qemu-action@v3' (SHA:c7c53464625b32c7a7e944ae62b3e17d2b600130)
+Build rust-alpine.ext2	Set up job	2026-04-30T06:42:00.3277759Z Download action repository 'docker/setup-buildx-action@v3' (SHA:8d2750c68a42422c14e847fe6c8ac0403b4cbd6f)
+Build rust-alpine.ext2	Set up job	2026-04-30T06:42:00.8804651Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+Build rust-alpine.ext2	Set up job	2026-04-30T06:42:01.1499670Z Complete job name: Build rust-alpine.ext2
+Build rust-alpine.ext2	Run actions/checkout@v4	﻿2026-04-30T06:42:01.2380286Z ##[group]Run actions/checkout@v4
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2381571Z with:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2382583Z   repository: link-foundation/rust-web-box
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2383950Z   token: ***
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2384698Z   ssh-strict: true
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2385487Z   ssh-user: git
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2386285Z   persist-credentials: true
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2387201Z   clean: true
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2388003Z   sparse-checkout-cone-mode: true
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2388975Z   fetch-depth: 1
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2389764Z   fetch-tags: false
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2390577Z   show-progress: true
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2391392Z   lfs: false
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2392220Z   submodules: false
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2393053Z   set-safe-directory: true
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.2394173Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3522826Z Syncing repository: link-foundation/rust-web-box
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3525710Z ##[group]Getting Git version info
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3527111Z Working directory is '/home/runner/work/rust-web-box/rust-web-box'
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3529152Z [command]/usr/bin/git version
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3565139Z git version 2.53.0
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3589246Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3603532Z Temporarily overriding HOME='/home/runner/work/_temp/03d726b1-bb75-4f07-8c42-23dc48c407e5' before making global git config changes
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3606157Z Adding repository directory to the temporary git global config as a safe directory
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3609003Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/rust-web-box/rust-web-box
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3640387Z Deleting the contents of '/home/runner/work/rust-web-box/rust-web-box'
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3644032Z ##[group]Initializing the repository
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3647963Z [command]/usr/bin/git init /home/runner/work/rust-web-box/rust-web-box
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3733648Z hint: Using 'master' as the name for the initial branch. This default branch name
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3736027Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3737821Z hint: to use in all of your new repositories, which will suppress this warning,
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3739340Z hint: call:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3740294Z hint:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3741348Z hint: 	git config --global init.defaultBranch <name>
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3742671Z hint:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3743736Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3745837Z hint: 'development'. The just-created branch can be renamed via this command:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3747207Z hint:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3747951Z hint: 	git branch -m <name>
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3748782Z hint:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3750090Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3751997Z Initialized empty Git repository in /home/runner/work/rust-web-box/rust-web-box/.git/
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3755368Z [command]/usr/bin/git remote add origin https://github.com/link-foundation/rust-web-box
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3777736Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3779076Z ##[group]Disabling automatic garbage collection
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3781005Z [command]/usr/bin/git config --local gc.auto 0
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3810813Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3812695Z ##[group]Setting up auth
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3816980Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.3847772Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4143326Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4173055Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4407921Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4440590Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4673179Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4706946Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4715215Z ##[group]Fetching the repository
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:01.4717713Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3b219f9ecb6895ec4ef8673d756c2343f503b5e1:refs/remotes/pull/14/merge
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.2966277Z From https://github.com/link-foundation/rust-web-box
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.2967893Z  * [new ref]         3b219f9ecb6895ec4ef8673d756c2343f503b5e1 -> pull/14/merge
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.2996570Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.2998276Z ##[group]Determining the checkout info
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3000225Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3005165Z [command]/usr/bin/git sparse-checkout disable
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3043678Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3070700Z ##[group]Checking out the ref
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3074743Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/14/merge
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3578392Z Note: switching to 'refs/remotes/pull/14/merge'.
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3579324Z 
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3579958Z You are in 'detached HEAD' state. You can look around, make experimental
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3581405Z changes and commit them, and you can discard any commits you make in this
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3583078Z state without impacting any branches by switching back to a branch.
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3583921Z 
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3584497Z If you want to create a new branch to retain commits you create, you may
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3586254Z do so (now or later) by using -c with the switch command. Example:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3587017Z 
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3587430Z   git switch -c <new-branch-name>
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3588231Z 
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3588567Z Or undo this operation with:
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3589081Z 
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3589373Z   git switch -
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3589795Z 
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3590471Z Turn off this advice by setting config variable advice.detachedHead to false
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3591364Z 
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3592632Z HEAD is now at 3b219f9 Merge 59c7675b059752639eb9c5c947c6b34a7451e4d3 into 9551c1d17b1bddf63dbe6cb7e6a3654e338a1ede
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3595879Z ##[endgroup]
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3629526Z [command]/usr/bin/git log -1 --format=%H
+Build rust-alpine.ext2	Run actions/checkout@v4	2026-04-30T06:42:02.3658120Z 3b219f9ecb6895ec4ef8673d756c2343f503b5e1
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	﻿2026-04-30T06:42:02.3986761Z ##[group]Run docker/setup-qemu-action@v3
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.3987638Z with:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.3988310Z   image: docker.io/tonistiigi/binfmt:latest
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.3989166Z   platforms: all
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.3989848Z   cache-image: true
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.3990508Z ##[endgroup]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6332695Z ##[group]Docker info
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6383313Z [command]/usr/bin/docker version
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6799379Z Client: Docker Engine - Community
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6814154Z  Version:           28.0.4
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6815008Z  API version:       1.48
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6815736Z  Go version:        go1.23.7
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6816247Z  Git commit:        b8034c0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6816890Z  Built:             Tue Mar 25 15:07:16 2025
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6817541Z  OS/Arch:           linux/amd64
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6818143Z  Context:           default
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6818519Z 
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6818992Z Server: Docker Engine - Community
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6819500Z  Engine:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6819999Z   Version:          28.0.4
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6820521Z   API version:      1.48 (minimum version 1.24)
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6821101Z   Go version:       go1.23.7
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6821557Z   Git commit:       6430e49
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6821958Z   Built:            Tue Mar 25 15:07:16 2025
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6822596Z   OS/Arch:          linux/amd64
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6823029Z   Experimental:     false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6823446Z  containerd:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6823783Z   Version:          v2.2.2
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6824275Z   GitCommit:        301b2dac98f15c27117da5c8af12118a041a31d9
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6824770Z  runc:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6825121Z   Version:          1.3.4
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6825652Z   GitCommit:        v1.3.4-0-gd6d73eb8
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6826158Z  docker-init:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6826556Z   Version:          0.19.0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6827015Z   GitCommit:        de40ad0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.6853079Z [command]/usr/bin/docker info
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8036284Z Client: Docker Engine - Community
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8037050Z  Version:    28.0.4
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8037509Z  Context:    default
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8037958Z  Debug Mode: false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8038359Z  Plugins:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8038767Z   buildx: Docker Buildx (Docker Inc.)
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8039262Z     Version:  v0.33.0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8039833Z     Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8040464Z   compose: Docker Compose (Docker Inc.)
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8040959Z     Version:  v2.38.2
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8041474Z     Path:     /usr/libexec/docker/cli-plugins/docker-compose
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8041888Z 
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8042022Z Server:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8042604Z  Containers: 0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8042946Z   Running: 0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8043222Z   Paused: 0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8043482Z   Stopped: 0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8043738Z  Images: 6
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8044004Z  Server Version: 28.0.4
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8044305Z  Storage Driver: overlay2
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8044635Z   Backing Filesystem: extfs
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8044941Z   Supports d_type: true
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8045594Z   Using metacopy: false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8045892Z   Native Overlay Diff: false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8046206Z   userxattr: false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8046488Z  Logging Driver: json-file
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8046803Z  Cgroup Driver: systemd
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8047085Z  Cgroup Version: 2
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8047361Z  Plugins:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8047615Z   Volume: local
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8047937Z   Network: bridge host ipvlan macvlan null overlay
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8048428Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8048865Z  Swarm: inactive
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8049169Z  Runtimes: runc io.containerd.runc.v2
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8049508Z  Default Runtime: runc
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8049813Z  Init Binary: docker-init
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8050201Z  containerd version: 301b2dac98f15c27117da5c8af12118a041a31d9
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8050622Z  runc version: v1.3.4-0-gd6d73eb8
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8051176Z  init version: de40ad0
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8051470Z  Security Options:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8051757Z   apparmor
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8052001Z   seccomp
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8052607Z    Profile: builtin
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8052873Z   cgroupns
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8053150Z  Kernel Version: 6.17.0-1010-azure
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8053489Z  Operating System: Ubuntu 24.04.4 LTS
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8053823Z  OSType: linux
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8054096Z  Architecture: x86_64
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8054383Z  CPUs: 4
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8054635Z  Total Memory: 15.61GiB
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8054940Z  Name: runnervmeorf1
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8055236Z  ID: e27c7740-8587-4822-9bec-fa47c65630a3
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8055620Z  Docker Root Dir: /var/lib/docker
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8055938Z  Debug Mode: false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8056216Z  Username: githubactions
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8056524Z  Experimental: false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8056807Z  Insecure Registries:
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8061843Z   ::1/128
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8062589Z   127.0.0.0/8
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8063035Z  Live Restore Enabled: false
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8063376Z 
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8078397Z ##[endgroup]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:02.8079032Z ##[group]Pulling binfmt Docker image
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.0028501Z Cache hit for: docker.io--tonistiigi--binfmt-latest-linux-x64
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.6156075Z Received 32159161 of 32159161 (100.0%), 60.7 MBs/sec
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.6158899Z Cache Size: ~31 MB (32159161 B)
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.6195232Z [command]/usr/bin/tar -xf /home/runner/work/_temp/1153c666-60bd-4c11-956d-3db060d9756d/cache.tzst -P -C /home/runner/work/rust-web-box/rust-web-box --use-compress-program unzstd
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.7712565Z Cache restored successfully
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.7731667Z Restored docker.io--tonistiigi--binfmt-latest-linux-x64 from GitHub Actions cache
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.8077873Z Cached to hosted tool cache /opt/hostedtoolcache/docker.io--tonistiigi--binfmt/latest/linux-x64
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.8078996Z Copying /opt/hostedtoolcache/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar to /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.8531355Z Image found from cache in /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:03.8553448Z [command]/usr/bin/docker load -i /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:05.2468645Z Loaded image: tonistiigi/binfmt:latest
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:05.2586066Z [command]/usr/bin/docker pull docker.io/tonistiigi/binfmt:latest
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:05.6819582Z latest: Pulling from tonistiigi/binfmt
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:05.8030356Z Digest: sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:05.8033810Z Status: Image is up to date for tonistiigi/binfmt:latest
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:05.8041660Z docker.io/tonistiigi/binfmt:latest
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:05.8091375Z [command]/usr/bin/docker save -o /home/runner/work/_temp/docker-actions-toolkit-aYpWPR/749e64100d3fa0c09bdbc8a02e4fb9cb3ee64266f7f661c98371040689abacb3.tar docker.io/tonistiigi/binfmt:latest
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.1991232Z Copying /home/runner/work/_temp/docker-actions-toolkit-aYpWPR/749e64100d3fa0c09bdbc8a02e4fb9cb3ee64266f7f661c98371040689abacb3.tar to /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2670892Z Image cached to /home/runner/.docker/.cache/images/docker.io--tonistiigi--binfmt/latest/linux-x64/image.tar
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2671978Z ##[endgroup]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2672658Z ##[group]Image info
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2688632Z [command]/usr/bin/docker image inspect docker.io/tonistiigi/binfmt:latest
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2841625Z [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2842521Z     {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2843108Z         "Id": "sha256:fb4f8f43716ffaf2802bb32cd60994de149d020f8b1c7e7ddfbdfb43a521ec82",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2843566Z         "RepoTags": [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2843828Z             "tonistiigi/binfmt:latest"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2844429Z         ],
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2844628Z         "RepoDigests": [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2845074Z             "tonistiigi/binfmt@sha256:d3b963f787999e6c0219a48dba02978769286ff61a5f4d26245cb6a6e5567ea3"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2845565Z         ],
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2845815Z         "Parent": "",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2846069Z         "Comment": "buildkit.dockerfile.v0",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2846375Z         "Created": "2026-02-18T18:09:43.658440389Z",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2846657Z         "DockerVersion": "",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2846905Z         "Author": "",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2847112Z         "Config": {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2847315Z             "Hostname": "",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2847553Z             "Domainname": "",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2847787Z             "User": "",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2848006Z             "AttachStdin": false,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2848335Z             "AttachStdout": false,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2848590Z             "AttachStderr": false,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2848829Z             "Tty": false,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2849060Z             "OpenStdin": false,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2849301Z             "StdinOnce": false,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2849520Z             "Env": [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2849854Z                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2850249Z                 "QEMU_PRESERVE_ARGV0=1"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2850503Z             ],
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2850693Z             "Cmd": null,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2850910Z             "Image": "",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2851122Z             "Volumes": {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2851328Z                 "/tmp": {}
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2851543Z             },
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2851747Z             "WorkingDir": "/",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2851987Z             "Entrypoint": [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2852437Z                 "/usr/bin/binfmt"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2852677Z             ],
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2852877Z             "OnBuild": null,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2853105Z             "Labels": null
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2853330Z         },
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2853532Z         "Architecture": "amd64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2853777Z         "Os": "linux",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2853992Z         "Size": 85108073,
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2854214Z         "GraphDriver": {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2854429Z             "Data": {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2854903Z                 "LowerDir": "/var/lib/docker/overlay2/ad2e04cc3e40691316bb9cf91200527672c3365e235cac09f96bd9295a3169be/diff",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2855670Z                 "MergedDir": "/var/lib/docker/overlay2/8da8983f548c75451cfc805300bb705c0e3d001676c39d21fa89cfd092a38ca3/merged",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2856405Z                 "UpperDir": "/var/lib/docker/overlay2/8da8983f548c75451cfc805300bb705c0e3d001676c39d21fa89cfd092a38ca3/diff",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2857127Z                 "WorkDir": "/var/lib/docker/overlay2/8da8983f548c75451cfc805300bb705c0e3d001676c39d21fa89cfd092a38ca3/work"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2857606Z             },
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2857812Z             "Name": "overlay2"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2858033Z         },
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2858214Z         "RootFS": {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2858606Z             "Type": "layers",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2858832Z             "Layers": [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2859176Z                 "sha256:7c7a3ed8f59c9c48a6885e1b9d666072857891560d4557401a19bd803378d1d4",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2859695Z                 "sha256:b7dea0aa7b18514e216eebdbded52b5b2c070562d7c88a97f8c3fb0995e4febb"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2860078Z             ]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2860268Z         },
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2860458Z         "Metadata": {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2860700Z             "LastTagTime": "0001-01-01T00:00:00Z"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2860967Z         }
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2861151Z     }
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2861334Z ]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2875899Z ##[endgroup]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2876491Z ##[group]Binfmt version
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.2892933Z [command]/usr/bin/docker run --rm --privileged docker.io/tonistiigi/binfmt:latest --version
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.7424034Z binfmt/3a63696 qemu/v10.2.1 go/1.25.7
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.8078961Z ##[endgroup]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.8079467Z ##[group]Installing QEMU static binaries
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.8095178Z [command]/usr/bin/docker run --rm --privileged docker.io/tonistiigi/binfmt:latest --install all
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9387914Z installing: mips64 OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9388625Z installing: ppc64le OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9389061Z installing: loong64 OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9389489Z installing: arm64 OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9389906Z installing: arm OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9390266Z installing: s390x OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9390621Z installing: riscv64 OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9391274Z installing: mips64le OK
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9599026Z {
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9599597Z   "supported": [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9599957Z     "linux/amd64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9600290Z     "linux/amd64/v2",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9600633Z     "linux/amd64/v3",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9600935Z     "linux/arm64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9601549Z     "linux/riscv64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9601915Z     "linux/ppc64le",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9602412Z     "linux/s390x",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9602730Z     "linux/386",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9603042Z     "linux/mips64le",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9603352Z     "linux/mips64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9603667Z     "linux/loong64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9603996Z     "linux/arm/v7",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9604304Z     "linux/arm/v6"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9604611Z   ],
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9604897Z   "emulators": [
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9605215Z     "llvm-16-runtime.binfmt",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9605594Z     "llvm-17-runtime.binfmt",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9605963Z     "llvm-18-runtime.binfmt",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9606338Z     "python3.12",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9606683Z     "qemu-aarch64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9607018Z     "qemu-arm",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9607347Z     "qemu-loongarch64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9607680Z     "qemu-mips64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9607987Z     "qemu-mips64el",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9608315Z     "qemu-ppc64le",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9608627Z     "qemu-riscv64",
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9608954Z     "qemu-s390x"
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9609298Z   ]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:06.9609580Z }
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:07.0198875Z ##[endgroup]
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:07.0199345Z ##[group]Extracting available platforms
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:07.2287018Z linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/loong64,linux/arm/v7,linux/arm/v6
+Build rust-alpine.ext2	Set up QEMU (for i386 builds)	2026-04-30T06:42:07.2288571Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	﻿2026-04-30T06:42:07.2520417Z ##[group]Run docker/setup-buildx-action@v3
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2520728Z with:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2520935Z   driver: docker-container
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2521175Z   use: true
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2521379Z   keep-state: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2521590Z   cache-binary: true
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2521806Z   cleanup: true
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2522015Z   install: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.2522525Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5013635Z ##[group]Docker info
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5036053Z [command]/usr/bin/docker version
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5217045Z Client: Docker Engine - Community
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5226830Z  Version:           28.0.4
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5227955Z  API version:       1.48
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5228374Z  Go version:        go1.23.7
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5228754Z  Git commit:        b8034c0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5229139Z  Built:             Tue Mar 25 15:07:16 2025
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5229570Z  OS/Arch:           linux/amd64
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5229933Z  Context:           default
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5230249Z 
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5230407Z Server: Docker Engine - Community
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5230800Z  Engine:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5231097Z   Version:          28.0.4
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5231485Z   API version:      1.48 (minimum version 1.24)
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5231953Z   Go version:       go1.23.7
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5232659Z   Git commit:       6430e49
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5233040Z   Built:            Tue Mar 25 15:07:16 2025
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5233454Z   OS/Arch:          linux/amd64
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5233819Z   Experimental:     false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5234172Z  containerd:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5234480Z   Version:          v2.2.2
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5234950Z   GitCommit:        301b2dac98f15c27117da5c8af12118a041a31d9
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5235438Z  runc:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5235722Z   Version:          1.3.4
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5236090Z   GitCommit:        v1.3.4-0-gd6d73eb8
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5236506Z  docker-init:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5236810Z   Version:          0.19.0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5237154Z   GitCommit:        de40ad0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5267186Z [command]/usr/bin/docker info
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5734273Z Client: Docker Engine - Community
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5734809Z  Version:    28.0.4
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5743105Z  Context:    default
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5743454Z  Debug Mode: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5743764Z  Plugins:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5744074Z   buildx: Docker Buildx (Docker Inc.)
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5744495Z     Version:  v0.33.0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5744860Z     Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5745204Z   compose: Docker Compose (Docker Inc.)
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5745502Z     Version:  v2.38.2
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5745781Z     Path:     /usr/libexec/docker/cli-plugins/docker-compose
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5746017Z 
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5746094Z Server:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5746276Z  Containers: 0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5746461Z   Running: 0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5746645Z   Paused: 0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5746856Z   Stopped: 0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5747036Z  Images: 7
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5747232Z  Server Version: 28.0.4
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5747456Z  Storage Driver: overlay2
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5747691Z   Backing Filesystem: extfs
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5747924Z   Supports d_type: true
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5748143Z   Using metacopy: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5748379Z   Native Overlay Diff: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5748601Z   userxattr: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5748811Z  Logging Driver: json-file
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5749041Z  Cgroup Driver: systemd
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5749243Z  Cgroup Version: 2
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5749435Z  Plugins:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5749616Z   Volume: local
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5749842Z   Network: bridge host ipvlan macvlan null overlay
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5750238Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5750598Z  Swarm: inactive
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5750812Z  Runtimes: io.containerd.runc.v2 runc
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5751079Z  Default Runtime: runc
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5751299Z  Init Binary: docker-init
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5751958Z  containerd version: 301b2dac98f15c27117da5c8af12118a041a31d9
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5752627Z  runc version: v1.3.4-0-gd6d73eb8
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5752997Z  init version: de40ad0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5753334Z  Security Options:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5753619Z   apparmor
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5753878Z   seccomp
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5754157Z    Profile: builtin
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5754455Z   cgroupns
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5754756Z  Kernel Version: 6.17.0-1010-azure
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5755157Z  Operating System: Ubuntu 24.04.4 LTS
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5755533Z  OSType: linux
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5755820Z  Architecture: x86_64
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5756366Z  CPUs: 4
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5756611Z  Total Memory: 15.61GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5756900Z  Name: runnervmeorf1
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5757203Z  ID: e27c7740-8587-4822-9bec-fa47c65630a3
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5757580Z  Docker Root Dir: /var/lib/docker
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5757930Z  Debug Mode: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5758238Z  Username: githubactions
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5758541Z  Experimental: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5758857Z  Insecure Registries:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5759287Z   ::1/128
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5759523Z   127.0.0.0/8
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5759808Z  Live Restore Enabled: false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5760044Z 
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.5760570Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.6294143Z ##[group]Buildx version
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.6319261Z [command]/usr/bin/docker buildx version
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.6773426Z github.com/docker/buildx v0.33.0 f7897eba028583e0071642db3c011e860444f8cf
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.6803265Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.6956074Z ##[group]Inspecting default docker context
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7096119Z [
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7096408Z   {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7096607Z     "Name": "default",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7096858Z     "Metadata": {},
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7097080Z     "Endpoints": {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7097289Z       "docker": {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7097527Z         "Host": "unix:///var/run/docker.sock",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7097823Z         "SkipTLSVerify": false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7098083Z       }
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7098264Z     },
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7098447Z     "TLSMaterial": {},
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7098663Z     "Storage": {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7099027Z       "MetadataPath": "<IN MEMORY>",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7099294Z       "TLSPath": "<IN MEMORY>"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7099555Z     }
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7099733Z   }
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7099899Z ]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7100333Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.7100693Z ##[group]Creating a new builder instance
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.8176073Z [command]/usr/bin/docker buildx create --name builder-92332da3-da61-4509-8f98-86a0f891a28c --driver docker-container --buildkitd-flags --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host --use
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.8677834Z builder-92332da3-da61-4509-8f98-86a0f891a28c
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.8721393Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.8722360Z ##[group]Booting builder
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.8754690Z [command]/usr/bin/docker buildx inspect --bootstrap --builder builder-92332da3-da61-4509-8f98-86a0f891a28c
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:07.9327608Z #1 [internal] booting buildkit
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:08.0836541Z #1 pulling image moby/buildkit:buildx-stable-1
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.1671635Z #1 pulling image moby/buildkit:buildx-stable-1 2.2s done
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.3178169Z #1 creating container buildx_buildkit_builder-92332da3-da61-4509-8f98-86a0f891a28c0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.4909180Z #1 creating container buildx_buildkit_builder-92332da3-da61-4509-8f98-86a0f891a28c0 0.3s done
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.4921319Z #1 DONE 2.6s
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5225790Z Name:          builder-92332da3-da61-4509-8f98-86a0f891a28c
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5231292Z Driver:        docker-container
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5231984Z Last Activity: 2026-04-30 06:42:07 +0000 UTC
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5232431Z 
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5232520Z Nodes:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5232921Z Name:                  builder-92332da3-da61-4509-8f98-86a0f891a28c0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5233301Z Endpoint:              unix:///var/run/docker.sock
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5233994Z Status:                running
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5234647Z BuildKit daemon flags: --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5235182Z BuildKit version:      v0.29.0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5235907Z Platforms:             linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/arm64, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, linux/mips64le, linux/mips64, linux/loong64, linux/arm/v7, linux/arm/v6
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5236616Z Labels:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5236869Z  org.mobyproject.buildkit.worker.executor:         oci
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5237457Z  org.mobyproject.buildkit.worker.hostname:         9cd0cac7fcd0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5237867Z  org.mobyproject.buildkit.worker.network:          host
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5238249Z  org.mobyproject.buildkit.worker.oci.process-mode: sandbox
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5238662Z  org.mobyproject.buildkit.worker.selinux.enabled:  false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5239081Z  org.mobyproject.buildkit.worker.snapshotter:      overlayfs
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5239428Z GC Policy rule#0:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5239635Z  All:            false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5239983Z  Filters:        type==source.local,type==exec.cachemount,type==source.git.checkout
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5240385Z  Keep Duration:  48h0m0s
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5240606Z  Max Used Space: 488.3MiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5240833Z GC Policy rule#1:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5241029Z  All:            false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5241232Z  Keep Duration:  1440h0m0s
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5241461Z  Reserved Space: 9.313GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5241680Z  Max Used Space: 93.13GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5241891Z  Min Free Space: 27.01GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5242316Z GC Policy rule#2:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5242518Z  All:            false
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5242722Z  Reserved Space: 9.313GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5243013Z  Max Used Space: 93.13GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5243228Z  Min Free Space: 27.01GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5243436Z GC Policy rule#3:
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5243629Z  All:            true
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5243836Z  Reserved Space: 9.313GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5244049Z  Max Used Space: 93.13GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5244253Z  Min Free Space: 27.01GiB
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.5280898Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6151764Z ##[group]Inspect builder
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6154895Z {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6155169Z   "nodes": [
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6155446Z     {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6155836Z       "name": "builder-92332da3-da61-4509-8f98-86a0f891a28c0",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6156465Z       "endpoint": "unix:///var/run/docker.sock",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6156811Z       "status": "running",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6157377Z       "buildkitd-flags": "--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6157958Z       "buildkit": "v0.29.0",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6158912Z       "platforms": "linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/loong64,linux/arm/v7,linux/arm/v6",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6159764Z       "features": {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6160093Z         "Automatically load images to the Docker Engine image store": true,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6160471Z         "Cache export": true,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6160716Z         "Direct push": true,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6161044Z         "Docker exporter": true,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6161395Z         "Multi-platform build": true,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6161661Z         "OCI exporter": true
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6161880Z       },
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6162069Z       "labels": {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6162600Z         "org.mobyproject.buildkit.worker.executor": "oci",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6163017Z         "org.mobyproject.buildkit.worker.hostname": "9cd0cac7fcd0",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6163414Z         "org.mobyproject.buildkit.worker.network": "host",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6163836Z         "org.mobyproject.buildkit.worker.oci.process-mode": "sandbox",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6164282Z         "org.mobyproject.buildkit.worker.selinux.enabled": "false",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6164964Z         "org.mobyproject.buildkit.worker.snapshotter": "overlayfs"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6165296Z       },
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6165483Z       "gcPolicy": [
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6165691Z         {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6165881Z           "all": false,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6166093Z           "filter": [
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6166354Z             "type==source.local",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6166642Z             "type==exec.cachemount",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6166914Z             "type==source.git.checkout"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6167179Z           ],
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6167382Z           "keepDuration": "48h0m0s",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6167792Z           "maxUsedSpace": "488.3MiB"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6168026Z         },
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6168212Z         {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6168402Z           "all": false,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6168621Z           "keepDuration": "1440h0m0s",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6168888Z           "reservedSpace": "9.313GiB",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6169145Z           "maxUsedSpace": "93.13GiB",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6169400Z           "minFreeSpace": "27.01GiB"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6169639Z         },
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6169823Z         {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6170010Z           "all": false,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6189786Z           "reservedSpace": "9.313GiB",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6190236Z           "maxUsedSpace": "93.13GiB",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6190667Z           "minFreeSpace": "27.01GiB"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6191065Z         },
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6191343Z         {
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6191550Z           "all": true,
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6191803Z           "reservedSpace": "9.313GiB",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6192311Z           "maxUsedSpace": "93.13GiB",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6192752Z           "minFreeSpace": "27.01GiB"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6193038Z         }
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6193249Z       ]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6193433Z     }
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6193630Z   ],
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6193904Z   "name": "builder-92332da3-da61-4509-8f98-86a0f891a28c",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6194281Z   "driver": "docker-container",
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6194594Z   "lastActivity": "2026-04-30T06:42:07.000Z"
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6194901Z }
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6195327Z ##[endgroup]
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6195861Z ##[group]BuildKit version
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6196311Z builder-92332da3-da61-4509-8f98-86a0f891a28c0: v0.29.0
+Build rust-alpine.ext2	Set up Buildx	2026-04-30T06:42:10.6197066Z ##[endgroup]
+Build rust-alpine.ext2	Install e2fsprogs	﻿2026-04-30T06:42:10.6301893Z ##[group]Run sudo apt-get update -qq && sudo apt-get install -y -qq e2fsprogs
+Build rust-alpine.ext2	Install e2fsprogs	2026-04-30T06:42:10.6302797Z [36;1msudo apt-get update -qq && sudo apt-get install -y -qq e2fsprogs[0m
+Build rust-alpine.ext2	Install e2fsprogs	2026-04-30T06:42:10.6328542Z shell: /usr/bin/bash -e {0}
+Build rust-alpine.ext2	Install e2fsprogs	2026-04-30T06:42:10.6328829Z ##[endgroup]
+Build rust-alpine.ext2	Build rust-alpine.ext2	﻿2026-04-30T06:42:20.9526871Z ##[group]Run cd "$GITHUB_WORKSPACE"
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:20.9527232Z [36;1mcd "$GITHUB_WORKSPACE"[0m
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:20.9527500Z [36;1m./web/disk/build.sh[0m
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:20.9549251Z shell: /usr/bin/bash -e {0}
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:20.9549519Z ##[endgroup]
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:20.9634044Z ==> building docker image (rust-web-box-disk, linux/386)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3042674Z #0 building with "builder-92332da3-da61-4509-8f98-86a0f891a28c" instance using docker-container driver
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3043167Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3043324Z #1 [internal] load build definition from Dockerfile.disk
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3043684Z #1 transferring dockerfile: 3.42kB done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3043951Z #1 DONE 0.0s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3044072Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3044245Z #2 [auth] i386/alpine:pull token for registry-1.docker.io
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3044561Z #2 DONE 0.0s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3044684Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.3044836Z #3 [internal] load metadata for docker.io/i386/alpine:3.20
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.5105291Z #3 DONE 0.4s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6770007Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6772244Z #4 [internal] load .dockerignore
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6773186Z #4 transferring context: 2B done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6773608Z #4 DONE 0.0s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6773786Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6774287Z #5 [1/6] FROM docker.io/i386/alpine:3.20@sha256:7a8859515d7d0d58007b48d9b52467b3ba496ac2e9f16300792516948a82ac8c
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6775033Z #5 resolve docker.io/i386/alpine:3.20@sha256:7a8859515d7d0d58007b48d9b52467b3ba496ac2e9f16300792516948a82ac8c done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6775816Z #5 sha256:c3891655fe7f935c0edb9d8699a7880f85be6681344aea8dbae92ace3f127c30 3.47MB / 3.47MB 0.1s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6776582Z #5 extracting sha256:c3891655fe7f935c0edb9d8699a7880f85be6681344aea8dbae92ace3f127c30 0.1s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.6777041Z #5 DONE 0.2s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.8771984Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.8773108Z #6 [2/6] RUN apk add --no-cache       bash       ca-certificates       curl       git       gcc       musl-dev       pkgconfig       openssl-dev       rust       cargo       tree       vim       nano
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:21.8774342Z #6 0.049 fetch https://dl-cdn.alpinelinux.org/alpine/v3.20/main/x86/APKINDEX.tar.gz
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:22.0743786Z #6 0.397 fetch https://dl-cdn.alpinelinux.org/alpine/v3.20/community/x86/APKINDEX.tar.gz
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.0089407Z #6 1.332 (1/44) Installing ncurses-terminfo-base (6.4_p20240420-r2)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1101334Z #6 1.339 (2/44) Installing libncursesw (6.4_p20240420-r2)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1101957Z #6 1.349 (3/44) Installing readline (8.2.10-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1103032Z #6 1.356 (4/44) Installing bash (5.2.26-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1103394Z #6 1.377 Executing bash-5.2.26-r0.post-install
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1103758Z #6 1.380 (5/44) Installing ca-certificates (20260413-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1104101Z #6 1.403 (6/44) Installing libgcc (13.2.1_git20240309-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1104430Z #6 1.408 (7/44) Installing jansson (2.14-r4)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1104776Z #6 1.412 (8/44) Installing libstdc++ (13.2.1_git20240309-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.1105119Z #6 1.433 (9/44) Installing zstd-libs (1.5.6-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.2142397Z #6 1.443 (10/44) Installing binutils (2.42-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.2143019Z #6 1.519 (11/44) Installing libgomp (13.2.1_git20240309-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.2143558Z #6 1.526 (12/44) Installing libatomic (13.2.1_git20240309-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.2143983Z #6 1.530 (13/44) Installing gmp (6.3.0-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.2144286Z #6 1.537 (14/44) Installing isl26 (0.26-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.4004463Z #6 1.558 (15/44) Installing mpfr4 (4.2.1-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.4004914Z #6 1.568 (16/44) Installing mpc1 (1.3.1-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:23.4005245Z #6 1.572 (17/44) Installing gcc (13.2.1_git20240309-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:24.2075129Z #6 2.530 (18/44) Installing musl-dev (1.2.5-r3)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:24.4409182Z #6 2.591 (19/44) Installing libffi (3.4.6-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:24.4409596Z #6 2.594 (20/44) Installing xz-libs (5.8.3-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:24.4409930Z #6 2.601 (21/44) Installing libxml2 (2.12.10-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:24.4410898Z #6 2.613 (22/44) Installing llvm17-libs (17.0.6-r2)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:25.5672009Z #6 3.890 (23/44) Installing scudo-malloc (17.0.6-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:25.7223919Z #6 3.895 (24/44) Installing rust (1.78.0-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.1227433Z #6 7.445 (25/44) Installing brotli-libs (1.1.0-r2)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3310630Z #6 7.457 (26/44) Installing c-ares (1.33.1-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3311219Z #6 7.462 (27/44) Installing libunistring (1.2-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3311683Z #6 7.477 (28/44) Installing libidn2 (2.3.7-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3312397Z #6 7.484 (29/44) Installing nghttp2-libs (1.62.1-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3312848Z #6 7.488 (30/44) Installing libpsl (0.21.5-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3313163Z #6 7.493 (31/44) Installing libcurl (8.14.1-r2)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3313526Z #6 7.503 (32/44) Installing cargo (1.78.0-r1)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.3363212Z #6 7.659 (33/44) Installing curl (8.14.1-r2)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.4409316Z #6 7.665 (34/44) Installing libexpat (2.7.5-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.4409934Z #6 7.669 (35/44) Installing pcre2 (10.43-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.4410806Z #6 7.678 (36/44) Installing git (2.45.4-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.4411278Z #6 7.748 (37/44) Installing git-init-template (2.45.4-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.4411698Z #6 7.753 (38/44) Installing nano (8.0-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.4412070Z #6 7.759 (39/44) Installing pkgconf (2.2.0-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.4412856Z #6 7.764 (40/44) Installing openssl-dev (3.3.7-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.5759817Z #6 7.899 (41/44) Installing tree (2.1.1-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:29.7456172Z #6 8.068 (42/44) Installing vim-common (9.1.0707-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:30.0619045Z #6 8.385 (43/44) Installing xxd (9.1.0707-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:30.2929085Z #6 8.388 (44/44) Installing vim (9.1.0707-r0)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:30.2929507Z #6 8.416 Executing busybox-1.36.1-r31.trigger
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.3044640Z #6 8.421 Executing ca-certificates-20260413-r0.trigger
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.3045401Z #6 8.465 OK: 899 MiB in 58 packages
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.3046760Z #6 DONE 10.6s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.4495067Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.4499072Z #7 [3/6] RUN printf '%s\n'       'export PS1="root@rust-web-box:\w# "'       'export TERM=xterm-256color'       'export CARGO_HOME=/root/.cargo'       'export PATH=/root/.cargo/bin:$PATH'       'cd /workspace 2>/dev/null || cd /root'       > /root/.bash_profile &&     cp /root/.bash_profile /root/.profile
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.4501474Z #7 DONE 0.1s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.4501663Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.4502826Z #8 [4/6] RUN mkdir -p /root/.cargo &&     printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n'       > /root/.cargo/config.toml
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.4503495Z #8 DONE 0.1s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.5938663Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.5940912Z #9 [5/6] RUN mkdir -p /workspace/src &&     printf '[package]\nname = "hello"\nversion = "0.1.0"\nedition = "2021"\n\n[[bin]]\nname = "hello"\npath = "src/main.rs"\n\n[dependencies]\n'       > /workspace/Cargo.toml &&     printf 'fn main() {\n    println!("Hello from rust-web-box!");\n    println!("This binary was compiled inside CheerpX.");\n}\n'       > /workspace/src/main.rs &&     cd /workspace &&     cargo build --release
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.5943559Z #9 0.144    Compiling hello v0.1.0 (/workspace)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.6962413Z #9 0.246     Finished `release` profile [optimized] target(s) in 0.19s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.8634794Z #9 DONE 0.3s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.8635019Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.8635124Z #10 [6/6] WORKDIR /workspace
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.8635393Z #10 DONE 0.0s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.8635518Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.8635626Z #11 exporting to docker image format
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:42:32.8635893Z #11 exporting layers
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:04.3444335Z #11 exporting layers 31.6s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:04.5010648Z #11 exporting manifest sha256:9df7c9be78b89b729355a6d3fe9cc7490d464ebbf9164e898f25a2eb060ddf04 done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:04.5011995Z #11 exporting config sha256:505becffef6dc8464925d33089c910bc5c35fdde392e0b0de4a9952b4df58bf1 done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:04.5013051Z #11 sending tarball
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:06.1190190Z #11 ...
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:06.1191090Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:06.1191228Z #12 importing to docker
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:06.2241100Z #12 loading layer 02d17133b219 65.54kB / 3.47MB
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:06.2243860Z #12 loading layer 88ac98d5d26c 557.06kB / 348.77MB
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:08.2832739Z #12 loading layer 88ac98d5d26c 140.94MB / 348.77MB 2.1s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:10.3673153Z #12 loading layer 88ac98d5d26c 305.82MB / 348.77MB 4.1s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.2568932Z #12 loading layer ab04dd0d92f2 287B / 287B
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3316826Z #12 loading layer 02d17133b219 3.47MB / 3.47MB 8.2s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3317460Z #12 loading layer 88ac98d5d26c 348.77MB / 348.77MB 8.1s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3318004Z #12 loading layer ab04dd0d92f2 287B / 287B 0.1s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3318573Z #12 loading layer 492c434820a8 223B / 223B 0.1s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3319084Z #12 loading layer f495863d8f4a 200.36kB / 200.36kB 0.0s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3319559Z #12 loading layer 5f70bf18a086 32B / 32B 0.0s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3320000Z #12 DONE 8.2s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3320183Z 
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3320332Z #11 exporting to docker image format
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3320773Z #11 sending tarball 10.0s done
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3321114Z #11 DONE 41.6s
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:14.3372256Z ==> exporting container filesystem
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:18.9643411Z ==> creating 1024 MiB ext2 image
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:18.9695015Z mke2fs 1.47.0 (5-Feb-2023)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:18.9718762Z ==> populating image (requires loopback mount)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:23.3960238Z e2fsck 1.47.0 (5-Feb-2023)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:23.4282613Z resize2fs 1.47.0 (5-Feb-2023)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:23.7282818Z e2fsck 1.47.0 (5-Feb-2023)
+Build rust-alpine.ext2	Build rust-alpine.ext2	2026-04-30T06:43:23.7588118Z ==> done: /home/runner/work/rust-web-box/rust-web-box/web/disk/rust-alpine.ext2 (905M)
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	﻿2026-04-30T06:43:23.7620629Z ##[group]Run set -euo pipefail
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7620976Z [36;1mset -euo pipefail[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7621266Z [36;1mMNT=$(mktemp -d)[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7621768Z [36;1msudo mount -o loop web/disk/rust-alpine.ext2 "$MNT"[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7622092Z [36;1mcleanup() {[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7622631Z [36;1m  sudo umount "$MNT" || true[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7622897Z [36;1m  rmdir "$MNT" || true[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7623139Z [36;1m}[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7623332Z [36;1mtrap cleanup EXIT[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7623561Z [36;1mls -la "$MNT"[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7623819Z [36;1mtest -f "$MNT/workspace/Cargo.toml" \[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7624190Z [36;1m  || (echo "missing /workspace/Cargo.toml in image" && exit 1)[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7624573Z [36;1mtest -f "$MNT/workspace/src/main.rs" \[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7624929Z [36;1m  || (echo "missing /workspace/src/main.rs in image" && exit 1)[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7625265Z [36;1mtest -x "$MNT/usr/bin/cargo" \[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7625620Z [36;1m  || (echo "missing /usr/bin/cargo in image" && exit 1)[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7625930Z [36;1mtest -x "$MNT/usr/bin/tree" \[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7626238Z [36;1m  || (echo "missing /usr/bin/tree in image" && exit 1)[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7626544Z [36;1mtest -x "$MNT/bin/bash" \[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7626829Z [36;1m  || (echo "missing /bin/bash in image" && exit 1)[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7627149Z [36;1msudo chroot "$MNT" /bin/bash -lc '[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7627422Z [36;1m  set -euo pipefail[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7627658Z [36;1m  tree --version[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7627906Z [36;1m  cargo --version[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7628139Z [36;1m  cd /workspace[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7628449Z [36;1m  cargo run --release | tee /tmp/rust-web-box-cargo-run.out[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7628878Z [36;1m  grep -F "Hello from rust-web-box!" /tmp/rust-web-box-cargo-run.out[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7629402Z [36;1m  grep -F "This binary was compiled inside CheerpX." /tmp/rust-web-box-cargo-run.out[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7629842Z [36;1m'[0m
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7651235Z shell: /usr/bin/bash -e {0}
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7651493Z ##[endgroup]
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7888629Z total 104
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7888969Z drwxr-xr-x 21 root root  4096 Apr 30 06:43 .
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7889312Z drwxrwxrwt 16 root root 12288 Apr 30 06:43 ..
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7889644Z -rwxr-xr-x  1 root root     0 Apr 30 06:43 .dockerenv
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7890002Z drwxr-xr-x  2 root root  4096 Apr 30 06:42 bin
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7890322Z drwxr-xr-x  4 root root  4096 Apr 30 06:43 dev
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7890738Z drwxr-xr-x 21 root root  4096 Apr 30 06:43 etc
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7891038Z drwxr-xr-x  2 root root  4096 Apr 15 16:07 home
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7891508Z drwxr-xr-x  6 root root  4096 Apr 15 16:07 lib
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7892013Z drwx------  2 root root 16384 Apr 30 06:43 lost+found
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7892761Z drwxr-xr-x  5 root root  4096 Apr 15 16:07 media
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7893078Z drwxr-xr-x  2 root root  4096 Apr 15 16:07 mnt
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7893388Z drwxr-xr-x  2 root root  4096 Apr 15 16:07 opt
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7893680Z dr-xr-xr-x  2 root root  4096 Apr 15 16:07 proc
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7893997Z drwx------  3 root root  4096 Apr 30 06:42 root
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7894291Z drwxr-xr-x  2 root root  4096 Apr 15 16:07 run
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7894568Z drwxr-xr-x  2 root root  4096 Apr 15 16:07 sbin
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7894857Z drwxr-xr-x  2 root root  4096 Apr 15 16:07 srv
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7895137Z drwxr-xr-x  2 root root  4096 Apr 15 16:07 sys
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7895413Z drwxrwxrwt  2 root root  4096 Apr 15 16:07 tmp
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7895695Z drwxr-xr-x 10 root root  4096 Apr 30 06:42 usr
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7895974Z drwxr-xr-x 12 root root  4096 Apr 15 16:07 var
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.7896277Z drwxr-xr-x  4 root root  4096 Apr 30 06:42 workspace
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8011054Z tree v2.1.1 © 1996 - 2023 by Steve Baker, Thomas Moore, Francesc Rocher, Florian Sesser, Kyosuke Tokoro
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8163791Z cargo 1.78.0
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8405288Z     Finished `release` profile [optimized] target(s) in 0.01s
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8407680Z      Running `target/release/hello`
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8426498Z Hello from rust-web-box!
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8426977Z This binary was compiled inside CheerpX.
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8428014Z tee: /tmp/rust-web-box-cargo-run.out: I/O error
+Build rust-alpine.ext2	Smoke-test the image (mount + cargo run)	2026-04-30T06:43:23.8623894Z ##[error]Process completed with exit code 1.
+Build rust-alpine.ext2	Post Set up Buildx	﻿2026-04-30T06:43:23.8745423Z Post job cleanup.
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.1230920Z ##[group]Removing builder
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.2537431Z [command]/usr/bin/docker buildx rm builder-92332da3-da61-4509-8f98-86a0f891a28c
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.6958623Z builder-92332da3-da61-4509-8f98-86a0f891a28c removed
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.6990518Z ##[endgroup]
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.6992090Z ##[group]Cleaning up certificates
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.6999092Z ##[endgroup]
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.6999648Z ##[group]Post cache
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.7001895Z State not set
+Build rust-alpine.ext2	Post Set up Buildx	2026-04-30T06:43:24.7002860Z ##[endgroup]
+Build rust-alpine.ext2	Post Set up QEMU (for i386 builds)	﻿2026-04-30T06:43:24.7129946Z Post job cleanup.
+Build rust-alpine.ext2	Post Set up QEMU (for i386 builds)	2026-04-30T06:43:24.9414410Z ##[group]Post cache
+Build rust-alpine.ext2	Post Set up QEMU (for i386 builds)	2026-04-30T06:43:24.9417573Z Caching docker.io--tonistiigi--binfmt-latest-linux-x64 to GitHub Actions cache
+Build rust-alpine.ext2	Post Set up QEMU (for i386 builds)	2026-04-30T06:43:24.9603275Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/rust-web-box/rust-web-box --files-from manifest.txt --use-compress-program zstdmt
+Build rust-alpine.ext2	Post Set up QEMU (for i386 builds)	2026-04-30T06:43:26.0686721Z Sent 32159190 of 32159190 (100.0%), 44.3 MBs/sec
+Build rust-alpine.ext2	Post Set up QEMU (for i386 builds)	2026-04-30T06:43:26.3166480Z ##[endgroup]
+Build rust-alpine.ext2	Post Run actions/checkout@v4	﻿2026-04-30T06:43:26.3322385Z Post job cleanup.
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4282604Z [command]/usr/bin/git version
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4339147Z git version 2.53.0
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4395987Z Temporarily overriding HOME='/home/runner/work/_temp/b38ec66e-ef0c-42db-9558-7167ff2cd0df' before making global git config changes
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4397016Z Adding repository directory to the temporary git global config as a safe directory
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4403863Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/rust-web-box/rust-web-box
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4440302Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4472696Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4707467Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4729389Z http.https://github.com/.extraheader
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4741558Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.4772854Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.5000730Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Build rust-alpine.ext2	Post Run actions/checkout@v4	2026-04-30T06:43:26.5031819Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Build rust-alpine.ext2	Complete job	﻿2026-04-30T06:43:26.5365081Z Cleaning up orphan processes
+Build rust-alpine.ext2	Complete job	2026-04-30T06:43:26.5685306Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, docker/setup-buildx-action@v3, docker/setup-qemu-action@v3. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

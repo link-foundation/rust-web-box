@@ -39,6 +39,7 @@ directory:
 | [`verification/playwright-snapshot.md`](./verification/playwright-snapshot.md) | Playwright accessibility snapshot from the local smoke run. |
 | [`verification/playwright-console.log`](./verification/playwright-console.log) | Warnings/errors observed during the local browser smoke run. |
 | [`verification/playwright-console-errors.log`](./verification/playwright-console-errors.log) | Error-only console capture from the local browser smoke run. |
+| [`verification/ci-build-disk-image-25151344650-failed.log`](./verification/ci-build-disk-image-25151344650-failed.log) | Fresh PR CI disk-image log showing `tree`, `cargo --version`, and `cargo run --release` all succeeded before the smoke harness failed while writing a temporary file in the chroot. |
 
 ## Timeline
 
@@ -50,6 +51,7 @@ directory:
 | 2026-04-30 | The warm disk build was changed to install `tree`, create the root Cargo project, pre-build it, and avoid hiding build failures. |
 | 2026-04-30 | Pages disk staging was changed to fail closed by default when the warm disk cannot be staged. |
 | 2026-04-30 | CI smoke tests were extended to chroot into the image and verify `tree`, `cargo`, and `cargo run --release` output. |
+| 2026-04-30 | A fresh PR CI run showed the image-level checks passing, then failed because the smoke harness wrote the captured output to `/tmp` inside the chroot; the harness was updated to keep the output in memory. |
 
 ## Requirements From The Issue
 
@@ -117,8 +119,8 @@ directory:
    local fallback testing.
 9. Extend the disk-image GitHub Actions smoke test to mount the ext2,
    chroot into it, run `tree --version`, run `cargo --version`, execute
-   `cargo run --release`, and grep for the hello-world output from
-   `src/main.rs`.
+   `cargo run --release`, and assert the hello-world output from
+   `src/main.rs` without writing temporary files inside the chroot.
 10. Add regression tests that assert the new workspace layout, debug
     wiring, fail-closed staging behavior, Dockerfile package list, and
     disk-image workflow e2e commands.

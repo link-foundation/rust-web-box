@@ -240,6 +240,7 @@ test('boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run ou
   assert.match(wf, /cargo run --release/);
   assert.match(wf, /Hello from rust-web-box!/);
   assert.match(wf, /This binary was compiled inside CheerpX\./);
+  assert.doesNotMatch(wf, /rust-web-box-cargo-run\.out/);
 });
 
 test('boot shell: pages workflow deploys to GitHub Pages on main', async () => {

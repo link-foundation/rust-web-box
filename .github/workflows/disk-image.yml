@@ -69,9 +69,16 @@ jobs:
             tree --version
             cargo --version
             cd /workspace
-            cargo run --release | tee /tmp/rust-web-box-cargo-run.out
-            grep -F "Hello from rust-web-box!" /tmp/rust-web-box-cargo-run.out
-            grep -F "This binary was compiled inside CheerpX." /tmp/rust-web-box-cargo-run.out
+            cargo_output=$(cargo run --release 2>&1) || {
+              status=$?
+              printf "%s\n" "$cargo_output"
+              exit "$status"
+            }
+            printf "%s\n" "$cargo_output"
+            [[ "$cargo_output" == *"Hello from rust-web-box!"* ]] \
+              || (echo "missing hello output from cargo run" && exit 1)
+            [[ "$cargo_output" == *"This binary was compiled inside CheerpX."* ]] \
+              || (echo "missing CheerpX output from cargo run" && exit 1)
           '
 
       - name: Upload as workflow artifact
