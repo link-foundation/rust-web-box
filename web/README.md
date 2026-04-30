@@ -25,6 +25,7 @@ web/
 │   └── webvm-server.js                 # stage-2 server (workspace + VM)
 ├── build/                              # build & dev tooling
 │   ├── build-workbench.mjs             # vendors vscode-web + CheerpX
+│   ├── stage-pages-disk.mjs            # release asset -> Pages disk chunks
 │   ├── index.template.html             # workbench entry template
 │   └── dev-server.mjs                  # COOP/COEP-aware dev server
 ├── extensions/
@@ -42,7 +43,7 @@ web/
 ## Local development
 
 ```bash
-# All tests (no deps; 66 tests):
+# All tests (no deps):
 node --test web/tests/
 
 # Build the workbench bundle (needs npm + network):
@@ -55,6 +56,9 @@ node web/build/dev-server.mjs 8080
 # Build the Alpine + Rust disk image (needs docker + sudo):
 ./web/disk/build.sh
 # produces web/disk/rust-alpine.ext2
+
+# Stage a release-hosted disk into Pages chunks (CI normally does this):
+node web/build/stage-pages-disk.mjs
 ```
 
 ## What you should see

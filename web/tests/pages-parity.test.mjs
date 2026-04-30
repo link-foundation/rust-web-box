@@ -93,7 +93,7 @@ test('pages-parity: COOP/COEP headers are set under the sub-path (CheerpX SAB re
   try {
     const r = await fetchText(`http://localhost:${PORT}/rust-web-box/`);
     assert.equal(r.headers.get('cross-origin-opener-policy'), 'same-origin');
-    assert.equal(r.headers.get('cross-origin-embedder-policy'), 'credentialless');
+    assert.equal(r.headers.get('cross-origin-embedder-policy'), 'require-corp');
   } finally {
     proc.kill();
   }

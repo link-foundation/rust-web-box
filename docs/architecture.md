@@ -25,7 +25,7 @@ GitHub Pages (static)
 │   ├── webvm-host/                      # FS provider, terminal, tasks
 │   └── rust-analyzer-web/               # rust-analyzer WASM client
 ├── web/disk/                            # Alpine + Rust image build
-└── web/build/                           # vendor + render scripts
+└── web/build/                           # vendor, render, and disk-staging scripts
 ```
 
 ## Workspace model — JS-side store + guest mirror
@@ -81,7 +81,7 @@ Powered by CheerpX (leaningtech/webvm) and VS Code Web.
 [rust-web-box] Booting Linux VM…
 …………
 [rust-web-box] Linux VM ready ✓
-[rust-web-box] disk: wss://…/rust-alpine.ext2
+[rust-web-box] disk: ./disk/rust-alpine.ext2
 [rust-web-box] Type `cargo run` from /workspace/hello to compile a Rust hello world.
 
 root@:~#
@@ -103,7 +103,7 @@ exactly where they would be with `vscode.dev` plus a working terminal.
 | 7 | rust-analyzer-web extension     | 🟡     | Lang config + diagnostics; full WASM payload loaded if bundled |
 | 8 | VS Code Web bundle              | ✅     | Vendored from `vscode-web@1.91.1`; AMD-loader bootstrap matches vscode.dev exactly |
 | 9 | Pre-baked Alpine + Rust disk    | ✅     | `web/disk/Dockerfile.disk` — i386 Alpine + bash + rustc + cargo + `/workspace/hello` |
-| 10| GitHub Actions build + deploy   | ✅     | `pages.yml` (workbench + Pages) + `disk-image.yml` (ext2 release asset) |
+| 10| GitHub Actions build + deploy   | ✅     | `pages.yml` (workbench + Pages + disk chunks) + `disk-image.yml` (ext2 release asset source) |
 | 11| IndexedDB-backed persistence    | ✅     | `OverlayDevice(cloud, IDBDevice)`; reloads keep changes |
 
 Legend: ✅ implemented · 🟡 partial · ⏳ placeholder.
@@ -121,10 +121,11 @@ and installs only `bash`, `ca-certificates`, `curl`, `git`, `gcc`,
 the first `cargo run` only re-links the binary — sub-second on warm
 caches, well under the issue's 30 s acceptance bar.
 
-Until the first disk-image release ships, the boot shell falls back to
-the public WebVM Debian image so the terminal still comes up against a
-real userspace; users wanting Rust before the Alpine asset is uploaded
-can run `apt-get install rustc cargo` from the terminal.
+Until the first disk-image release is staged into the Pages artifact,
+the boot shell falls back to the public WebVM Debian image so the
+terminal still comes up against a real userspace; users wanting Rust
+before the Alpine chunks are deployed can run `apt-get install rustc
+cargo` from the terminal.
 
 ### Why "🟡" for rust-analyzer
 
@@ -155,7 +156,7 @@ inline in `web/extensions/rust-analyzer-web/extension.js`.
 | 8   | Non-pre-baked crate installs via proxy chain in <60 s                  | 🟡 shim ready; cargo's network from inside CheerpX needs Tailscale (issue #1 deferred) |
 | 9   | Reload preserves user files (IndexedDB overlay)                        | ✅ via `OverlayDevice(cloud, IDBDevice)` |
 | 10  | Second-visit load <10 s (SW caching)                                   | ✅ SW caches all glue assets + bundles on first visit |
-| 11  | CI builds VS Code Web + image + extensions, publishes Pages on `main`  | ✅ pages.yml (workbench + Pages) + disk-image.yml (release asset) |
+| 11  | CI builds VS Code Web + image + extensions, publishes Pages on `main`  | ✅ pages.yml (workbench + Pages + staged disk chunks) + disk-image.yml (release asset source) |
 
 ## Network reality
 
@@ -180,8 +181,10 @@ without further integration work.
 ## Constraints carried forward from issue #1
 
 - **CheerpX license** — free for personal/educational/open-source use.
-- **GitHub Pages 100 MB per-file soft limit** — disk image must live as
-  a Release asset.
+- **Large disk image hosting** — the full ext2 image is too large for
+  normal Git tracking, so it lives as a Release asset. The browser does
+  not read that asset directly; `pages.yml` downloads it in CI and
+  deploys 128 KiB same-origin chunks for `CheerpX.GitHubDevice`.
 - **Cold start** — 30 s – 2 min depending on connection. SW + IDB
   caching makes second visits fast.
 - **RAM** — 1.5–2.5 GB for VS Code + WebVM + cargo. Mobile is mostly
@@ -205,6 +208,9 @@ node web/build/dev-server.mjs 8080
 # Build the Alpine + Rust disk image (needs docker + sudo):
 ./web/disk/build.sh
 # produces web/disk/rust-alpine.ext2
+
+# Stage the release asset into Pages-compatible GitHubDevice chunks:
+node web/build/stage-pages-disk.mjs
 
 # Existing Rust template still builds + tests:
 cargo fmt --check && cargo clippy --all-targets --all-features && cargo test

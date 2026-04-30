@@ -94,7 +94,7 @@ test('coi-bootstrap: sw.js still synthesizes COOP/COEP (regression guard for the
   // The bootstrap is one half of the fix; sw.js's withCoopCoep is the
   // other. Pin them down together so a future cleanup can't drop one.
   assert.match(src, /Cross-Origin-Opener-Policy.*same-origin/);
-  assert.match(src, /Cross-Origin-Embedder-Policy.*credentialless/);
+  assert.match(src, /Cross-Origin-Embedder-Policy.*require-corp/);
 });
 
 // ---- (b) behavioural tests (vm sandbox) ----------------------------------

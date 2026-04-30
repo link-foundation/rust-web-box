@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -68,10 +69,9 @@ jobs:
           retention-days: 14
 
       # On main and on workflow_dispatch we publish the image to a
-      # rolling release tag so the static site can fetch it. The
-      # default tag (`disk-latest`) is what `web/disk/manifest.json`
-      # points to, so a successful main build automatically publishes
-      # the disk that GitHub Pages will serve.
+      # rolling release tag. The Pages workflow downloads that release
+      # asset server-side, splits it into same-origin GitHubDevice
+      # chunks, and deploys those chunks with the static site.
       - name: Publish as Release asset (rolling tag)
         if: |
           github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -90,3 +90,17 @@ jobs:
             || true
           gh release upload "$TAG" web/disk/rust-alpine.ext2 --clobber
           echo "Released to https://github.com/${{ github.repository }}/releases/tag/$TAG"
+
+      - name: Redeploy Pages with fresh disk chunks
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/main'
+          || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.inputs.release_tag || 'disk-latest' }}"
+          if [ "$TAG" != "disk-latest" ]; then
+            echo "Skipping Pages redeploy for non-default disk tag: $TAG"
+            exit 0
+          fi
+          gh workflow run pages.yml --ref main

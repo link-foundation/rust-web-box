@@ -17,8 +17,9 @@
 #     -f web/disk/Dockerfile.disk -t rust-web-box-disk .
 #
 # The output ext2 lives outside this image and is uploaded as a GitHub
-# Release asset — the binary itself never lands on Pages (~100 MB
-# per-file soft limit there).
+# Release asset. The Pages workflow turns that release asset into small
+# same-origin CheerpX GitHubDevice chunks; the browser never fetches the
+# release asset directly.
 
 # i386 Alpine: minimum viable userspace for CheerpX.
 FROM i386/alpine:3.20

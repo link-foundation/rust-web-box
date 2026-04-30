@@ -1,0 +1,752 @@
+TAP version 13
+# Subtest: boot shell: index.html mounts directly into <body> with no custom UI overlay
+ok 1 - boot shell: index.html mounts directly into <body> with no custom UI overlay
+  ---
+  duration_ms: 7.670889
+  ...
+# Subtest: boot shell: index.html references workbench config meta
+ok 2 - boot shell: index.html references workbench config meta
+  ---
+  duration_ms: 0.838262
+  ...
+# Subtest: boot shell: workbench config preinstalls our two extensions
+ok 3 - boot shell: workbench config preinstalls our two extensions
+  ---
+  duration_ms: 0.822918
+  ...
+# Subtest: boot shell: index.html points to vendored vscode-web bundle
+ok 4 - boot shell: index.html points to vendored vscode-web bundle
+  ---
+  duration_ms: 0.673986
+  ...
+# Subtest: boot shell: glue modules exist
+ok 5 - boot shell: glue modules exist
+  ---
+  duration_ms: 1.000513
+  ...
+# Subtest: boot shell: extensions are present with package.json + extension.js
+ok 6 - boot shell: extensions are present with package.json + extension.js
+  ---
+  duration_ms: 1.403515
+  ...
+# Subtest: boot shell: webvm-host package.json declares web extensionKind
+ok 7 - boot shell: webvm-host package.json declares web extensionKind
+  ---
+  duration_ms: 2.610455
+  ...
+# Subtest: boot shell: rust-analyzer-web package.json declares rust language
+ok 8 - boot shell: rust-analyzer-web package.json declares rust language
+  ---
+  duration_ms: 0.945621
+  ...
+# Subtest: boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+ok 9 - boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+  ---
+  duration_ms: 1.900958
+  ...
+# Subtest: boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+ok 10 - boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+  ---
+  duration_ms: 6.298781
+  ...
+# Subtest: boot shell: workbench bootstrap provides process.env for browserified dependencies
+ok 11 - boot shell: workbench bootstrap provides process.env for browserified dependencies
+  ---
+  duration_ms: 0.547016
+  ...
+# Subtest: boot shell: rendered index keeps the browser process.env shim
+ok 12 - boot shell: rendered index keeps the browser process.env shim
+  ---
+  duration_ms: 2.731207
+  ...
+# Subtest: boot shell: webvm-host extension shows a "Booting Linux VM" banner
+ok 13 - boot shell: webvm-host extension shows a "Booting Linux VM" banner
+  ---
+  duration_ms: 3.559011
+  ...
+# Subtest: boot shell: webvm-host auto-opens a terminal on activation
+ok 14 - boot shell: webvm-host auto-opens a terminal on activation
+  ---
+  duration_ms: 0.548738
+  ...
+# Subtest: boot shell: webvm-host auto-opens hello_world.rs on activation
+ok 15 - boot shell: webvm-host auto-opens hello_world.rs on activation
+  ---
+  duration_ms: 1.773086
+  ...
+# Subtest: boot shell: workspace-fs seeds hello_world.rs at workspace root
+ok 16 - boot shell: workspace-fs seeds hello_world.rs at workspace root
+  ---
+  duration_ms: 2.370769
+  ...
+# Subtest: boot shell: webvm-server mirrors workspace into the guest via heredocs
+ok 17 - boot shell: webvm-server mirrors workspace into the guest via heredocs
+  ---
+  duration_ms: 0.600097
+  ...
+# Subtest: boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+ok 18 - boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+  ---
+  duration_ms: 0.673085
+  ...
+# Subtest: boot shell: boot.js stages workspace-only server before VM is up
+ok 19 - boot shell: boot.js stages workspace-only server before VM is up
+  ---
+  duration_ms: 0.542029
+  ...
+# Subtest: boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+ok 20 - boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+  ---
+  duration_ms: 0.758582
+  ...
+# Subtest: boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+ok 21 - boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+  ---
+  duration_ms: 2.45168
+  ...
+# Subtest: boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+ok 22 - boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+  ---
+  duration_ms: 0.693064
+  ...
+# Subtest: boot shell: pages workflow deploys to GitHub Pages on main
+ok 23 - boot shell: pages workflow deploys to GitHub Pages on main
+  ---
+  duration_ms: 0.42879
+  ...
+# Subtest: boot shell: disk-image workflow exists and triggers on workflow_dispatch
+ok 24 - boot shell: disk-image workflow exists and triggers on workflow_dispatch
+  ---
+  duration_ms: 3.020648
+  ...
+# Subtest: boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+ok 25 - boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+  ---
+  duration_ms: 0.537673
+  ...
+# Subtest: cargo-install: full request sequence for `cargo install serde` routes correctly
+ok 26 - cargo-install: full request sequence for `cargo install serde` routes correctly
+  ---
+  duration_ms: 28.147041
+  ...
+# Subtest: cargo-install: sparse-index host classification matches production rules
+ok 27 - cargo-install: sparse-index host classification matches production rules
+  ---
+  duration_ms: 0.113699
+  ...
+# Subtest: cargo-install: docs.rs and crates.io mirrors are blocked (defence in depth)
+ok 28 - cargo-install: docs.rs and crates.io mirrors are blocked (defence in depth)
+  ---
+  duration_ms: 1.664695
+  ...
+# Subtest: cargo-install: tarball download survives transient proxy failure on an index call
+ok 29 - cargo-install: tarball download survives transient proxy failure on an index call
+  ---
+  duration_ms: 0.522831
+  ...
+# [rust-web-box] CheerpX served from CDN; vendored copy not found: Error: vendored missing
+#     at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777522667540/web/tests/cheerpx-bridge.test.mjs:14:23)
+#     at Test.runInAsyncScope (node:async_hooks:206:9)
+#     at Test.run (node:internal/test_runner/test:796:25)
+#     at Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+#     at node:internal/test_runner/harness:255:12
+#     at node:internal/process/task_queues:140:7
+#     at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+#     at AsyncResource.runMicrotask (node:internal/process/task_queues:137:8)
+# [rust-web-box] disk https://example.com/missing.ext2 unreachable (fetch failed); falling back to wss://disks.webvm.io/fallback.ext2
+# [rust-web-box] warm disk https://example.com/rust-alpine.ext2 unavailable (probe: https://example.com/rust-alpine.ext2, reason: unknown); falling back to default disk
+# [rust-web-box] disk manifest unavailable, using fallback: Error: network down
+#     at fetchImpl (file:///tmp/gh-issue-solver-1777522667540/web/tests/cheerpx-bridge.test.mjs:208:13)
+#     at resolveDiskConfig (file:///tmp/gh-issue-solver-1777522667540/web/glue/cheerpx-bridge.js:201:23)
+#     at resolveDiskUrl (file:///tmp/gh-issue-solver-1777522667540/web/glue/cheerpx-bridge.js:235:17)
+#     at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777522667540/web/tests/cheerpx-bridge.test.mjs:206:21)
+#     at Test.runInAsyncScope (node:async_hooks:206:9)
+#     at Test.run (node:internal/test_runner/test:796:25)
+#     at Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+#     at Test.postRun (node:internal/test_runner/test:889:19)
+#     at Test.run (node:internal/test_runner/test:835:12)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+# Subtest: loadCheerpX: prefers vendored module, falls back to CDN
+ok 30 - loadCheerpX: prefers vendored module, falls back to CDN
+  ---
+  duration_ms: 3.569358
+  ...
+# Subtest: loadCheerpX: throws aggregated error when both fail
+ok 31 - loadCheerpX: throws aggregated error when both fail
+  ---
+  duration_ms: 0.541667
+  ...
+# Subtest: bootLinux: rejects without CheerpX module
+ok 32 - bootLinux: rejects without CheerpX module
+  ---
+  duration_ms: 2.594633
+  ...
+# Subtest: bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
+ok 33 - bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
+  ---
+  duration_ms: 0.693595
+  ...
+# Subtest: bootLinux: builds the WebVM-style mount stack and surfaces progress
+ok 34 - bootLinux: builds the WebVM-style mount stack and surfaces progress
+  ---
+  duration_ms: 0.423572
+  ...
+# Subtest: createBlockDevice: selects the CheerpX device for each disk kind
+ok 35 - createBlockDevice: selects the CheerpX device for each disk kind
+  ---
+  duration_ms: 0.360878
+  ...
+# Subtest: resolveDiskUrl: uses warm.url when set and probe succeeds
+ok 36 - resolveDiskUrl: uses warm.url when set and probe succeeds
+  ---
+  duration_ms: 3.105645
+  ...
+# Subtest: resolveDiskUrl: falls back to default.url when warm.url is null
+ok 37 - resolveDiskUrl: falls back to default.url when warm.url is null
+  ---
+  duration_ms: 0.277334
+  ...
+# Subtest: resolveDiskUrl: falls back to default.url when warm probe fails (404)
+ok 38 - resolveDiskUrl: falls back to default.url when warm probe fails (404)
+  ---
+  duration_ms: 1.619668
+  ...
+# Subtest: resolveDiskUrl: falls back to hard-coded URL on fetch error
+ok 39 - resolveDiskUrl: falls back to hard-coded URL on fetch error
+  ---
+  duration_ms: 0.612204
+  ...
+# Subtest: attachConsole: rejects without a Linux handle
+ok 40 - attachConsole: rejects without a Linux handle
+  ---
+  duration_ms: 0.275452
+  ...
+# Subtest: attachConsole: write() drives cxReadFunc per character
+ok 41 - attachConsole: write() drives cxReadFunc per character
+  ---
+  duration_ms: 0.334099
+  ...
+# Subtest: attachConsole: onData receives writer output as Uint8Array
+ok 42 - attachConsole: onData receives writer output as Uint8Array
+  ---
+  duration_ms: 0.238716
+  ...
+# Subtest: attachConsole: dispose drops listeners
+ok 43 - attachConsole: dispose drops listeners
+  ---
+  duration_ms: 0.229652
+  ...
+# Subtest: attachConsole: throws when CheerpX has no setCustomConsole
+ok 44 - attachConsole: throws when CheerpX has no setCustomConsole
+  ---
+  duration_ms: 1.188884
+  ...
+# Subtest: cheerpx vendor list: cxcore-no-return-call.wasm is fetched
+ok 45 - cheerpx vendor list: cxcore-no-return-call.wasm is fetched
+  ---
+  duration_ms: 5.204007
+  ...
+# Subtest: cheerpx vendor list: every cxcore*.js has a paired .wasm
+ok 46 - cheerpx vendor list: every cxcore*.js has a paired .wasm
+  ---
+  duration_ms: 0.974083
+  ...
+# Subtest: cheerpx vendor list: cx_esm.js / cx.esm.js are still required
+ok 47 - cheerpx vendor list: cx_esm.js / cx.esm.js are still required
+  ---
+  duration_ms: 0.791311
+  ...
+# Subtest: coi-bootstrap: glue/coi-bootstrap.js exists and exports nothing (classic script)
+ok 48 - coi-bootstrap: glue/coi-bootstrap.js exists and exports nothing (classic script)
+  ---
+  duration_ms: 10.835272
+  ...
+# Subtest: coi-bootstrap: index.html loads coi-bootstrap.js as the first <script> in <head>
+ok 49 - coi-bootstrap: index.html loads coi-bootstrap.js as the first <script> in <head>
+  ---
+  duration_ms: 2.832407
+  ...
+# Subtest: coi-bootstrap: build/index.template.html loads coi-bootstrap.js as the first <script> in <head>
+ok 50 - coi-bootstrap: build/index.template.html loads coi-bootstrap.js as the first <script> in <head>
+  ---
+  duration_ms: 1.375444
+  ...
+# Subtest: coi-bootstrap: boot.js no longer registers the SW directly (single owner)
+ok 51 - coi-bootstrap: boot.js no longer registers the SW directly (single owner)
+  ---
+  duration_ms: 0.530963
+  ...
+# Subtest: coi-bootstrap: sw.js still synthesizes COOP/COEP (regression guard for the header half)
+ok 52 - coi-bootstrap: sw.js still synthesizes COOP/COEP (regression guard for the header half)
+  ---
+  duration_ms: 0.551673
+  ...
+# Subtest: coi-bootstrap: warm load (already isolated) is a no-op — no reload, no register
+ok 53 - coi-bootstrap: warm load (already isolated) is a no-op — no reload, no register
+  ---
+  duration_ms: 5.545136
+  ...
+# Subtest: coi-bootstrap: ?coi=0 opt-out skips registration entirely
+ok 54 - coi-bootstrap: ?coi=0 opt-out skips registration entirely
+  ---
+  duration_ms: 2.989402
+  ...
+# Subtest: coi-bootstrap: no service worker API logs a warning and bails (no throw)
+ok 55 - coi-bootstrap: no service worker API logs a warning and bails (no throw)
+  ---
+  duration_ms: 2.973087
+  ...
+# Subtest: coi-bootstrap: fresh load with controller attached but not isolated triggers ONE reload
+ok 56 - coi-bootstrap: fresh load with controller attached but not isolated triggers ONE reload
+  ---
+  duration_ms: 6.985887
+  ...
+# Subtest: coi-bootstrap: second pass with marker set does NOT reload (loop guard)
+ok 57 - coi-bootstrap: second pass with marker set does NOT reload (loop guard)
+  ---
+  duration_ms: 3.27677
+  ...
+# Subtest: coi-bootstrap: fresh load with no controller registers SW with relative URL
+ok 58 - coi-bootstrap: fresh load with no controller registers SW with relative URL
+  ---
+  duration_ms: 2.750235
+  ...
+# Subtest: parseDebugSpec: returns null when no signal is present
+ok 59 - parseDebugSpec: returns null when no signal is present
+  ---
+  duration_ms: 1.149796
+  ...
+# Subtest: parseDebugSpec: ?debug=1 enables all namespaces
+ok 60 - parseDebugSpec: ?debug=1 enables all namespaces
+  ---
+  duration_ms: 0.567077
+  ...
+# Subtest: parseDebugSpec: ?debug=cheerpx,bus parses to a namespace set
+ok 61 - parseDebugSpec: ?debug=cheerpx,bus parses to a namespace set
+  ---
+  duration_ms: 2.880309
+  ...
+# Subtest: parseDebugSpec: localStorage rustWebBoxDebug is honoured when URL is silent
+ok 62 - parseDebugSpec: localStorage rustWebBoxDebug is honoured when URL is silent
+  ---
+  duration_ms: 0.153668
+  ...
+# Subtest: parseDebugSpec: URL parameter wins over localStorage
+ok 63 - parseDebugSpec: URL parameter wins over localStorage
+  ---
+  duration_ms: 0.153229
+  ...
+# Subtest: createDebug: returns a no-op (zero cost) when debug is off
+ok 64 - createDebug: returns a no-op (zero cost) when debug is off
+  ---
+  duration_ms: 0.142183
+  ...
+# Subtest: createDebug: logs through sink when ?debug=1
+ok 65 - createDebug: logs through sink when ?debug=1
+  ---
+  duration_ms: 0.11406
+  ...
+# Subtest: createDebug: filters by namespace when spec is a list
+ok 66 - createDebug: filters by namespace when spec is a list
+  ---
+  duration_ms: 0.150064
+  ...
+# Subtest: createDebug: tolerates a localStorage shim that throws (private mode)
+ok 67 - createDebug: tolerates a localStorage shim that throws (private mode)
+  ---
+  duration_ms: 0.202592
+  ...
+# Subtest: dumpRuntime: returns a JSON-serialisable snapshot
+ok 68 - dumpRuntime: returns a JSON-serialisable snapshot
+  ---
+  duration_ms: 0.486295
+  ...
+# Subtest: dumpRuntime: handles a missing __rustWebBox gracefully
+ok 69 - dumpRuntime: handles a missing __rustWebBox gracefully
+  ---
+  duration_ms: 0.151246
+  ...
+# Subtest: probeUrl: returns ok=true when fetch yields a basic/cors readable response
+ok 70 - probeUrl: returns ok=true when fetch yields a basic/cors readable response
+  ---
+  duration_ms: 2.528634
+  ...
+# Subtest: probeUrl: returns ok=false reason=cors-or-network when fetch throws TypeError
+ok 71 - probeUrl: returns ok=false reason=cors-or-network when fetch throws TypeError
+  ---
+  duration_ms: 0.364986
+  ...
+# Subtest: probeUrl: returns ok=false reason=not-found when server replies 404
+ok 72 - probeUrl: returns ok=false reason=not-found when server replies 404
+  ---
+  duration_ms: 0.199478
+  ...
+# Subtest: probeUrl: returns ok=false reason=opaque if response is opaque (no-cors slipped through)
+ok 73 - probeUrl: returns ok=false reason=opaque if response is opaque (no-cors slipped through)
+  ---
+  duration_ms: 0.130565
+  ...
+# Subtest: probeUrl: returns ok=false reason=invalid-input for missing url or fetchImpl
+ok 74 - probeUrl: returns ok=false reason=invalid-input for missing url or fetchImpl
+  ---
+  duration_ms: 0.092008
+  ...
+# Subtest: probeUrl: skips probe (returns ok=true) for non-HTTP(S) URLs like wss://
+ok 75 - probeUrl: skips probe (returns ok=true) for non-HTTP(S) URLs like wss://
+  ---
+  duration_ms: 0.136533
+  ...
+# Subtest: probeUrl: probes same-origin relative URLs instead of treating them as opaque-safe
+ok 76 - probeUrl: probes same-origin relative URLs instead of treating them as opaque-safe
+  ---
+  duration_ms: 0.168452
+  ...
+# Subtest: probeUrl: returns ok=false reason=timeout when AbortController fires
+ok 77 - probeUrl: returns ok=false reason=timeout when AbortController fires
+  ---
+  duration_ms: 0.164816
+  ...
+# Subtest: resolveDiskUrl: surfaces a structured CORS warning when warm probe is CORS-blocked
+ok 78 - resolveDiskUrl: surfaces a structured CORS warning when warm probe is CORS-blocked
+  ---
+  duration_ms: 1.036968
+  ...
+# Subtest: resolveDiskUrl: emits an info log (not a warning) when warm probe is missing (404)
+ok 79 - resolveDiskUrl: emits an info log (not a warning) when warm probe is missing (404)
+  ---
+  duration_ms: 0.352387
+  ...
+# Subtest: resolveDiskUrl: tolerates legacy probes that return a bare boolean
+ok 80 - resolveDiskUrl: tolerates legacy probes that return a bare boolean
+  ---
+  duration_ms: 0.23359
+  ...
+# Subtest: resolveDiskUrl: structured warning never references undefined when probe returns bare false
+ok 81 - resolveDiskUrl: structured warning never references undefined when probe returns bare false
+  ---
+  duration_ms: 1.20592
+  ...
+# Subtest: resolveDiskConfig: probes GitHubDevice entries via .meta and preserves kind
+ok 82 - resolveDiskConfig: probes GitHubDevice entries via .meta and preserves kind
+  ---
+  duration_ms: 0.183624
+  ...
+# Subtest: disk manifest: committed warm source is not a browser GitHub Release redirect
+ok 83 - disk manifest: committed warm source is not a browser GitHub Release redirect
+  ---
+  duration_ms: 13.557736
+  ...
+# Subtest: stage-pages-disk: writes WebVM GitHubDevice chunks plus .meta
+ok 84 - stage-pages-disk: writes WebVM GitHubDevice chunks plus .meta
+  ---
+  duration_ms: 14.629576
+  ...
+# Subtest: stage-pages-disk: removes stale chunks before writing a new image
+ok 85 - stage-pages-disk: removes stale chunks before writing a new image
+  ---
+  duration_ms: 3.445813
+  ...
+# Subtest: stage-pages-disk: manifest warm entry is converted to same-origin GitHubDevice layout
+ok 86 - stage-pages-disk: manifest warm entry is converted to same-origin GitHubDevice layout
+  ---
+  duration_ms: 0.305406
+  ...
+# Subtest: extension paths: dev server at root → no base prefix
+ok 87 - extension paths: dev server at root → no base prefix
+  ---
+  duration_ms: 4.065548
+  ...
+# Subtest: extension paths: GitHub Pages at /rust-web-box/ → base prefix added
+ok 88 - extension paths: GitHub Pages at /rust-web-box/ → base prefix added
+  ---
+  duration_ms: 2.61283
+  ...
+# Subtest: extension paths: deeply nested deploy at /foo/bar/ → base prefix added
+ok 89 - extension paths: deeply nested deploy at /foo/bar/ → base prefix added
+  ---
+  duration_ms: 0.1337
+  ...
+# Subtest: extension paths: legacy path without {BASE_PATH} still gets rewritten (no regression)
+ok 90 - extension paths: legacy path without {BASE_PATH} still gets rewritten (no regression)
+  ---
+  duration_ms: 0.086148
+  ...
+# Subtest: extension paths: unknown placeholders pass through unchanged
+ok 91 - extension paths: unknown placeholders pass through unchanged
+  ---
+  duration_ms: 0.086459
+  ...
+# Subtest: extension paths: idempotent — running twice produces the same result
+ok 92 - extension paths: idempotent — running twice produces the same result
+  ---
+  duration_ms: 0.090736
+  ...
+# Subtest: extension paths: handles missing additionalBuiltinExtensions gracefully
+ok 93 - extension paths: handles missing additionalBuiltinExtensions gracefully
+  ---
+  duration_ms: 0.499195
+  ...
+# Subtest: extension paths: rendered index.html ships {BASE_PATH} placeholder (no regression)
+ok 94 - extension paths: rendered index.html ships {BASE_PATH} placeholder (no regression)
+  ---
+  duration_ms: 16.976989
+  ...
+# Subtest: extension paths: inline bootstrap substitutes {BASE_PATH} (no regression)
+ok 95 - extension paths: inline bootstrap substitutes {BASE_PATH} (no regression)
+  ---
+  duration_ms: 3.860712
+  ...
+# Subtest: classifyHost: known direct hosts route direct
+ok 96 - classifyHost: known direct hosts route direct
+  ---
+  duration_ms: 0.872652
+  ...
+# Subtest: classifyHost: known proxy-only hosts route via proxy
+ok 97 - classifyHost: known proxy-only hosts route via proxy
+  ---
+  duration_ms: 0.105718
+  ...
+# Subtest: classifyHost: unknown hosts are blocked
+ok 98 - classifyHost: unknown hosts are blocked
+  ---
+  duration_ms: 0.067842
+  ...
+# Subtest: vmFetch: routes static.crates.io directly
+ok 99 - vmFetch: routes static.crates.io directly
+  ---
+  duration_ms: 23.138576
+  ...
+# Subtest: vmFetch: routes crates.io api directly
+ok 100 - vmFetch: routes crates.io api directly
+  ---
+  duration_ms: 0.498274
+  ...
+# Subtest: vmFetch: rejects non-allowlisted hosts with NetworkBlockedError
+ok 101 - vmFetch: rejects non-allowlisted hosts with NetworkBlockedError
+  ---
+  duration_ms: 4.89728
+  ...
+# Subtest: vmFetch: index.crates.io tries proxies in order until one succeeds
+ok 102 - vmFetch: index.crates.io tries proxies in order until one succeeds
+  ---
+  duration_ms: 4.418554
+  ...
+# Subtest: vmFetch: ProxyChainError when every proxy fails
+ok 103 - vmFetch: ProxyChainError when every proxy fails
+  ---
+  duration_ms: 0.599464
+  ...
+# Subtest: vmFetch: ProxyChainError captures thrown errors per proxy
+ok 104 - vmFetch: ProxyChainError captures thrown errors per proxy
+  ---
+  duration_ms: 0.619966
+  ...
+# Subtest: createNetworkShim: requires a fetch implementation
+ok 105 - createNetworkShim: requires a fetch implementation
+  ---
+  duration_ms: 0.248142
+  ...
+# Subtest: vmFetch: forwards init across direct and proxy paths
+ok 106 - vmFetch: forwards init across direct and proxy paths
+  ---
+  duration_ms: 0.600527
+  ...
+# Subtest: pages-parity: dev-server --base=/x/y refuses anything outside the prefix (Pages mirror)
+ok 107 - pages-parity: dev-server --base=/x/y refuses anything outside the prefix (Pages mirror)
+  ---
+  duration_ms: 147.068239
+  ...
+# Subtest: pages-parity: bare-root visit redirects to the prefix (matches Pages /rust-web-box/ canonical URL)
+ok 108 - pages-parity: bare-root visit redirects to the prefix (matches Pages /rust-web-box/ canonical URL)
+  ---
+  duration_ms: 41.79358
+  ...
+# Subtest: pages-parity: index.html shipped under sub-path still encodes the {BASE_PATH} placeholder
+ok 109 - pages-parity: index.html shipped under sub-path still encodes the {BASE_PATH} placeholder
+  ---
+  duration_ms: 57.415197
+  ...
+# Subtest: pages-parity: COOP/COEP headers are set under the sub-path (CheerpX SAB requirement)
+ok 110 - pages-parity: COOP/COEP headers are set under the sub-path (CheerpX SAB requirement)
+  ---
+  duration_ms: 49.470087
+  ...
+# Subtest: pages-parity: extensions are reachable under the sub-path (the literal issue-\#3 404)
+ok 111 - pages-parity: extensions are reachable under the sub-path (the literal issue-\#3 404)
+  ---
+  duration_ms: 57.783035
+  ...
+# Subtest: lfToCrlf: converts lone LF to CRLF
+ok 112 - lfToCrlf: converts lone LF to CRLF
+  ---
+  duration_ms: 4.956898
+  ...
+# Subtest: lfToCrlf: preserves existing CRLF
+ok 113 - lfToCrlf: preserves existing CRLF
+  ---
+  duration_ms: 0.159849
+  ...
+# Subtest: lfToCrlf: leaves bare CR alone
+ok 114 - lfToCrlf: leaves bare CR alone
+  ---
+  duration_ms: 0.100279
+  ...
+# Subtest: lfToCrlf: matches the staircase repro from the screenshot
+ok 115 - lfToCrlf: matches the staircase repro from the screenshot
+  ---
+  duration_ms: 0.241861
+  ...
+# Subtest: normaliser: stateful across chunks split mid-CRLF
+ok 116 - normaliser: stateful across chunks split mid-CRLF
+  ---
+  duration_ms: 1.093862
+  ...
+# Subtest: normaliser: independent instances do not share state
+ok 117 - normaliser: independent instances do not share state
+  ---
+  duration_ms: 0.098357
+  ...
+# Subtest: normaliser: empty / non-string input is passed through
+ok 118 - normaliser: empty / non-string input is passed through
+  ---
+  duration_ms: 0.078957
+  ...
+# Subtest: normaliser: handles ANSI control sequences without mangling them
+ok 119 - normaliser: handles ANSI control sequences without mangling them
+  ---
+  duration_ms: 0.083094
+  ...
+# Subtest: bus: client request / server response round-trip
+ok 120 - bus: client request / server response round-trip
+  ---
+  duration_ms: 4.099639
+  ...
+# Subtest: bus: unknown method returns NO_METHOD error
+ok 121 - bus: unknown method returns NO_METHOD error
+  ---
+  duration_ms: 2.119253
+  ...
+# Subtest: bus: handler errors propagate to client
+ok 122 - bus: handler errors propagate to client
+  ---
+  duration_ms: 0.564262
+  ...
+# Subtest: bus: events broadcast to subscribers
+ok 123 - bus: events broadcast to subscribers
+  ---
+  duration_ms: 7.131703
+  ...
+# Subtest: bus: request times out when server never responds
+ok 124 - bus: request times out when server never responds
+  ---
+  duration_ms: 25.170559
+  ...
+# Subtest: bus: parallel requests do not interfere
+ok 125 - bus: parallel requests do not interfere
+  ---
+  duration_ms: 21.115016
+  ...
+# Subtest: bus: client throws on missing channel
+ok 126 - bus: client throws on missing channel
+  ---
+  duration_ms: 0.305136
+  ...
+# Subtest: bus: server throws on missing channel
+ok 127 - bus: server throws on missing channel
+  ---
+  duration_ms: 0.108822
+  ...
+# Subtest: bus: setMethods hot-swaps the handler table
+ok 128 - bus: setMethods hot-swaps the handler table
+  ---
+  duration_ms: 0.679424
+  ...
+# Subtest: bus: dispose stops handling new requests
+ok 129 - bus: dispose stops handling new requests
+  ---
+  duration_ms: 25.470917
+  ...
+# Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
+ok 130 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
+  ---
+  duration_ms: 8.111378
+  ...
+# Subtest: webvm-server: existing CRLF passed through, bare CR untouched
+ok 131 - webvm-server: existing CRLF passed through, bare CR untouched
+  ---
+  duration_ms: 6.461685
+  ...
+# Subtest: webvm-server: vt channel filtered (only stdout broadcast)
+ok 132 - webvm-server: vt channel filtered (only stdout broadcast)
+  ---
+  duration_ms: 5.820677
+  ...
+# Subtest: webvm-server: makeChannelPair sanity
+ok 133 - webvm-server: makeChannelPair sanity
+  ---
+  duration_ms: 0.601848
+  ...
+# Subtest: workspace-fs: normalize() canonicalises paths
+ok 134 - workspace-fs: normalize() canonicalises paths
+  ---
+  duration_ms: 0.836919
+  ...
+# Subtest: workspace-fs: seed includes hello_world.rs at /workspace level
+ok 135 - workspace-fs: seed includes hello_world.rs at /workspace level
+  ---
+  duration_ms: 0.168582
+  ...
+# Subtest: workspace-fs: seed contains a buildable Cargo project at /workspace/hello
+ok 136 - workspace-fs: seed contains a buildable Cargo project at /workspace/hello
+  ---
+  duration_ms: 0.08709
+  ...
+# Subtest: workspace-fs: file/dir type constants are stable
+ok 137 - workspace-fs: file/dir type constants are stable
+  ---
+  duration_ms: 0.179889
+  ...
+# Subtest: workspace-fs: seed paths all begin with /workspace
+ok 138 - workspace-fs: seed paths all begin with /workspace
+  ---
+  duration_ms: 0.204325
+  ...
+# Subtest: workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+ok 139 - workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+  ---
+  duration_ms: 0.369642
+  ...
+# Subtest: workspace-server: vm.status reports stage 1
+ok 140 - workspace-server: vm.status reports stage 1
+  ---
+  duration_ms: 1.225199
+  ...
+# Subtest: workspace-server: fs.* methods delegate to the workspace
+ok 141 - workspace-server: fs.* methods delegate to the workspace
+  ---
+  duration_ms: 0.908526
+  ...
+# Subtest: workspace-server: proc.spawn / write / wait reject with VM_BOOTING
+ok 142 - workspace-server: proc.spawn / write / wait reject with VM_BOOTING
+  ---
+  duration_ms: 0.444353
+  ...
+# Subtest: workspace-server: proc.resize and proc.kill are no-ops in stage 1
+ok 143 - workspace-server: proc.resize and proc.kill are no-ops in stage 1
+  ---
+  duration_ms: 1.091829
+  ...
+# Subtest: workspace-server: throws when workspace is missing
+ok 144 - workspace-server: throws when workspace is missing
+  ---
+  duration_ms: 0.424004
+  ...
+1..144
+# tests 144
+# suites 0
+# pass 144
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5539.888546

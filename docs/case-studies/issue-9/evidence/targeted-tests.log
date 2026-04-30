@@ -1,0 +1,397 @@
+TAP version 13
+# Subtest: boot shell: index.html mounts directly into <body> with no custom UI overlay
+ok 1 - boot shell: index.html mounts directly into <body> with no custom UI overlay
+  ---
+  duration_ms: 10.213694
+  ...
+# Subtest: boot shell: index.html references workbench config meta
+ok 2 - boot shell: index.html references workbench config meta
+  ---
+  duration_ms: 4.676199
+  ...
+# Subtest: boot shell: workbench config preinstalls our two extensions
+ok 3 - boot shell: workbench config preinstalls our two extensions
+  ---
+  duration_ms: 4.05366
+  ...
+# Subtest: boot shell: index.html points to vendored vscode-web bundle
+ok 4 - boot shell: index.html points to vendored vscode-web bundle
+  ---
+  duration_ms: 1.321873
+  ...
+# Subtest: boot shell: glue modules exist
+ok 5 - boot shell: glue modules exist
+  ---
+  duration_ms: 2.031021
+  ...
+# Subtest: boot shell: extensions are present with package.json + extension.js
+ok 6 - boot shell: extensions are present with package.json + extension.js
+  ---
+  duration_ms: 1.013394
+  ...
+# Subtest: boot shell: webvm-host package.json declares web extensionKind
+ok 7 - boot shell: webvm-host package.json declares web extensionKind
+  ---
+  duration_ms: 2.968471
+  ...
+# Subtest: boot shell: rust-analyzer-web package.json declares rust language
+ok 8 - boot shell: rust-analyzer-web package.json declares rust language
+  ---
+  duration_ms: 3.23649
+  ...
+# Subtest: boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+ok 9 - boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+  ---
+  duration_ms: 2.637196
+  ...
+# Subtest: boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+ok 10 - boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+  ---
+  duration_ms: 5.014514
+  ...
+# Subtest: boot shell: workbench bootstrap provides process.env for browserified dependencies
+ok 11 - boot shell: workbench bootstrap provides process.env for browserified dependencies
+  ---
+  duration_ms: 4.360398
+  ...
+# Subtest: boot shell: rendered index keeps the browser process.env shim
+ok 12 - boot shell: rendered index keeps the browser process.env shim
+  ---
+  duration_ms: 0.83819
+  ...
+# Subtest: boot shell: webvm-host extension shows a "Booting Linux VM" banner
+ok 13 - boot shell: webvm-host extension shows a "Booting Linux VM" banner
+  ---
+  duration_ms: 0.847556
+  ...
+# Subtest: boot shell: webvm-host auto-opens a terminal on activation
+ok 14 - boot shell: webvm-host auto-opens a terminal on activation
+  ---
+  duration_ms: 0.899442
+  ...
+# Subtest: boot shell: webvm-host auto-opens hello_world.rs on activation
+ok 15 - boot shell: webvm-host auto-opens hello_world.rs on activation
+  ---
+  duration_ms: 0.725142
+  ...
+# Subtest: boot shell: workspace-fs seeds hello_world.rs at workspace root
+ok 16 - boot shell: workspace-fs seeds hello_world.rs at workspace root
+  ---
+  duration_ms: 0.70355
+  ...
+# Subtest: boot shell: webvm-server mirrors workspace into the guest via heredocs
+ok 17 - boot shell: webvm-server mirrors workspace into the guest via heredocs
+  ---
+  duration_ms: 0.848377
+  ...
+# Subtest: boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+ok 18 - boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+  ---
+  duration_ms: 0.973714
+  ...
+# Subtest: boot shell: boot.js stages workspace-only server before VM is up
+ok 19 - boot shell: boot.js stages workspace-only server before VM is up
+  ---
+  duration_ms: 0.782198
+  ...
+# Subtest: boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+ok 20 - boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+  ---
+  duration_ms: 1.201092
+  ...
+# Subtest: boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+ok 21 - boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+  ---
+  duration_ms: 1.203837
+  ...
+# Subtest: boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+ok 22 - boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+  ---
+  duration_ms: 3.771319
+  ...
+# Subtest: boot shell: pages workflow deploys to GitHub Pages on main
+ok 23 - boot shell: pages workflow deploys to GitHub Pages on main
+  ---
+  duration_ms: 0.724001
+  ...
+# Subtest: boot shell: disk-image workflow exists and triggers on workflow_dispatch
+ok 24 - boot shell: disk-image workflow exists and triggers on workflow_dispatch
+  ---
+  duration_ms: 0.771201
+  ...
+# Subtest: boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+ok 25 - boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+  ---
+  duration_ms: 2.538589
+  ...
+# [rust-web-box] CheerpX served from CDN; vendored copy not found: Error: vendored missing
+#     at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777522667540/web/tests/cheerpx-bridge.test.mjs:14:23)
+#     at Test.runInAsyncScope (node:async_hooks:206:9)
+#     at Test.run (node:internal/test_runner/test:796:25)
+#     at Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+#     at node:internal/test_runner/harness:255:12
+#     at node:internal/process/task_queues:140:7
+#     at AsyncResource.runInAsyncScope (node:async_hooks:206:9)
+#     at AsyncResource.runMicrotask (node:internal/process/task_queues:137:8)
+# [rust-web-box] disk https://example.com/missing.ext2 unreachable (fetch failed); falling back to wss://disks.webvm.io/fallback.ext2
+# [rust-web-box] disk manifest unavailable, using fallback: Error: network down
+#     at fetchImpl (file:///tmp/gh-issue-solver-1777522667540/web/tests/cheerpx-bridge.test.mjs:208:13)
+#     at resolveDiskConfig (file:///tmp/gh-issue-solver-1777522667540/web/glue/cheerpx-bridge.js:201:23)
+#     at resolveDiskUrl (file:///tmp/gh-issue-solver-1777522667540/web/glue/cheerpx-bridge.js:235:17)
+#     at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777522667540/web/tests/cheerpx-bridge.test.mjs:206:21)
+#     at Test.runInAsyncScope (node:async_hooks:206:9)
+#     at Test.run (node:internal/test_runner/test:796:25)
+#     at Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+#     at Test.postRun (node:internal/test_runner/test:889:19)
+#     at Test.run (node:internal/test_runner/test:835:12)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+# [rust-web-box] warm disk https://example.com/rust-alpine.ext2 unavailable (probe: https://example.com/rust-alpine.ext2, reason: unknown); falling back to default disk
+# Subtest: loadCheerpX: prefers vendored module, falls back to CDN
+ok 26 - loadCheerpX: prefers vendored module, falls back to CDN
+  ---
+  duration_ms: 3.875385
+  ...
+# Subtest: loadCheerpX: throws aggregated error when both fail
+ok 27 - loadCheerpX: throws aggregated error when both fail
+  ---
+  duration_ms: 0.539926
+  ...
+# Subtest: bootLinux: rejects without CheerpX module
+ok 28 - bootLinux: rejects without CheerpX module
+  ---
+  duration_ms: 0.346337
+  ...
+# Subtest: bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
+ok 29 - bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
+  ---
+  duration_ms: 0.538674
+  ...
+# Subtest: bootLinux: builds the WebVM-style mount stack and surfaces progress
+ok 30 - bootLinux: builds the WebVM-style mount stack and surfaces progress
+  ---
+  duration_ms: 0.613265
+  ...
+# Subtest: createBlockDevice: selects the CheerpX device for each disk kind
+ok 31 - createBlockDevice: selects the CheerpX device for each disk kind
+  ---
+  duration_ms: 0.427889
+  ...
+# Subtest: resolveDiskUrl: uses warm.url when set and probe succeeds
+ok 32 - resolveDiskUrl: uses warm.url when set and probe succeeds
+  ---
+  duration_ms: 0.47524
+  ...
+# Subtest: resolveDiskUrl: falls back to default.url when warm.url is null
+ok 33 - resolveDiskUrl: falls back to default.url when warm.url is null
+  ---
+  duration_ms: 0.184755
+  ...
+# Subtest: resolveDiskUrl: falls back to default.url when warm probe fails (404)
+ok 34 - resolveDiskUrl: falls back to default.url when warm probe fails (404)
+  ---
+  duration_ms: 0.458384
+  ...
+# Subtest: resolveDiskUrl: falls back to hard-coded URL on fetch error
+ok 35 - resolveDiskUrl: falls back to hard-coded URL on fetch error
+  ---
+  duration_ms: 0.628858
+  ...
+# Subtest: attachConsole: rejects without a Linux handle
+ok 36 - attachConsole: rejects without a Linux handle
+  ---
+  duration_ms: 0.276313
+  ...
+# Subtest: attachConsole: write() drives cxReadFunc per character
+ok 37 - attachConsole: write() drives cxReadFunc per character
+  ---
+  duration_ms: 0.310302
+  ...
+# Subtest: attachConsole: onData receives writer output as Uint8Array
+ok 38 - attachConsole: onData receives writer output as Uint8Array
+  ---
+  duration_ms: 0.243393
+  ...
+# Subtest: attachConsole: dispose drops listeners
+ok 39 - attachConsole: dispose drops listeners
+  ---
+  duration_ms: 0.220058
+  ...
+# Subtest: attachConsole: throws when CheerpX has no setCustomConsole
+ok 40 - attachConsole: throws when CheerpX has no setCustomConsole
+  ---
+  duration_ms: 1.469754
+  ...
+# Subtest: coi-bootstrap: glue/coi-bootstrap.js exists and exports nothing (classic script)
+ok 41 - coi-bootstrap: glue/coi-bootstrap.js exists and exports nothing (classic script)
+  ---
+  duration_ms: 8.25475
+  ...
+# Subtest: coi-bootstrap: index.html loads coi-bootstrap.js as the first <script> in <head>
+ok 42 - coi-bootstrap: index.html loads coi-bootstrap.js as the first <script> in <head>
+  ---
+  duration_ms: 1.895519
+  ...
+# Subtest: coi-bootstrap: build/index.template.html loads coi-bootstrap.js as the first <script> in <head>
+ok 43 - coi-bootstrap: build/index.template.html loads coi-bootstrap.js as the first <script> in <head>
+  ---
+  duration_ms: 2.351148
+  ...
+# Subtest: coi-bootstrap: boot.js no longer registers the SW directly (single owner)
+ok 44 - coi-bootstrap: boot.js no longer registers the SW directly (single owner)
+  ---
+  duration_ms: 0.705523
+  ...
+# Subtest: coi-bootstrap: sw.js still synthesizes COOP/COEP (regression guard for the header half)
+ok 45 - coi-bootstrap: sw.js still synthesizes COOP/COEP (regression guard for the header half)
+  ---
+  duration_ms: 0.82382
+  ...
+# Subtest: coi-bootstrap: warm load (already isolated) is a no-op — no reload, no register
+ok 46 - coi-bootstrap: warm load (already isolated) is a no-op — no reload, no register
+  ---
+  duration_ms: 2.102628
+  ...
+# Subtest: coi-bootstrap: ?coi=0 opt-out skips registration entirely
+ok 47 - coi-bootstrap: ?coi=0 opt-out skips registration entirely
+  ---
+  duration_ms: 2.136459
+  ...
+# Subtest: coi-bootstrap: no service worker API logs a warning and bails (no throw)
+ok 48 - coi-bootstrap: no service worker API logs a warning and bails (no throw)
+  ---
+  duration_ms: 1.752785
+  ...
+# Subtest: coi-bootstrap: fresh load with controller attached but not isolated triggers ONE reload
+ok 49 - coi-bootstrap: fresh load with controller attached but not isolated triggers ONE reload
+  ---
+  duration_ms: 7.287757
+  ...
+# Subtest: coi-bootstrap: second pass with marker set does NOT reload (loop guard)
+ok 50 - coi-bootstrap: second pass with marker set does NOT reload (loop guard)
+  ---
+  duration_ms: 1.456774
+  ...
+# Subtest: coi-bootstrap: fresh load with no controller registers SW with relative URL
+ok 51 - coi-bootstrap: fresh load with no controller registers SW with relative URL
+  ---
+  duration_ms: 1.622181
+  ...
+# Subtest: probeUrl: returns ok=true when fetch yields a basic/cors readable response
+ok 52 - probeUrl: returns ok=true when fetch yields a basic/cors readable response
+  ---
+  duration_ms: 2.375495
+  ...
+# Subtest: probeUrl: returns ok=false reason=cors-or-network when fetch throws TypeError
+ok 53 - probeUrl: returns ok=false reason=cors-or-network when fetch throws TypeError
+  ---
+  duration_ms: 0.533476
+  ...
+# Subtest: probeUrl: returns ok=false reason=not-found when server replies 404
+ok 54 - probeUrl: returns ok=false reason=not-found when server replies 404
+  ---
+  duration_ms: 0.28808
+  ...
+# Subtest: probeUrl: returns ok=false reason=opaque if response is opaque (no-cors slipped through)
+ok 55 - probeUrl: returns ok=false reason=opaque if response is opaque (no-cors slipped through)
+  ---
+  duration_ms: 0.185317
+  ...
+# Subtest: probeUrl: returns ok=false reason=invalid-input for missing url or fetchImpl
+ok 56 - probeUrl: returns ok=false reason=invalid-input for missing url or fetchImpl
+  ---
+  duration_ms: 0.136584
+  ...
+# Subtest: probeUrl: skips probe (returns ok=true) for non-HTTP(S) URLs like wss://
+ok 57 - probeUrl: skips probe (returns ok=true) for non-HTTP(S) URLs like wss://
+  ---
+  duration_ms: 0.136494
+  ...
+# Subtest: probeUrl: probes same-origin relative URLs instead of treating them as opaque-safe
+ok 58 - probeUrl: probes same-origin relative URLs instead of treating them as opaque-safe
+  ---
+  duration_ms: 0.182363
+  ...
+# Subtest: probeUrl: returns ok=false reason=timeout when AbortController fires
+ok 59 - probeUrl: returns ok=false reason=timeout when AbortController fires
+  ---
+  duration_ms: 0.227629
+  ...
+# Subtest: resolveDiskUrl: surfaces a structured CORS warning when warm probe is CORS-blocked
+ok 60 - resolveDiskUrl: surfaces a structured CORS warning when warm probe is CORS-blocked
+  ---
+  duration_ms: 1.76926
+  ...
+# Subtest: resolveDiskUrl: emits an info log (not a warning) when warm probe is missing (404)
+ok 61 - resolveDiskUrl: emits an info log (not a warning) when warm probe is missing (404)
+  ---
+  duration_ms: 6.094566
+  ...
+# Subtest: resolveDiskUrl: tolerates legacy probes that return a bare boolean
+ok 62 - resolveDiskUrl: tolerates legacy probes that return a bare boolean
+  ---
+  duration_ms: 0.312125
+  ...
+# Subtest: resolveDiskUrl: structured warning never references undefined when probe returns bare false
+ok 63 - resolveDiskUrl: structured warning never references undefined when probe returns bare false
+  ---
+  duration_ms: 0.38894
+  ...
+# Subtest: resolveDiskConfig: probes GitHubDevice entries via .meta and preserves kind
+ok 64 - resolveDiskConfig: probes GitHubDevice entries via .meta and preserves kind
+  ---
+  duration_ms: 4.527787
+  ...
+# Subtest: disk manifest: committed warm source is not a browser GitHub Release redirect
+ok 65 - disk manifest: committed warm source is not a browser GitHub Release redirect
+  ---
+  duration_ms: 22.382407
+  ...
+# Subtest: stage-pages-disk: writes WebVM GitHubDevice chunks plus .meta
+ok 66 - stage-pages-disk: writes WebVM GitHubDevice chunks plus .meta
+  ---
+  duration_ms: 14.092924
+  ...
+# Subtest: stage-pages-disk: removes stale chunks before writing a new image
+ok 67 - stage-pages-disk: removes stale chunks before writing a new image
+  ---
+  duration_ms: 4.701968
+  ...
+# Subtest: stage-pages-disk: manifest warm entry is converted to same-origin GitHubDevice layout
+ok 68 - stage-pages-disk: manifest warm entry is converted to same-origin GitHubDevice layout
+  ---
+  duration_ms: 0.30802
+  ...
+# Subtest: pages-parity: dev-server --base=/x/y refuses anything outside the prefix (Pages mirror)
+ok 69 - pages-parity: dev-server --base=/x/y refuses anything outside the prefix (Pages mirror)
+  ---
+  duration_ms: 86.71765
+  ...
+# Subtest: pages-parity: bare-root visit redirects to the prefix (matches Pages /rust-web-box/ canonical URL)
+ok 70 - pages-parity: bare-root visit redirects to the prefix (matches Pages /rust-web-box/ canonical URL)
+  ---
+  duration_ms: 47.404834
+  ...
+# Subtest: pages-parity: index.html shipped under sub-path still encodes the {BASE_PATH} placeholder
+ok 71 - pages-parity: index.html shipped under sub-path still encodes the {BASE_PATH} placeholder
+  ---
+  duration_ms: 45.052293
+  ...
+# Subtest: pages-parity: COOP/COEP headers are set under the sub-path (CheerpX SAB requirement)
+ok 72 - pages-parity: COOP/COEP headers are set under the sub-path (CheerpX SAB requirement)
+  ---
+  duration_ms: 51.899201
+  ...
+# Subtest: pages-parity: extensions are reachable under the sub-path (the literal issue-\#3 404)
+ok 73 - pages-parity: extensions are reachable under the sub-path (the literal issue-\#3 404)
+  ---
+  duration_ms: 45.417137
+  ...
+1..73
+# tests 73
+# suites 0
+# pass 73
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5394.385752

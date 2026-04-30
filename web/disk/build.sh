@@ -4,9 +4,11 @@
 # Output: web/disk/rust-alpine.ext2
 #
 # This script is invoked by CI (or manually). The output is uploaded as
-# a GitHub Release asset and referenced from web/disk/manifest.json. We
-# do not commit the binary itself because GitHub Pages rejects files
-# above ~100 MB and the image is several hundred MB.
+# a GitHub Release asset. The Pages workflow downloads that release
+# asset server-side, splits it into CheerpX GitHubDevice chunks, and
+# deploys the chunks with the static site. We do not commit the binary
+# itself because GitHub blocks regular repository files above 100 MiB
+# and the image is several hundred MB.
 #
 # Requirements: docker (with buildx), e2fsprogs (mkfs.ext2 + tune2fs),
 #               sudo for the loopback mount step.
@@ -52,7 +54,11 @@ sudo tar -xf "$TARFILE" -C "$MOUNT"
 sudo umount "$MOUNT"
 trap - EXIT
 
-# Trim free space so future incremental tooling reads less.
+# Shrink the image to the minimum filesystem size before upload. Pages
+# later stages this file as raw chunks, so sparse free space would become
+# real artifact bytes if we left the initial allocation intact.
+e2fsck -fy "$IMG" >/dev/null || true
+resize2fs -M "$IMG" >/dev/null
 e2fsck -fy "$IMG" >/dev/null || true
 
 echo "==> done: $IMG ($(du -h "$IMG" | cut -f1))"

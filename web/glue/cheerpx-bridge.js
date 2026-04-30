@@ -8,13 +8,14 @@
 //
 // Disk selection priority:
 //   1. `warm` URL from web/disk/manifest.json — our pre-baked Alpine +
-//      Rust image hosted as a `disk-latest` release asset.
+//      Rust image staged into the Pages artifact as same-origin
+//      CheerpX GitHubDevice chunks.
 //   2. `default` URL — the public WebVM Debian image, used as a hard
 //      fallback so the page comes up even before the disk-image
 //      workflow has run.
 //
-// We probe the warm URL with a HEAD request before mounting; if it
-// 404s (no release built yet) we silently fall back to default.
+// We probe the warm disk's `.meta` file before mounting; if the chunks
+// are not staged yet we fall back to default.
 //
 // Networking caveat: CheerpX's only internet path is Tailscale (browsers
 // cannot open raw TCP). The page-level network-shim mediates fetch for
@@ -32,6 +33,7 @@ const CDN_CHEERPX_ESM = `https://cxrtnc.leaningtech.com/${CHEERPX_VERSION}/cx.es
 const FALLBACK_DISK_URL =
   'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2';
 const PERSIST_KEY = 'rust-web-box-overlay-v1';
+const EXPLICIT_SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
 
 /**
  * Load the CheerpX module, preferring a vendored copy under web/cheerpx/.
@@ -68,15 +70,16 @@ export async function loadCheerpX({
 /**
  * Probe a URL to see if CheerpX's XHR-based loader can actually read it.
  *
- * Why this matters (issue #3, root cause #2): the warm Alpine+Rust image
- * is published as a GitHub Releases asset. The asset itself is reachable,
- * but the redirect target (`release-assets.githubusercontent.com`) does
- * not advertise `Access-Control-Allow-Origin`, so XHR (which has no
- * `no-cors` mode) is blocked by the browser. The previous implementation
- * used `mode: 'no-cors'` and treated an opaque response as success — that
- * told us "the URL is fetchable" but NOT "the URL is JS-readable", so we
- * happily passed CORS-blocked URLs to `CloudDevice.create()` and only
- * found out at mount time.
+ * Why this matters (issue #9): the warm Alpine+Rust image
+ * used to be published directly as a GitHub Releases asset. The asset
+ * itself is reachable, but the redirect target
+ * (`release-assets.githubusercontent.com`) does not advertise
+ * `Access-Control-Allow-Origin`, so XHR (which has no `no-cors` mode)
+ * is blocked by the browser. The previous implementation used
+ * `mode: 'no-cors'` and treated an opaque response as success — that
+ * told us "the URL is fetchable" but NOT "the URL is JS-readable", so
+ * we happily passed CORS-blocked URLs to `CloudDevice.create()` and
+ * only found out at mount time.
  *
  * The new probe issues a real `cors`-mode request: if the browser exposes
  * a readable response (`type === 'basic'` or `'cors'`), XHR will succeed
@@ -91,9 +94,12 @@ export async function probeUrl(url, fetchImpl) {
   if (!url || typeof fetchImpl !== 'function') {
     return { ok: false, reason: 'invalid-input' };
   }
-  // Non-HTTP(S) URLs (wss://, ws://) can't be probed with fetch — assume
-  // usable; the CloudDevice will surface its own error if not.
-  if (!/^https?:/i.test(url)) {
+  // Non-fetch schemes (wss://, ws://, data:, blob:) can't be probed with
+  // fetch. Same-origin relative URLs intentionally fall through: they
+  // are exactly what the Pages-hosted disk manifest uses, and treating
+  // them as "non-http" would miss a missing chunk manifest.
+  const scheme = EXPLICIT_SCHEME_RE.exec(url)?.[0]?.toLowerCase();
+  if (scheme && scheme !== 'http:' && scheme !== 'https:') {
     return { ok: true, reason: 'non-http' };
   }
   let ctrl = null;
@@ -135,55 +141,123 @@ export async function probeUrl(url, fetchImpl) {
   }
 }
 
+export function inferDiskKind(url, explicitKind) {
+  if (explicitKind === 'github' || explicitKind === 'bytes' || explicitKind === 'cloud') {
+    return explicitKind;
+  }
+  // Historical manifest spelling. It describes where CI sourced the
+  // bytes, not the browser-side CheerpX device.
+  if (explicitKind === 'release-asset') return 'bytes';
+  if (/^wss?:/i.test(url || '')) return 'cloud';
+  if (/^https?:/i.test(url || '') || /^\.{0,2}\//.test(url || '') || /^\//.test(url || '')) {
+    return 'bytes';
+  }
+  return 'cloud';
+}
+
+function normalizeDiskEntry(entry, source) {
+  if (!entry?.url) return null;
+  return {
+    ...entry,
+    kind: inferDiskKind(entry.url, entry.kind),
+    source,
+  };
+}
+
+function probeTargetForDisk(entry) {
+  if (entry?.kind === 'github') return `${entry.url}.meta`;
+  return entry?.url;
+}
+
+async function probeDiskEntry(entry, fetchImpl, probe) {
+  const target = probeTargetForDisk(entry);
+  const result = await probe(target, fetchImpl);
+  return {
+    target,
+    ok: typeof result === 'object' ? result.ok : !!result,
+    reason: typeof result === 'object' ? result.reason : 'unknown',
+  };
+}
+
 /**
  * Resolve the disk URL from web/disk/manifest.json.
  *
  * Preference order:
- *   1. `warm` entry (our pre-baked Alpine + Rust ext2 release asset),
- *      when its `url` is set AND the URL probe succeeds.
+ *   1. `warm` entry (our pre-baked Alpine + Rust ext2 image staged on
+ *      Pages), when its probe target succeeds.
  *   2. `default` entry (the public WebVM image).
  *   3. The hard-coded fallback above.
  */
-export async function resolveDiskUrl({
+export async function resolveDiskConfig({
   manifestUrl = './disk/manifest.json',
   fetchImpl = globalThis.fetch?.bind(globalThis),
   probe = probeUrl,
   logger = console,
 } = {}) {
-  if (typeof fetchImpl !== 'function') return FALLBACK_DISK_URL;
+  if (typeof fetchImpl !== 'function') {
+    return { kind: 'cloud', url: FALLBACK_DISK_URL, source: 'fallback' };
+  }
   try {
     const res = await fetchImpl(manifestUrl, { cache: 'no-cache' });
     if (!res.ok) throw new Error(`manifest HTTP ${res.status}`);
     const m = await res.json();
-    if (m?.warm?.url) {
-      const result = await probe(m.warm.url, fetchImpl);
-      // Tolerate legacy probes that returned a bare boolean.
-      const ok = typeof result === 'object' ? result.ok : !!result;
-      if (ok) return m.warm.url;
-      const reason = typeof result === 'object' ? result.reason : 'unknown';
+    const warm = normalizeDiskEntry(m?.warm, 'warm');
+    if (warm) {
+      const result = await probeDiskEntry(warm, fetchImpl, probe);
+      if (result.ok) return warm;
       // Structured diagnostic: distinguish "asset not built yet" from
       // "asset is built but CORS-blocked" (issue #3, root cause #2).
       // Hosting outside disks.webvm.io requires CORS; surfacing this
       // explicitly saves future maintainers a 30-minute debugging trip.
-      if (reason === 'cors-or-network' || reason === 'opaque') {
+      if (result.reason === 'cors-or-network' || result.reason === 'opaque') {
         logger?.warn?.(
-          `[rust-web-box] warm disk ${m.warm.url} is reachable but CORS-blocked ` +
-          `(reason: ${reason}); falling back to default disk. ` +
+          `[rust-web-box] warm disk ${warm.url} is reachable but CORS-blocked ` +
+          `(probe: ${result.target}, reason: ${result.reason}); falling back to default disk. ` +
           `Custom disks must be served with Access-Control-Allow-Origin — see ` +
-          `docs/case-studies/issue-3/analysis-disk-cors.md`,
+          `docs/case-studies/issue-9/README.md`,
         );
       } else {
         logger?.info?.(
-          `[rust-web-box] warm disk ${m.warm.url} unavailable ` +
-          `(reason: ${reason}); falling back to default disk`,
+          `[rust-web-box] warm disk ${warm.url} unavailable ` +
+          `(probe: ${result.target}, reason: ${result.reason}); falling back to default disk`,
         );
       }
     }
-    if (m?.default?.url) return m.default.url;
+    const fallback = normalizeDiskEntry(m?.default, 'default');
+    if (fallback) return fallback;
   } catch (err) {
     logger?.warn?.('[rust-web-box] disk manifest unavailable, using fallback:', err);
   }
-  return FALLBACK_DISK_URL;
+  return { kind: 'cloud', url: FALLBACK_DISK_URL, source: 'fallback' };
+}
+
+export async function resolveDiskUrl(options = {}) {
+  return (await resolveDiskConfig(options)).url;
+}
+
+export async function createBlockDevice(CheerpX, disk) {
+  const url = typeof disk === 'string' ? disk : disk?.url;
+  const kind = typeof disk === 'string' ? inferDiskKind(url) : inferDiskKind(url, disk?.kind);
+  if (!url) throw new TypeError('createBlockDevice requires a disk URL');
+
+  if (kind === 'github') {
+    if (!CheerpX?.GitHubDevice?.create) {
+      throw new Error('CheerpX build is missing GitHubDevice.create()');
+    }
+    return CheerpX.GitHubDevice.create(url);
+  }
+
+  if (kind === 'bytes') {
+    if (!CheerpX?.HttpBytesDevice?.create) {
+      throw new Error('CheerpX build is missing HttpBytesDevice.create()');
+    }
+    return CheerpX.HttpBytesDevice.create(url);
+  }
+
+  if (!CheerpX?.CloudDevice?.create) {
+    throw new Error('CheerpX build is missing CloudDevice.create()');
+  }
+  return CheerpX.CloudDevice.create(url);
 }
 
 /**
@@ -194,34 +268,38 @@ export async function resolveDiskUrl({
  * topology mirrors leaningtech/webvm's reference WebVM.svelte exactly so
  * the supported callbacks (cpuActivity, processCreated, ...) keep working.
  *
- * If the configured `diskUrl` (typically the warm Alpine+Rust image
+ * If the configured disk (typically the warm Alpine+Rust image staged
  * from `web/disk/manifest.json`) fails to mount — usually because the
- * disk-image release pipeline hasn't published it yet — we fall back
+ * Pages artifact does not have the generated chunks yet — we fall back
  * to the public WebVM Debian image so the workbench still comes up.
  */
 export async function bootLinux({
   CheerpX,
+  diskConfig,
   diskUrl,
+  diskKind,
   persistKey = PERSIST_KEY,
   onProgress,
   fallbackDiskUrl = FALLBACK_DISK_URL,
+  fallbackDiskKind = 'cloud',
 } = {}) {
   if (!CheerpX) throw new TypeError('bootLinux requires the CheerpX module');
-  if (!diskUrl) diskUrl = await resolveDiskUrl();
+  const selectedDisk = diskConfig ||
+    (diskUrl ? { url: diskUrl, kind: inferDiskKind(diskUrl, diskKind), source: 'explicit' } : await resolveDiskConfig());
 
   let cloud;
-  let usedUrl = diskUrl;
-  onProgress?.('attaching cloud disk');
+  let usedDisk = selectedDisk;
+  onProgress?.(`attaching ${selectedDisk.kind} disk`);
   try {
-    cloud = await CheerpX.CloudDevice.create(diskUrl);
+    cloud = await createBlockDevice(CheerpX, selectedDisk);
   } catch (err) {
-    if (fallbackDiskUrl && fallbackDiskUrl !== diskUrl) {
+    if (fallbackDiskUrl && fallbackDiskUrl !== selectedDisk.url) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[rust-web-box] disk ${diskUrl} unreachable (${err?.message ?? err}); falling back to ${fallbackDiskUrl}`,
+        `[rust-web-box] disk ${selectedDisk.url} unreachable (${err?.message ?? err}); falling back to ${fallbackDiskUrl}`,
       );
-      usedUrl = fallbackDiskUrl;
-      cloud = await CheerpX.CloudDevice.create(fallbackDiskUrl);
+      usedDisk = { url: fallbackDiskUrl, kind: fallbackDiskKind, source: 'fallback' };
+      cloud = await createBlockDevice(CheerpX, usedDisk);
     } else {
       throw err;
     }
@@ -255,7 +333,8 @@ export async function bootLinux({
     root,
     webDevice,
     dataDevice,
-    diskUrl: usedUrl,
+    diskUrl: usedDisk.url,
+    diskKind: usedDisk.kind,
     persistKey,
   };
 }

@@ -1,17 +1,14 @@
 // VS Code Web extension: rust-analyzer-web.
 //
 // Provides Rust language support backed by `rust-analyzer` compiled to
-// WebAssembly. The WASM artifact is loaded at activation time from
-// `./rust-analyzer.wasm` (relative to the extension URI). If the artifact
-// isn't bundled (CI couldn't fetch it for the current rust-analyzer
-// release tag), the extension degrades to lightweight tokenization-only
-// support so editing Rust files still works — just without LSP features.
+// WebAssembly when package metadata declares a bundled WASM artifact.
+// Until that artifact exists, the extension degrades to lightweight
+// tokenization-only support without probing a missing file on every
+// activation.
 //
 // The full upstream rust-analyzer LSP server entry point in WASM accepts
 // LSP messages through stdin/stdout-on-postMessage. We bridge that to
 // VS Code's `vscode-languageclient/browser` interface.
-
-const ANALYZER_WASM = './rust-analyzer.wasm';
 
 function makeStubServer(vscode, name) {
   // Minimal "language server" used when the WASM payload isn't bundled.
@@ -41,9 +38,17 @@ function makeStubServer(vscode, name) {
   };
 }
 
+function bundledWasmName(context) {
+  const wasm = context.extension?.packageJSON?.rustAnalyzerWeb?.wasm;
+  return typeof wasm === 'string' && wasm.trim() ? wasm.trim() : null;
+}
+
 async function tryLoadAnalyzer(vscode, context) {
+  const wasmName = bundledWasmName(context);
+  if (!wasmName) return null;
+
   try {
-    const wasmUri = vscode.Uri.joinPath(context.extensionUri, 'rust-analyzer.wasm');
+    const wasmUri = vscode.Uri.joinPath(context.extensionUri, wasmName);
     // HEAD-probe before readFile so the network panel doesn't show a
     // bright-red 404 every page load when the artifact isn't bundled
     // (issue #5). VS Code Web's `workspace.fs.readFile` for an

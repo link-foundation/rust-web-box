@@ -12,6 +12,9 @@
   "extensionKind": [
     "web"
   ],
+  "rustAnalyzerWeb": {
+    "wasm": null
+  },
   "activationEvents": [
     "onLanguage:rust"
   ],
