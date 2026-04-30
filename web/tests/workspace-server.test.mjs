@@ -20,7 +20,7 @@ function fakeWorkspace() {
     },
     readDirectory: async (path) => {
       calls.push(['readDirectory', path]);
-      return [['hello_world.rs', 1]];
+      return [['src', 2], ['Cargo.toml', 1]];
     },
     readFile: async (path) => {
       calls.push(['readFile', path]);
@@ -55,9 +55,9 @@ test('workspace-server: fs.* methods delegate to the workspace', async () => {
   const m = workspaceOnlyMethods({ workspace: ws });
   await m['fs.stat']({ path: '/workspace' });
   await m['fs.readDir']({ path: '/workspace' });
-  await m['fs.readFile']({ path: '/workspace/hello_world.rs' });
+  await m['fs.readFile']({ path: '/workspace/src/main.rs' });
   await m['fs.writeFile']({
-    path: '/workspace/hello_world.rs',
+    path: '/workspace/src/main.rs',
     data: [4, 5, 6],
     options: { create: true, overwrite: true },
   });
@@ -67,8 +67,8 @@ test('workspace-server: fs.* methods delegate to the workspace', async () => {
   assert.deepEqual(ws.calls, [
     ['stat', '/workspace'],
     ['readDirectory', '/workspace'],
-    ['readFile', '/workspace/hello_world.rs'],
-    ['writeFile', '/workspace/hello_world.rs', [4, 5, 6], { create: true, overwrite: true }],
+    ['readFile', '/workspace/src/main.rs'],
+    ['writeFile', '/workspace/src/main.rs', [4, 5, 6], { create: true, overwrite: true }],
     ['delete', '/workspace/x', { recursive: true }],
     ['rename', '/a', '/b'],
     ['createDirectory', '/workspace/sub'],

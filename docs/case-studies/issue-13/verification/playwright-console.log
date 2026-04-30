@@ -1,0 +1,23 @@
+Total messages: 30 (Errors: 4, Warnings: 4)
+Returning 8 messages for level "warning"
+
+[WARNING] The web worker extension host is started in a same-origin iframe! @ http://localhost:8876/vscode-web/out/vs/workbench/workbench.web.main.js:1885
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ http://localhost:8876/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=3e84cd4d-7746-42f3-a926-f6e02a700286:0
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ http://localhost:8876/vscode-web/out/vs/workbench/workbench.web.main.js:1483
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ http://localhost:8876/vscode-web/out/vs/workbench/workbench.web.main.js:1483
+TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (http://localhost:8876/cheerpx/cx_esm.js:1:190555)
+    at y_ (http://localhost:8876/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (http://localhost:8876/cheerpx/cx_esm.js:1:364003)
+TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (http://localhost:8876/cheerpx/cx_esm.js:1:190555)
+    at y_ (http://localhost:8876/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (http://localhost:8876/cheerpx/cx_esm.js:1:364003)
+TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (http://localhost:8876/cheerpx/cx_esm.js:1:190555)
+    at y_ (http://localhost:8876/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (http://localhost:8876/cheerpx/cx_esm.js:1:364003)
+TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (http://localhost:8876/cheerpx/cx_esm.js:1:190555)
+    at y_ (http://localhost:8876/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (http://localhost:8876/cheerpx/cx_esm.js:1:364003)

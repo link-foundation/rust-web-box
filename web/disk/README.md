@@ -11,21 +11,22 @@ GitHubDevice chunks under `web/disk/`.
 
 Files:
 
-- `Dockerfile.disk` — i386 Alpine base with bash, rustc, cargo, and a
-  pre-built hello-world Cargo project so the first `cargo run` works
-  offline.
+- `Dockerfile.disk` — i386 Alpine base with bash, tree, rustc, cargo,
+  and a pre-built hello-world Cargo project rooted at `/workspace` so
+  the first `cargo run` works offline.
 - `build.sh` — converts the Docker image's rootfs into an ext2 image
   CheerpX can mount. Requires Docker + `e2fsprogs` and runs
   `mount -o loop` (sudo).
-- `manifest.json` — points the boot shell at the public WebVM Debian
-  image by default and records the warm disk release source. The Pages
-  staging script fills `warm.url` only after the chunk set exists in the
-  artifact.
+- `manifest.json` — records the public WebVM Debian development
+  fallback and the warm disk release source. The Pages staging script
+  fills `warm.url` only after the chunk set exists in the artifact; a
+  production Pages build now fails if the warm disk cannot be staged.
 
-The default boot path uses CheerpX's hosted Debian image at
-`wss://disks.webvm.io/debian_large_…ext2`. It is a fallback for local
-development and for deploys where the warm chunks have not been staged
-yet.
+The committed default path still references CheerpX's hosted Debian
+image at `wss://disks.webvm.io/debian_large_...ext2`, but that path is
+only a development fallback. Production Pages staging must publish the
+same-origin warm disk chunks so `tree`, `cargo`, and the root Cargo
+workspace are available by default.
 
 Do not point browser runtime code directly at the GitHub Release asset.
 The release download redirects to `release-assets.githubusercontent.com`

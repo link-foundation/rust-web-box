@@ -16,7 +16,7 @@
 //   3. Patch the workbench config so VS Code Web finds our extensions.
 //   4. Open the JS-side workspace (IDB-backed) and start serving its
 //      contents over the bus IMMEDIATELY. The Explorer populates from
-//      this — the user sees `hello_world.rs` the moment the page loads.
+//      this — the user sees `src/main.rs` the moment the page loads.
 //   5. (Background) Load CheerpX, boot Linux, then upgrade the bus to
 //      the full server with terminal support. The workspace is mirrored
 //      into the VM at this point so `cargo run` works.
@@ -36,6 +36,7 @@ const debugOpts = {
 };
 const dbgBoot = createDebug('boot', debugOpts);
 const dbgWorkbench = createDebug('workbench', debugOpts);
+const dbgGuest = createDebug('guest', debugOpts);
 
 const shim = createNetworkShim();
 globalThis.__rustWebBox = globalThis.__rustWebBox || {};
@@ -182,6 +183,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
     busServer,
     workspace,
     status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
+    opts: { debug: dbgGuest },
   });
 
   globalThis.__rustWebBox.vm = vm;

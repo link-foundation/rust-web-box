@@ -117,6 +117,23 @@ function buildWorkspacePrimeScript(snapshot) {
   return `${lines.join('\n')}\n`;
 }
 
+function buildShellProfileScript() {
+  return [
+    'set -eu',
+    "cat > '/root/.bash_profile' <<'RWB_PROFILE'",
+    'export HOME=/root',
+    'export TERM=xterm-256color',
+    'export USER=root',
+    'export SHELL=/bin/bash',
+    'export LANG=C.UTF-8',
+    'export CARGO_HOME=/root/.cargo',
+    'export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+    'export PS1="root@rust-web-box:\\w# "',
+    'cd /workspace 2>/dev/null || cd /root',
+    'RWB_PROFILE',
+  ].join('\n') + '\n';
+}
+
 function scriptForWrite(path, bytes) {
   return `${heredocForFile(path, bytes)}\n`;
 }
@@ -142,7 +159,7 @@ function scriptPathForName(name) {
   return `/rust-web-box-${safeName}.sh`;
 }
 
-function createGuestScriptRunner({ cx, dataDevice, logger = console } = {}) {
+function createGuestScriptRunner({ cx, dataDevice, logger = console, debug = () => {} } = {}) {
   const run = cx?.run ?? cx?.runAsync;
   if (typeof run !== 'function') throw new Error('CheerpX missing run()');
   if (typeof dataDevice?.writeFile !== 'function') {
@@ -155,14 +172,24 @@ function createGuestScriptRunner({ cx, dataDevice, logger = console } = {}) {
     const devicePath = scriptPathForName(name);
     const guestPath = `/data${devicePath}`;
     const job = tail.catch(() => {}).then(async () => {
+      debug('stage guest script', {
+        name,
+        devicePath,
+        guestPath,
+        cwd,
+        bytes: script.length,
+        script: debug.enabled ? script : undefined,
+      });
       await dataDevice.writeFile(devicePath, script);
       try {
+        debug('run guest script', { name, guestPath, cwd });
         await run.call(cx, '/bin/sh', [guestPath], {
           env: GUEST_ENV,
           cwd,
           uid: 0,
           gid: 0,
         });
+        debug('guest script complete', { name });
       } finally {
         try {
           await run.call(cx, '/bin/rm', ['-f', guestPath], {
@@ -217,6 +244,7 @@ export function fullServerMethods({
       stage: runtime.stage,
       workspacePrimed: runtime.primed,
       workspacePrimeError: runtime.workspacePrimeError,
+      shellPrepareError: runtime.shellPrepareError,
       ...status,
     }),
     'fs.readFile': async ({ path }) => await workspace.readFile(path),
@@ -252,7 +280,7 @@ export function fullServerMethods({
     },
     'proc.wait': async () => ({ exitCode: 0 }),
     'cargo.runHello': async () => {
-      writeStr('cd /workspace/hello && cargo run --release\n');
+      writeStr('cd /workspace && cargo run --release\n');
     },
     'workspace.prime': async () => {
       await primeGuestWorkspace();
@@ -292,12 +320,15 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(text) });
   });
 
-  const runGuestScript = createGuestScriptRunner({ cx, dataDevice });
+  const debug = opts.debug ?? (() => {});
+  const logger = opts.logger ?? console;
+  const runGuestScript = createGuestScriptRunner({ cx, dataDevice, logger, debug });
   const runtime = {
     ready: false,
     primed: false,
     stage: 'syncing-workspace',
     workspacePrimeError: null,
+    shellPrepareError: null,
   };
 
   // Per-terminal subscriber tracking. Every "spawn" returns the same
@@ -357,14 +388,28 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     killSub,
   });
   busServer.setMethods(methods);
+  async function prepareInteractiveShell() {
+    try {
+      await runGuestScript(buildShellProfileScript(), {
+        name: 'shell-profile',
+        cwd: '/root',
+      });
+      runtime.shellPrepareError = null;
+    } catch (err) {
+      runtime.shellPrepareError = err?.message ?? String(err);
+      logger?.error?.('[rust-web-box] shell profile preparation failed:', err);
+    }
+  }
+
   const bootTask = (async () => {
     busServer.emit('vm.boot', { phase: 'syncing-workspace' });
+    await prepareInteractiveShell();
     try {
       await primeGuestWorkspace();
     } catch (err) {
       runtime.workspacePrimeError = err?.message ?? String(err);
       // eslint-disable-next-line no-console
-      console.warn('[rust-web-box] workspace prime failed:', err);
+      logger?.error?.('[rust-web-box] workspace prime failed:', err);
     }
     stopShell = runShellLoop(cx, {
       cwd: runtime.primed ? '/workspace' : '/root',

@@ -67,7 +67,9 @@ A workbench identical to vscode.dev, with a `WebVM bash` terminal pane
 already open. The terminal shows a `[rust-web-box] Booting Linux VM…`
 status while CheerpX boots; once the VM is ready the message becomes
 `Linux VM ready ✓` and bash takes over. Type `cargo run` from
-`/workspace/hello` to compile and run a pre-baked Rust hello-world.
+`/workspace` to compile and run the pre-baked Rust hello-world. The
+default workspace is a minimal Cargo project with `Cargo.toml` and
+`src/main.rs` at the root.
 
 ## Component status
 

@@ -127,6 +127,7 @@ async function main() {
     logger.log('[disk] STAGE_WARM_DISK=0, skipping warm disk staging');
     return;
   }
+  const required = process.env.STAGE_WARM_DISK_REQUIRED !== '0';
 
   const manifest = JSON.parse(await fs.readFile(MANIFEST_PATH, 'utf8'));
   const sourceUrl =
@@ -135,7 +136,12 @@ async function main() {
     (/^https:\/\/github\.com\//.test(manifest?.warm?.url || '') ? manifest.warm.url : null);
 
   if (!sourceUrl) {
-    logger.log('[disk] no release source URL configured, leaving warm disk unstaged');
+    const msg = '[disk] no release source URL configured, leaving warm disk unstaged';
+    if (required) {
+      logger.error(`${msg}; set STAGE_WARM_DISK_REQUIRED=0 only for explicit local fallback testing`);
+      throw new Error('warm disk staging is required but no source URL is configured');
+    }
+    logger.log(msg);
     return;
   }
 
@@ -164,9 +170,12 @@ async function main() {
       `[disk] staged ${result.byteLength} bytes as ${result.chunkCount} chunks under web/disk/`,
     );
   } catch (err) {
-    const required = process.env.STAGE_WARM_DISK_REQUIRED === '1';
     logger.warn(`[disk] warm disk staging failed: ${err?.message ?? err}`);
-    logger.warn('[disk] Pages will deploy without the warm disk; runtime will fall back to the default disk.');
+    if (required) {
+      logger.error('[disk] warm disk staging is required; failing this build so production never ships without cargo.');
+    } else {
+      logger.warn('[disk] Pages will deploy without the warm disk; runtime will fall back to the default disk.');
+    }
     if (required) throw err;
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });

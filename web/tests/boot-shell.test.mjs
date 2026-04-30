@@ -134,27 +134,37 @@ test('boot shell: webvm-host auto-opens a terminal on activation', async () => {
   assert.match(ext, /webvm-host\.openTerminal/);
 });
 
-test('boot shell: webvm-host auto-opens hello_world.rs on activation', async () => {
+test('boot shell: webvm-host auto-opens src/main.rs on activation', async () => {
   const ext = await read('extensions/webvm-host/extension.js');
   assert.match(ext, /openHelloWorld/);
-  assert.match(ext, /webvm:\/workspace\/hello_world\.rs/);
+  assert.match(ext, /webvm:\/workspace\/src\/main\.rs/);
+  assert.doesNotMatch(ext, /webvm:\/workspace\/hello_world\.rs/);
   assert.match(ext, /vscode\.window\.showTextDocument/);
 });
 
-test('boot shell: workspace-fs seeds hello_world.rs at workspace root', async () => {
+test('boot shell: workspace-fs seeds a root Cargo project', async () => {
   const wfs = await read('glue/workspace-fs.js');
-  assert.match(wfs, /\/workspace\/hello_world\.rs/);
-  assert.match(wfs, /\/workspace\/hello\/Cargo\.toml/);
-  assert.match(wfs, /\/workspace\/hello\/src\/main\.rs/);
+  assert.match(wfs, /\/workspace\/Cargo\.toml/);
+  assert.match(wfs, /\/workspace\/src\/main\.rs/);
+  assert.match(wfs, /"command": "cargo run"/);
+  assert.match(wfs, /LEGACY_SEED_FILES/);
+  assert.match(wfs, /replaceIfUnchanged\(\s*'\/workspace\/\.vscode\/tasks\.json'/);
 });
 
 test('boot shell: webvm-server mirrors workspace through a quiet DataDevice script', async () => {
   const srv = await read('glue/webvm-server.js');
   assert.match(srv, /heredocForFile/);
   assert.match(srv, /primeGuestWorkspace/);
+  assert.match(srv, /buildShellProfileScript/);
   assert.match(srv, /dataDevice\.writeFile/);
   assert.doesNotMatch(srv, /ls -la \/workspace/);
   assert.doesNotMatch(srv, /stty -echo/);
+});
+
+test('boot shell: boot.js wires guest debug logs for ?debug routes', async () => {
+  const boot = await read('glue/boot.js');
+  assert.match(boot, /createDebug\('guest'/);
+  assert.match(boot, /opts:\s*\{\s*debug:\s*dbgGuest\s*\}/);
 });
 
 test('boot shell: boot.js passes CheerpX DataDevice to the WebVM server', async () => {
@@ -204,16 +214,32 @@ test('boot shell: rust-analyzer-web does not probe a missing WASM unless package
   );
 });
 
-test('boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world', async () => {
+test('boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world', async () => {
   const d = await read('disk/Dockerfile.disk');
   assert.match(d, /FROM i386\/alpine/);
   assert.match(d, /apk add[\s\S]+?\bbash\b/);
   assert.match(d, /apk add[\s\S]+?\brust\b/);
   assert.match(d, /apk add[\s\S]+?\bcargo\b/);
-  assert.match(d, /workspace\/hello/);
+  assert.match(d, /apk add[\s\S]+?\btree\b/);
+  assert.match(d, /\/workspace\/Cargo\.toml/);
+  assert.match(d, /\/workspace\/src\/main\.rs/);
+  assert.doesNotMatch(d, /workspace\/hello/);
+  assert.doesNotMatch(d, /\|\|\s*true/);
 
   const build = await read('disk/build.sh');
   assert.match(build, /resize2fs -M "\$IMG"/);
+});
+
+test('boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run output', async () => {
+  const wf = await fs.readFile(
+    path.resolve(WEB_ROOT, '..', '.github', 'workflows', 'disk-image.yml'),
+    'utf8',
+  );
+  assert.match(wf, /tree --version/);
+  assert.match(wf, /cargo --version/);
+  assert.match(wf, /cargo run --release/);
+  assert.match(wf, /Hello from rust-web-box!/);
+  assert.match(wf, /This binary was compiled inside CheerpX\./);
 });
 
 test('boot shell: pages workflow deploys to GitHub Pages on main', async () => {
@@ -225,6 +251,13 @@ test('boot shell: pages workflow deploys to GitHub Pages on main', async () => {
   assert.match(wf, /actions\/upload-pages-artifact/);
   assert.match(wf, /actions\/deploy-pages/);
   assert.match(wf, /github\.ref == 'refs\/heads\/main'/);
+});
+
+test('boot shell: warm disk staging fails closed by default', async () => {
+  const stage = await read('build/stage-pages-disk.mjs');
+  assert.match(stage, /STAGE_WARM_DISK_REQUIRED !== '0'/);
+  assert.match(stage, /no release source URL configured[\s\S]+STAGE_WARM_DISK_REQUIRED=0/);
+  assert.match(stage, /failing this build so production never ships without cargo/);
 });
 
 test('boot shell: disk-image workflow exists and triggers on workflow_dispatch', async () => {
