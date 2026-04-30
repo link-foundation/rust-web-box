@@ -34,16 +34,18 @@ function makeFakeCx() {
     setConsoleSize() {},
     async run(cmd, args, opts) {
       state.runCalls.push({ cmd, args, opts });
-      // Hold open forever so the shell loop doesn't respawn during the test.
-      await new Promise(() => {});
+      if (cmd === '/bin/bash') {
+        // Hold open forever so the shell loop doesn't respawn during the test.
+        await new Promise(() => {});
+      }
     },
   };
   return { cx, state };
 }
 
-function makeFakeWorkspace() {
+function makeFakeWorkspace(snapshot = {}) {
   return {
-    snapshot: async () => ({}),
+    snapshot: async () => snapshot,
     readFile: async () => new Uint8Array(),
     writeFile: async () => {},
     stat: async () => ({ type: 1, size: 0, mtime: 0 }),
@@ -51,6 +53,18 @@ function makeFakeWorkspace() {
     delete: async () => {},
     rename: async () => {},
     createDirectory: async () => {},
+  };
+}
+
+function makeFakeDataDevice() {
+  const state = { writes: [] };
+  return {
+    dataDevice: {
+      async writeFile(filename, contents) {
+        state.writes.push({ filename, contents });
+      },
+    },
+    state,
   };
 }
 
@@ -69,8 +83,9 @@ test('webvm-server: bare-LF stdout is normalised to CRLF on the wire', async () 
   const { cx, state } = makeFakeCx();
   const workspace = makeFakeWorkspace();
   const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
 
-  startWebVMServer({ cx, busServer, workspace, status: {} });
+  startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
 
   // Wait for the shell loop to spawn so the writer is registered.
   await new Promise((r) => setTimeout(r, 5));
@@ -101,8 +116,9 @@ test('webvm-server: existing CRLF passed through, bare CR untouched', async () =
   const { cx, state } = makeFakeCx();
   const workspace = makeFakeWorkspace();
   const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
 
-  startWebVMServer({ cx, busServer, workspace, status: {} });
+  startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
   await new Promise((r) => setTimeout(r, 5));
 
   // Bash emits things like progress meters that use bare CR; cargo's
@@ -126,8 +142,9 @@ test('webvm-server: vt channel filtered (only stdout broadcast)', async () => {
   const { cx, state } = makeFakeCx();
   const workspace = makeFakeWorkspace();
   const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
 
-  startWebVMServer({ cx, busServer, workspace, status: {} });
+  startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
   await new Promise((r) => setTimeout(r, 5));
 
   // attachConsole's internal writer drops vt != 1. We send to vt=2 and
@@ -137,6 +154,56 @@ test('webvm-server: vt channel filtered (only stdout broadcast)', async () => {
   await Promise.resolve();
   const after = busServer.events.filter((e) => e.topic === 'proc.stdout').length;
   assert.equal(after, before);
+});
+
+test('webvm-server: primes /workspace through a /data script, not terminal input', async () => {
+  const { cx, state } = makeFakeCx();
+  const workspace = makeFakeWorkspace({
+    '/workspace/hello.txt': new TextEncoder().encode('hello\n'),
+  });
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
+  await server.bootTask;
+
+  assert.equal(state.lastInput.length, 0, 'workspace prime must not type into bash');
+  assert.equal(dataState.writes.length, 1, 'expected a staged /data script');
+  assert.equal(dataState.writes[0].filename, '/rust-web-box-workspace-prime.sh');
+  assert.match(dataState.writes[0].contents, /cat > '\/workspace\/hello\.txt'/);
+  assert.match(dataState.writes[0].contents, /hello/);
+  assert.deepEqual(
+    state.runCalls.map((c) => [c.cmd, c.args[0]]).slice(0, 3),
+    [
+      ['/bin/sh', '/data/rust-web-box-workspace-prime.sh'],
+      ['/bin/rm', '-f'],
+      ['/bin/bash', '--login'],
+    ],
+  );
+  assert.ok(
+    busServer.events.some((e) => e.topic === 'vm.boot' && e.payload?.phase === 'ready'),
+    'server should emit ready after quiet priming',
+  );
+});
+
+test('webvm-server: mirrors saved files through /data without typing into the terminal', async () => {
+  const { cx, state } = makeFakeCx();
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
+  await server.bootTask;
+  await server.methods['fs.writeFile']({
+    path: '/workspace/new-file.txt',
+    data: new TextEncoder().encode('saved\n'),
+  });
+
+  assert.equal(state.lastInput.length, 0, 'file sync must not use console input');
+  assert.equal(dataState.writes.length, 2, 'expected prime and save scripts');
+  assert.equal(dataState.writes[1].filename, '/rust-web-box-workspace-sync.sh');
+  assert.match(dataState.writes[1].contents, /cat > '\/workspace\/new-file\.txt'/);
+  assert.match(dataState.writes[1].contents, /saved/);
 });
 
 // Make sure makeChannelPair stays referenced; it's exported in case

@@ -148,11 +148,18 @@ test('boot shell: workspace-fs seeds hello_world.rs at workspace root', async ()
   assert.match(wfs, /\/workspace\/hello\/src\/main\.rs/);
 });
 
-test('boot shell: webvm-server mirrors workspace into the guest via heredocs', async () => {
+test('boot shell: webvm-server mirrors workspace through a quiet DataDevice script', async () => {
   const srv = await read('glue/webvm-server.js');
   assert.match(srv, /heredocForFile/);
   assert.match(srv, /primeGuestWorkspace/);
-  assert.match(srv, /ls -la \/workspace/);
+  assert.match(srv, /dataDevice\.writeFile/);
+  assert.doesNotMatch(srv, /ls -la \/workspace/);
+  assert.doesNotMatch(srv, /stty -echo/);
+});
+
+test('boot shell: boot.js passes CheerpX DataDevice to the WebVM server', async () => {
+  const boot = await read('glue/boot.js');
+  assert.match(boot, /dataDevice:\s*vm\.dataDevice/);
 });
 
 test('boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout', async () => {

@@ -11,9 +11,10 @@
 //   The workspace lives JS-side, in `glue/workspace-fs.js`, persisted
 //   to IndexedDB. The FileSystemProvider in the webvm-host extension
 //   reads/writes it directly via the bus. We mirror every file write
-//   into the guest's `/workspace/` directory (using stdin-injected
-//   here-documents) so `cargo run` from the terminal sees the same
-//   content. Decoupling Explorer from CheerpX boot is the only way the
+//   into the guest's `/workspace/` directory by staging a short shell
+//   script on CheerpX's `/data` mount and running it non-interactively,
+//   so the visible terminal is reserved for user work instead of setup
+//   heredocs. Decoupling Explorer from CheerpX boot is the only way the
 //   user sees a populated workspace immediately on page load — the VM
 //   takes 30+ seconds to come up, but the editor doesn't have to wait.
 //
@@ -33,38 +34,39 @@ import { createLfToCrlfNormaliser } from './terminal-stream.js';
 
 const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });
 const TEXT_ENCODER = new TextEncoder();
+const GUEST_ENV = [
+  'HOME=/root',
+  'TERM=xterm-256color',
+  'USER=root',
+  'SHELL=/bin/sh',
+  'LANG=C.UTF-8',
+  'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+];
+const BASH_ENV = [
+  'HOME=/root',
+  'TERM=xterm-256color',
+  'USER=root',
+  'SHELL=/bin/bash',
+  'LANG=C.UTF-8',
+  // PATH covers both Debian (/usr/bin) and Alpine (/usr/local/bin) layouts
+  // plus rustup's $HOME/.cargo/bin.
+  'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+  'PS1=root@rust-web-box:\\w# ',
+];
 
 /**
  * Run the canonical "shell loop" the way leaningtech/webvm does:
  * spawn `/bin/bash --login`, and when it exits, spawn it again.
- *
- * `onFirstReady` is called once bash is about to spawn so callers can
- * inject one-time setup commands without polluting the scrollback.
  */
-function runShellLoop(cx, { cwd = '/root', env, onExit, onFirstReady } = {}) {
-  const fullEnv = env ?? [
-    'HOME=/root',
-    'TERM=xterm-256color',
-    'USER=root',
-    'SHELL=/bin/bash',
-    'LANG=C.UTF-8',
-    // PATH covers both Debian (/usr/bin) and Alpine (/usr/local/bin) layouts
-    // plus rustup's $HOME/.cargo/bin.
-    'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-    'PS1=root@rust-web-box:\\w# ',
-  ];
+function runShellLoop(cx, { cwd = '/root', env = BASH_ENV, onExit } = {}) {
+  const fullEnv = env;
   let stopped = false;
-  let firstSpawn = true;
 
   (async () => {
     while (!stopped) {
       try {
         const fn = cx.run ?? cx.runAsync;
         if (typeof fn !== 'function') throw new Error('CheerpX missing run()');
-        if (firstSpawn) {
-          firstSpawn = false;
-          queueMicrotask(() => onFirstReady?.());
-        }
         await fn.call(cx, '/bin/bash', ['--login'], {
           env: fullEnv,
           cwd,
@@ -106,46 +108,136 @@ function shellQuote(s) {
   return String(s).replace(/'/g, "'\\''");
 }
 
+function buildWorkspacePrimeScript(snapshot) {
+  const lines = ['set -eu', "mkdir -p '/workspace'"];
+  for (const [path, bytes] of Object.entries(snapshot).sort(([a], [b]) => a.localeCompare(b))) {
+    lines.push(heredocForFile(path, bytes));
+  }
+  lines.push('chown -R root:root /workspace 2>/dev/null || true');
+  return `${lines.join('\n')}\n`;
+}
+
+function scriptForWrite(path, bytes) {
+  return `${heredocForFile(path, bytes)}\n`;
+}
+
+function scriptForDelete(path, recursive) {
+  return `rm -${recursive ? 'r' : ''}f '${shellQuote(path)}'\n`;
+}
+
+function scriptForRename(from, to) {
+  const dir = String(to).replace(/\/[^/]+$/, '') || '/';
+  return [
+    `mkdir -p '${shellQuote(dir)}'`,
+    `mv '${shellQuote(from)}' '${shellQuote(to)}'`,
+  ].join('\n') + '\n';
+}
+
+function scriptForCreateDirectory(path) {
+  return `mkdir -p '${shellQuote(path)}'\n`;
+}
+
+function scriptPathForName(name) {
+  const safeName = String(name || 'sync').replace(/[^a-z0-9._-]+/gi, '-');
+  return `/rust-web-box-${safeName}.sh`;
+}
+
+function createGuestScriptRunner({ cx, dataDevice, logger = console } = {}) {
+  const run = cx?.run ?? cx?.runAsync;
+  if (typeof run !== 'function') throw new Error('CheerpX missing run()');
+  if (typeof dataDevice?.writeFile !== 'function') {
+    throw new Error('CheerpX DataDevice missing writeFile()');
+  }
+
+  let tail = Promise.resolve();
+
+  return function runGuestScript(script, { name = 'sync', cwd = '/root' } = {}) {
+    const devicePath = scriptPathForName(name);
+    const guestPath = `/data${devicePath}`;
+    const job = tail.catch(() => {}).then(async () => {
+      await dataDevice.writeFile(devicePath, script);
+      try {
+        await run.call(cx, '/bin/sh', [guestPath], {
+          env: GUEST_ENV,
+          cwd,
+          uid: 0,
+          gid: 0,
+        });
+      } finally {
+        try {
+          await run.call(cx, '/bin/rm', ['-f', guestPath], {
+            env: GUEST_ENV,
+            cwd: '/',
+            uid: 0,
+            gid: 0,
+          });
+        } catch (err) {
+          logger?.warn?.('[rust-web-box] could not remove temporary guest script:', err);
+        }
+      }
+    });
+    tail = job;
+    return job;
+  };
+}
+
 /**
  * Build the methods table for the full server (workspace + VM).
  *
- * `cx` is the live CheerpX handle. `workspace` is the JS-side store.
- * `console_` is an `attachConsole` handle that already has its onData
- * wired up to broadcast `proc.stdout` events.
+ * `workspace` is the JS-side store. `console_` is an `attachConsole`
+ * handle that already has its onData wired up to broadcast
+ * `proc.stdout` events. Guest file mutations run through `runGuestScript`
+ * so setup stays out of the interactive terminal.
  */
-export function fullServerMethods({ cx, workspace, status, console_, primeGuestWorkspace, subscribers, spawn, killSub }) {
+export function fullServerMethods({
+  workspace,
+  status,
+  console_,
+  runtime,
+  runGuestScript,
+  primeGuestWorkspace,
+  spawn,
+  killSub,
+}) {
   const writeStr = (s) => console_.write(TEXT_ENCODER.encode(s));
+  async function syncGuest(script, name) {
+    try {
+      await runGuestScript(script, { name });
+      runtime.workspacePrimeError = null;
+    } catch (err) {
+      runtime.workspacePrimeError = err?.message ?? String(err);
+      // eslint-disable-next-line no-console
+      console.warn('[rust-web-box] guest workspace sync failed:', err);
+    }
+  }
+
   return {
-    'vm.status': async () => ({ booted: true, ...status }),
+    'vm.status': async () => ({
+      booted: runtime.ready,
+      stage: runtime.stage,
+      workspacePrimed: runtime.primed,
+      workspacePrimeError: runtime.workspacePrimeError,
+      ...status,
+    }),
     'fs.readFile': async ({ path }) => await workspace.readFile(path),
     'fs.writeFile': async ({ path, data, options }) => {
       const buf = data instanceof Uint8Array ? data : new Uint8Array(data ?? []);
       await workspace.writeFile(path, buf, options);
-      try {
-        writeStr('set +o history\n');
-        writeStr(heredocForFile(path, buf) + '\n');
-        writeStr('set -o history\n');
-      } catch {}
+      await syncGuest(scriptForWrite(path, buf), 'workspace-sync');
     },
     'fs.stat': async ({ path }) => await workspace.stat(path),
     'fs.readDir': async ({ path }) => await workspace.readDirectory(path),
     'fs.delete': async ({ path, recursive }) => {
       await workspace.delete(path, { recursive });
-      try {
-        writeStr(`rm -${recursive ? 'r' : ''}f '${shellQuote(path)}'\n`);
-      } catch {}
+      await syncGuest(scriptForDelete(path, recursive), 'workspace-sync');
     },
     'fs.rename': async ({ from, to }) => {
       await workspace.rename(from, to);
-      try {
-        writeStr(`mv '${shellQuote(from)}' '${shellQuote(to)}'\n`);
-      } catch {}
+      await syncGuest(scriptForRename(from, to), 'workspace-sync');
     },
     'fs.createDirectory': async ({ path }) => {
       await workspace.createDirectory(path);
-      try {
-        writeStr(`mkdir -p '${shellQuote(path)}'\n`);
-      } catch {}
+      await syncGuest(scriptForCreateDirectory(path), 'workspace-sync');
     },
     'proc.spawn': async () => spawn(),
     'proc.write': async ({ bytes }) => {
@@ -177,10 +269,11 @@ export function fullServerMethods({ cx, workspace, status, console_, primeGuestW
  * server. We do NOT register a second message listener (that would
  * double-respond to every request).
  */
-export function startWebVMServer({ cx, busServer, status, workspace, opts = {} } = {}) {
+export function startWebVMServer({ cx, busServer, status, workspace, dataDevice, opts = {} } = {}) {
   if (!cx) throw new TypeError('startWebVMServer requires a CheerpX handle');
   if (!busServer) throw new TypeError('startWebVMServer requires a busServer');
   if (!workspace) throw new TypeError('startWebVMServer requires a workspace');
+  if (!dataDevice) throw new TypeError('startWebVMServer requires a CheerpX DataDevice');
 
   // One console attached to the page; many bus subscribers can listen.
   const console_ = attachConsole(cx, {
@@ -199,9 +292,13 @@ export function startWebVMServer({ cx, busServer, status, workspace, opts = {} }
     busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(text) });
   });
 
-  function writeStr(s) {
-    console_.write(TEXT_ENCODER.encode(s));
-  }
+  const runGuestScript = createGuestScriptRunner({ cx, dataDevice });
+  const runtime = {
+    ready: false,
+    primed: false,
+    stage: 'syncing-workspace',
+    workspacePrimeError: null,
+  };
 
   // Per-terminal subscriber tracking. Every "spawn" returns the same
   // virtual pid but bumps a per-subscriber counter so kill() only
@@ -219,10 +316,11 @@ export function startWebVMServer({ cx, busServer, status, workspace, opts = {} }
     subscribers.delete(sub);
   }
 
-  // Mirror the JS-side workspace into the guest: writes every regular
-  // file with `cat <<EOF`, then `cd /workspace` and prints a friendly
-  // greeting + `ls` so the user sees the populated directory in the
-  // terminal exactly like the screenshot feedback asked for.
+  // Mirror the JS-side workspace into the guest before exposing the
+  // interactive shell. The script is staged on CheerpX's in-memory
+  // `/data` mount and executed through `cx.run`, so the setup does not
+  // echo heredocs, prompts, or temporary commands into the visible
+  // terminal.
   let primed = false;
   let primingPromise = null;
   async function primeGuestWorkspace() {
@@ -230,56 +328,58 @@ export function startWebVMServer({ cx, busServer, status, workspace, opts = {} }
     if (primingPromise) return primingPromise;
     primingPromise = (async () => {
       const snap = await workspace.snapshot();
-      // Disable echo of the priming script so the user only sees the
-      // banner + cd + ls output.
-      writeStr('set +o history 2>/dev/null\n');
-      writeStr('stty -echo 2>/dev/null\n');
-      writeStr("printf '\\n[rust-web-box] preparing /workspace …\\n'\n");
-      for (const [path, bytes] of Object.entries(snap)) {
-        writeStr(heredocForFile(path, bytes) + '\n');
+      try {
+        await runGuestScript(buildWorkspacePrimeScript(snap), {
+          name: 'workspace-prime',
+          cwd: '/root',
+        });
+        primed = true;
+        runtime.primed = true;
+        runtime.workspacePrimeError = null;
+      } catch (err) {
+        primingPromise = null;
+        throw err;
       }
-      writeStr('chown -R root:root /workspace 2>/dev/null || true\n');
-      writeStr('cd /workspace\n');
-      writeStr('stty echo 2>/dev/null\n');
-      writeStr("printf '[rust-web-box] /workspace ready — try `cargo run` from /workspace/hello\\n'\n");
-      // `clear` pulls the eye to the populated directory listing.
-      writeStr('clear 2>/dev/null; ls -la /workspace\n');
-      primed = true;
     })();
     return primingPromise;
   }
 
-  // Start the shell loop.
-  const stopShell = runShellLoop(cx, {
-    onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
-    onFirstReady: () => {
-      // Prime once bash is up. A short delay lets login profile scripts
-      // settle before our heredoc payload starts streaming.
-      setTimeout(() => {
-        primeGuestWorkspace().catch((err) => {
-          // eslint-disable-next-line no-console
-          console.warn('[rust-web-box] workspace prime failed:', err);
-        });
-      }, 800);
-    },
-  });
+  let stopShell = () => {};
 
   const methods = fullServerMethods({
-    cx,
     workspace,
     status,
     console_,
+    runtime,
+    runGuestScript,
     primeGuestWorkspace,
-    subscribers,
     spawn,
     killSub,
   });
   busServer.setMethods(methods);
-  busServer.emit('vm.boot', { phase: 'ready' });
+  const bootTask = (async () => {
+    busServer.emit('vm.boot', { phase: 'syncing-workspace' });
+    try {
+      await primeGuestWorkspace();
+    } catch (err) {
+      runtime.workspacePrimeError = err?.message ?? String(err);
+      // eslint-disable-next-line no-console
+      console.warn('[rust-web-box] workspace prime failed:', err);
+    }
+    stopShell = runShellLoop(cx, {
+      cwd: runtime.primed ? '/workspace' : '/root',
+      onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
+    });
+    runtime.ready = true;
+    runtime.stage = 'ready';
+    busServer.emit('vm.boot', { phase: 'ready' });
+  })();
+
   return {
     methods,
     consoleHandle: console_,
     primeGuestWorkspace,
+    bootTask,
     stop() {
       stopShell();
       console_.dispose();

@@ -178,6 +178,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
   // Stage 2: hot-swap to the full server (workspace + terminal).
   startWebVMServer({
     cx: vm.cx,
+    dataDevice: vm.dataDevice,
     busServer,
     workspace,
     status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
