@@ -1,0 +1,34 @@
+Total messages: 32 (Errors: 2, Warnings: 5)
+
+[LOG] [rust-web-box][workbench] substituting placeholders with {scheme: https, host: link-foundation.github.io, basePath: /rust-web-box} @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][workbench] extensions resolved to [Object, Object] @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[LOG] %c WARN color: #993 Ignoring the error while validating workspace folder webvm:/workspace - ENOPRO: No file system provider found for resource 'webvm:/workspace' @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[WARNING] The web worker extension host is started in a same-origin iframe! @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:1885
+[LOG] %c INFO color: #33f Found additional builtin location extensions in env [https://link-foundation.github.io/rust-web-box/extensions/webvm-host, https://link-foundation.github.io/rust-web-box/extensions/rust-analyzer-web] @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] [rust-web-box][boot] loading CheerpX @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?&vscodeWebWorkerExtHostId=27318a4d-c1d0-4e3c-91bc-d99fef0b5f42:0
+[LOG] [rust-web-box][boot] CheerpX loaded; booting Linux @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:1483
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:1483
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[ERROR] Access to fetch at 'https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2' from origin 'https://link-foundation.github.io' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://link-foundation.github.io/rust-web-box/?debug=1:0
+[ERROR] Failed to load resource: net::ERR_FAILED @ https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2:0
+[WARNING] [rust-web-box] warm disk https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2 is reachable but CORS-blocked (reason: cors-or-network); falling back to default disk. Custom disks must be served with Access-Control-Allow-Origin — see docs/case-studies/issue-3/analysis-disk-cors.md @ https://link-foundation.github.io/rust-web-box/glue/cheerpx-bridge.js:168
+[LOG] [rust-web-box][boot] vm phase attaching cloud disk @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[LOG] %c WARN color: #993 No search provider registered for scheme: webvm, waiting @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] [rust-web-box][boot] vm phase attaching IndexedDB overlay @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][boot] vm phase attaching helper devices @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][boot] vm phase starting Linux @ https://link-foundation.github.io/rust-web-box/glue/debug.js:63
+[LOG] %c  ERR color: #f33 CheerpX initialization failed: DataCloneError: Failed to execute 'postMessage' on 'DedicatedWorkerGlobalScope': SharedArrayBuffer transfer requires self.crossOriginIsolated. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Updating additional builtin extensions cache @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
