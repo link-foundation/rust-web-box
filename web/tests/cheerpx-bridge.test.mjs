@@ -5,6 +5,7 @@ import {
   loadCheerpX,
   bootLinux,
   attachConsole,
+  createBlockDevice,
   resolveDiskUrl,
 } from '../glue/cheerpx-bridge.js';
 
@@ -69,6 +70,7 @@ test('bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fa
   const result = await bootLinux({
     CheerpX: fakeCheerpX,
     diskUrl: 'https://example.com/missing.ext2',
+    diskKind: 'cloud',
     fallbackDiskUrl: 'wss://disks.webvm.io/fallback.ext2',
   });
   assert.deepEqual(tried, [
@@ -126,6 +128,27 @@ test('bootLinux: builds the WebVM-style mount stack and surfaces progress', asyn
     'attaching IndexedDB overlay',
     'attaching helper devices',
     'starting Linux',
+  ]);
+});
+
+test('createBlockDevice: selects the CheerpX device for each disk kind', async () => {
+  const calls = [];
+  const fakeCheerpX = {
+    GitHubDevice: { create: async (url) => calls.push(['github', url]) },
+    HttpBytesDevice: { create: async (url) => calls.push(['bytes', url]) },
+    CloudDevice: { create: async (url) => calls.push(['cloud', url]) },
+  };
+
+  await createBlockDevice(fakeCheerpX, { kind: 'github', url: './disk/rust-alpine.ext2' });
+  await createBlockDevice(fakeCheerpX, { kind: 'bytes', url: './disk/other.ext2' });
+  await createBlockDevice(fakeCheerpX, { kind: 'cloud', url: 'wss://disks.webvm.io/x.ext2' });
+  await createBlockDevice(fakeCheerpX, './disk/inferred.ext2');
+
+  assert.deepEqual(calls, [
+    ['github', './disk/rust-alpine.ext2'],
+    ['bytes', './disk/other.ext2'],
+    ['cloud', 'wss://disks.webvm.io/x.ext2'],
+    ['bytes', './disk/inferred.ext2'],
   ]);
 });
 

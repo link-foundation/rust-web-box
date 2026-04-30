@@ -1,0 +1,9 @@
+repo root: /tmp/gh-issue-solver-1777522667540
+web root: /tmp/gh-issue-solver-1777522667540/web
+[vscode-web] already at 1.91.1, skipping
+[ext] vendored webvm-host -> /tmp/gh-issue-solver-1777522667540/web/vscode-web/extensions/webvm-host
+[ext] vendored rust-analyzer-web -> /tmp/gh-issue-solver-1777522667540/web/vscode-web/extensions/rust-analyzer-web
+[cheerpx] already at 1.2.11, skipping
+[product] wrote /tmp/gh-issue-solver-1777522667540/web/product.json
+[index] wrote /tmp/gh-issue-solver-1777522667540/web/index.html
+[build] done

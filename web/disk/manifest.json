@@ -7,12 +7,14 @@
     "notes": "Public WebVM Debian image. Used as a fallback so the page boots even before the rust-alpine release pipeline has run; cargo/rustup work from inside via apt + curl. The page-side workspace store still serves /workspace/hello_world.rs to the Explorer regardless of which disk is mounted."
   },
   "warm": {
-    "kind": "release-asset",
-    "url": "https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2",
+    "kind": "github",
+    "url": null,
+    "source_release_url": "https://github.com/link-foundation/rust-web-box/releases/download/disk-latest/rust-alpine.ext2",
     "release_tag": "disk-latest",
+    "chunk_size": 131072,
     "size_mb": null,
     "rust": true,
     "alpine": true,
-    "notes": "Pre-baked rust-alpine.ext2 — i386 Alpine + bash + rustc + cargo + a hello-world Cargo project under /workspace/hello. Built by web/disk/build.sh and uploaded as the rolling 'disk-latest' release asset on every push to main by .github/workflows/disk-image.yml. The boot shell tries this first; if it 404s (e.g. before the workflow has run), the page falls back to `default` so the workbench and terminal still come up."
+    "notes": "Pre-baked rust-alpine.ext2 — i386 Alpine + bash + rustc + cargo + a hello-world Cargo project under /workspace/hello. Built by web/disk/build.sh and uploaded as the rolling 'disk-latest' release asset. The committed manifest leaves warm.url unset; web/build/stage-pages-disk.mjs fills it with ./disk/rust-alpine.ext2 only after generating CheerpX GitHubDevice chunks in the Pages artifact. The browser must not fetch the GitHub Release asset directly because its redirect target is not CORS-readable."
   }
 }

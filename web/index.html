@@ -73,6 +73,15 @@
       loader's `workbench.js` skips its `fetch('product.json')` step (it
       still works as a fallback if the meta tag is missing).
     -->
+    <script>
+      (function () {
+        var root = typeof globalThis === 'object' ? globalThis : window;
+        var proc = root.process;
+        if (!proc || typeof proc !== 'object') proc = {};
+        if (!proc.env || typeof proc.env !== 'object') proc.env = {};
+        root.process = proc;
+      })();
+    </script>
     <script src="./vscode-web/out/vs/loader.js" onerror="window.__vscodeMissing=true"></script>
     <script src="./vscode-web/out/vs/webPackagePaths.js" onerror="window.__vscodeMissing=true"></script>
     <script>

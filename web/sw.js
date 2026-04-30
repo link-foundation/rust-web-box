@@ -61,14 +61,12 @@ function withCoopCoep(response) {
   }
   const headers = new Headers(response.headers);
   headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-  // `credentialless` instead of `require-corp` so CheerpX can stream
-  // the cross-origin Alpine + Rust disk image (hosted on GitHub
-  // Releases / objects.githubusercontent.com) without requiring those
-  // hosts to opt in via `Cross-Origin-Resource-Policy`. We still get
-  // `crossOriginIsolated === true` (and therefore SharedArrayBuffer +
-  // WASM threading) because COOP=same-origin + COEP=credentialless is
-  // a recognised isolation pair. Reference: web.dev/coep-credentialless.
-  headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
+  // The warm disk is staged onto this Pages origin as GitHubDevice
+  // chunks, so the page no longer needs experimental COEP
+  // `credentialless` to tolerate a cross-origin Release asset. Use the
+  // stricter, more widely implemented isolation pair for CheerpX's
+  // SharedArrayBuffer/WASM-threading path.
+  headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
   // Same-origin assets still flag CORP for any embedded subresources.
   headers.set('Cross-Origin-Resource-Policy', 'same-origin');
   return new Response(response.body, {

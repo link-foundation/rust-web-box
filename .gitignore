@@ -75,7 +75,7 @@ web/cheerpx/cx.esm.js
 web/cheerpx/cx.js
 web/cheerpx/cx.wasm
 web/cheerpx/cxcore*.js
-web/cheerpx/cxcore.wasm
+web/cheerpx/cxcore*.wasm
 web/cheerpx/cxbridge*
 web/cheerpx/cheerpOS*
 web/cheerpx/fail.wasm
@@ -83,5 +83,9 @@ web/cheerpx/workerclock.js
 web/cheerpx/tun/
 web/cheerpx/.version
 web/disk/rust-alpine.ext2
+web/disk/rust-alpine.ext2.meta
+web/disk/rust-alpine.ext2.c*.txt
 web/disk/rust-debian.ext2
+web/disk/rust-debian.ext2.meta
+web/disk/rust-debian.ext2.c*.txt
 web/product.json

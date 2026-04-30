@@ -1,0 +1,28 @@
+Total messages: 26 (Errors: 0, Warnings: 2)
+
+[LOG] [rust-web-box][workbench] substituting placeholders with {scheme: http, host: localhost:8876, basePath: /rust-web-box} @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][workbench] extensions resolved to [Object, Object] @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][boot] loading CheerpX @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] %c WARN color: #993 Ignoring the error while validating workspace folder webvm:/workspace - ENOPRO: No file system provider found for resource 'webvm:/workspace' @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[WARNING] The web worker extension host is started in a same-origin iframe! @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:1885
+[LOG] %c INFO color: #33f Found additional builtin location extensions in env [http://localhost:8876/rust-web-box/extensions/webvm-host, http://localhost:8876/rust-web-box/extensions/rust-analyzer-web] @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=a5e9ce29-22a0-40ed-82db-931a342848b8:0
+[LOG] [rust-web-box][boot] CheerpX loaded; booting Linux @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] [rust-web-box][boot] vm phase attaching cloud disk @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][boot] vm phase attaching IndexedDB overlay @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][boot] vm phase attaching helper devices @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] [rust-web-box][boot] vm phase starting Linux @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c WARN color: #993 No search provider registered for scheme: webvm, waiting @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] [rust-web-box][boot] VM booted with disk wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2 @ http://localhost:8876/rust-web-box/glue/debug.js:63
+[LOG] %c INFO color: #33f Updating additional builtin extensions cache @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ http://localhost:8876/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656

@@ -57,6 +57,12 @@ jobs:
           SKIP_VSCODE_WEB: ${{ vars.SKIP_VSCODE_WEB || '' }}
           SKIP_CHEERPX: ${{ vars.SKIP_CHEERPX || '' }}
 
+      - name: Stage warm disk chunks from release
+        if: github.event_name != 'pull_request'
+        run: node web/build/stage-pages-disk.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Smoke-check artifact contents
         run: |
           test -f web/index.html
@@ -64,6 +70,8 @@ jobs:
           test -f web/glue/network-shim.js
           test -f web/extensions/webvm-host/extension.js
           test -f web/extensions/rust-analyzer-web/extension.js
+          test -f web/disk/manifest.json
+          du -sh web
           ls -la web/
 
       - name: Upload Pages artifact

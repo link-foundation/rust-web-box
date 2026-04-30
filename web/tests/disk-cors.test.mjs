@@ -1,4 +1,5 @@
-// Regression tests for issue #3 — root cause #2: CORS-aware disk URL probe.
+// Regression tests for issue #9: CORS-aware disk probing and same-origin
+// Pages disk staging.
 //
 // Bug shape: the previous probe used `mode: 'no-cors'` and treated an
 // opaque response as success. That told us "the URL is fetchable" but
@@ -11,13 +12,18 @@
 // Fix: probe with `mode: 'cors'` (the default) and return a structured
 // `{ ok, reason }` result so callers can log a useful diagnostic.
 //
-// See docs/case-studies/issue-3/analysis-disk-cors.md for the full
-// analysis (with curl evidence and console logs).
+// See docs/case-studies/issue-9/README.md for the full analysis.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { probeUrl, resolveDiskUrl } from '../glue/cheerpx-bridge.js';
+import { probeUrl, resolveDiskConfig, resolveDiskUrl } from '../glue/cheerpx-bridge.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WEB_ROOT = path.resolve(__dirname, '..');
 
 function captureLogger() {
   const calls = { warn: [], info: [] };
@@ -85,6 +91,18 @@ test('probeUrl: skips probe (returns ok=true) for non-HTTP(S) URLs like wss://',
   assert.equal(called, false, 'wss:// URLs must not be sent through fetch');
 });
 
+test('probeUrl: probes same-origin relative URLs instead of treating them as opaque-safe', async () => {
+  const calls = [];
+  const fetchImpl = async (url, opts) => {
+    calls.push({ url, opts });
+    return { ok: true, status: 200, type: 'basic', headers: new Map() };
+  };
+  const result = await probeUrl('./disk/rust-alpine.ext2.meta', fetchImpl);
+  assert.deepEqual(result, { ok: true, reason: 'reachable' });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, './disk/rust-alpine.ext2.meta');
+});
+
 test('probeUrl: returns ok=false reason=timeout when AbortController fires', async () => {
   const fetchImpl = async () => {
     const err = new Error('aborted');
@@ -118,7 +136,7 @@ test('resolveDiskUrl: surfaces a structured CORS warning when warm probe is CORS
   const message = calls.warn[0][0];
   assert.match(message, /CORS-blocked/, 'warning must mention CORS');
   assert.match(message, /cors-or-network/, 'warning must include the structured reason');
-  assert.match(message, /analysis-disk-cors\.md/, 'warning must point to the case study');
+  assert.match(message, /docs\/case-studies\/issue-9\/README\.md/, 'warning must point to the case study');
   assert.equal(calls.info.length, 0, 'should not double-log via info');
 });
 
@@ -189,4 +207,44 @@ test('resolveDiskUrl: structured warning never references undefined when probe r
   for (const line of all) {
     assert.doesNotMatch(line, /reason: undefined/, `bad log line: ${line}`);
   }
+});
+
+test('resolveDiskConfig: probes GitHubDevice entries via .meta and preserves kind', async () => {
+  const probed = [];
+  const disk = await resolveDiskConfig({
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          warm: {
+            kind: 'github',
+            url: './disk/rust-alpine.ext2',
+          },
+          default: {
+            kind: 'cloud',
+            url: 'wss://disks.webvm.io/fallback.ext2',
+          },
+        };
+      },
+    }),
+    probe: async (u) => {
+      probed.push(u);
+      return { ok: true, reason: 'reachable' };
+    },
+  });
+  assert.deepEqual(probed, ['./disk/rust-alpine.ext2.meta']);
+  assert.equal(disk.kind, 'github');
+  assert.equal(disk.url, './disk/rust-alpine.ext2');
+});
+
+test('disk manifest: committed warm source is not a browser GitHub Release redirect', async () => {
+  const manifest = JSON.parse(
+    await fs.readFile(path.join(WEB_ROOT, 'disk', 'manifest.json'), 'utf8'),
+  );
+  assert.equal(manifest.warm.kind, 'github');
+  assert.equal(manifest.warm.url, null);
+  assert.match(
+    manifest.warm.source_release_url,
+    /github\.com\/link-foundation\/rust-web-box\/releases\/download\/disk-latest\/rust-alpine\.ext2$/,
+  );
 });

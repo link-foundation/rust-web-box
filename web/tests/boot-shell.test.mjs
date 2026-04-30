@@ -93,16 +93,34 @@ test('boot shell: rust-analyzer-web package.json declares rust language', async 
   assert.deepEqual(rust.extensions, ['.rs']);
 });
 
-test('boot shell: service worker synthesises COOP/COEP headers (credentialless for cross-origin disk)', async () => {
+test('boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)', async () => {
   const sw = await read('sw.js');
   assert.match(sw, /Cross-Origin-Opener-Policy.*same-origin/);
-  assert.match(sw, /Cross-Origin-Embedder-Policy.*credentialless/);
+  assert.match(sw, /Cross-Origin-Embedder-Policy.*require-corp/);
 });
 
 test('boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11', async () => {
   const build = await read('build/build-workbench.mjs');
   assert.match(build, /VSCODE_WEB_VERSION = '1\.91\.1'/);
   assert.match(build, /CHEERPX_VERSION = '1\.2\.11'/);
+});
+
+test('boot shell: workbench bootstrap provides process.env for browserified dependencies', async () => {
+  const template = await read('build/index.template.html');
+  assert.match(template, /root\.process = proc/);
+  assert.match(template, /proc\.env/);
+  assert.match(template, /vscode-web\/out\/vs\/loader\.js/);
+
+  const processShim = template.indexOf('root.process = proc');
+  const loader = template.indexOf('vscode-web/out/vs/loader.js');
+  assert.ok(processShim > 0, 'expected process.env shim in template');
+  assert.ok(loader > processShim, 'process.env shim must run before VS Code loader');
+});
+
+test('boot shell: rendered index keeps the browser process.env shim', async () => {
+  const html = await read('index.html');
+  assert.match(html, /root\.process = proc/);
+  assert.match(html, /proc\.env/);
 });
 
 test('boot shell: webvm-host extension shows a "Booting Linux VM" banner', async () => {
@@ -155,12 +173,28 @@ test('boot shell: boot.js stages workspace-only server before VM is up', async (
   assert.match(boot, /bringUpVM/);
 });
 
-test('boot shell: disk manifest carries an Alpine warm image entry pointing to disk-latest', async () => {
+test('boot shell: disk manifest carries an Alpine warm image entry staged for Pages', async () => {
   const m = JSON.parse(await read('disk/manifest.json'));
   assert.equal(m.warm.alpine, true);
   assert.equal(m.warm.rust, true);
   assert.equal(m.warm.release_tag, 'disk-latest');
-  assert.match(m.warm.url, /\/releases\/download\/disk-latest\/rust-alpine\.ext2$/);
+  assert.equal(m.warm.kind, 'github');
+  assert.equal(m.warm.url, null);
+  assert.match(m.warm.source_release_url, /\/releases\/download\/disk-latest\/rust-alpine\.ext2$/);
+  assert.match(m.warm.notes, /stage-pages-disk\.mjs/);
+});
+
+test('boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in', async () => {
+  const pkg = JSON.parse(await read('extensions/rust-analyzer-web/package.json'));
+  assert.equal(pkg.rustAnalyzerWeb?.wasm ?? null, null);
+
+  const ext = await read('extensions/rust-analyzer-web/extension.js');
+  assert.match(ext, /packageJSON\?\.rustAnalyzerWeb\?\.wasm/);
+  assert.doesNotMatch(
+    ext,
+    /const\s+ANALYZER_WASM\s*=\s*['"]\.\/rust-analyzer\.wasm['"]/,
+    'the extension must not hard-code a missing rust-analyzer.wasm fetch',
+  );
 });
 
 test('boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world', async () => {
@@ -170,6 +204,9 @@ test('boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world', async 
   assert.match(d, /apk add[\s\S]+?\brust\b/);
   assert.match(d, /apk add[\s\S]+?\bcargo\b/);
   assert.match(d, /workspace\/hello/);
+
+  const build = await read('disk/build.sh');
+  assert.match(build, /resize2fs -M "\$IMG"/);
 });
 
 test('boot shell: pages workflow deploys to GitHub Pages on main', async () => {
@@ -177,6 +214,7 @@ test('boot shell: pages workflow deploys to GitHub Pages on main', async () => {
     path.resolve(WEB_ROOT, '..', '.github', 'workflows', 'pages.yml'),
     'utf8',
   );
+  assert.match(wf, /stage-pages-disk\.mjs/);
   assert.match(wf, /actions\/upload-pages-artifact/);
   assert.match(wf, /actions\/deploy-pages/);
   assert.match(wf, /github\.ref == 'refs\/heads\/main'/);
@@ -199,4 +237,5 @@ test('boot shell: disk-image workflow auto-publishes to disk-latest on push to m
   assert.match(wf, /disk-latest/);
   assert.match(wf, /gh release upload/);
   assert.match(wf, /github\.event_name == 'push'/);
+  assert.match(wf, /gh workflow run pages\.yml/);
 });
