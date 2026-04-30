@@ -40,11 +40,12 @@ moment the workbench mounts** — no waiting for the 30+ second CheerpX
 boot.
 
 When the VM finishes booting, `webvm-server.js` mirrors the JS-side
-workspace into the guest's `/workspace/` directory using `cat <<EOF`
-heredocs sent through the persistent bash session, then `cd`s into
-`/workspace` and runs `ls -la` so the user sees the populated directory
-in the terminal. Subsequent saves from the editor write to both stores:
-JS-side immediately, guest-side via heredoc-on-stdin.
+workspace into the guest's `/workspace/` directory by writing a temporary
+shell script to CheerpX's `DataDevice` mount and executing it
+non-interactively from `/data`. The visible login shell starts after that
+prime step with `/workspace` as its working directory. Subsequent saves
+from the editor write to both stores: JS-side immediately, guest-side via
+the same quiet `/data` script runner.
 
 This is why the page can show a working Explorer + editor + open file
 the moment VS Code mounts — the alternative (gating the workspace on
@@ -98,7 +99,7 @@ exactly where they would be with `vscode.dev` plus a working terminal.
 | 2 | Service worker COOP/COEP cache  | ✅     | Caches shell + glue, synthesises COOP/COEP/CORP |
 | 3 | CheerpX 1.2.11 loader + boot    | ✅     | Vendored at build time (engine + tun helpers); CDN fallback at runtime |
 | 4 | WebVM bus (page ↔ extension)    | ✅     | 8 unit tests; request/response + events over BroadcastChannel |
-| 5 | Page-side server (FS + procs)   | ✅     | Persistent bash loop, `cx.setCustomConsole(writeFn, c, r)` for I/O |
+| 5 | Page-side server (FS + procs)   | ✅     | Persistent bash loop for user I/O; `/data` scripts for quiet workspace sync |
 | 6 | webvm-host extension            | ✅     | Auto-opens terminal with "Booting…" loading status, `webvm:` FS, cargo tasks, Run button |
 | 7 | rust-analyzer-web extension     | 🟡     | Lang config + diagnostics; full WASM payload loaded if bundled |
 | 8 | VS Code Web bundle              | ✅     | Vendored from `vscode-web@1.91.1`; AMD-loader bootstrap matches vscode.dev exactly |

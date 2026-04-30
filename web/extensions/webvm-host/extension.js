@@ -217,7 +217,11 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         if (result?.diskUrl) {
           status(`disk: ${DIM}${result.diskUrl}${RESET}`);
         }
-        status('Workspace mirrored to /workspace — try `cargo run` in /workspace/hello.');
+        if (result?.workspacePrimeError) {
+          status(`Workspace mirror failed: ${result.workspacePrimeError}`);
+        } else {
+          status('Workspace mirrored to /workspace — try `cargo run` in /workspace/hello.');
+        }
         writeEmitter.fire('\r\n');
       } catch (err) {
         clearInterval(tick);

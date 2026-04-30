@@ -1,0 +1,1220 @@
+TAP version 13
+# Subtest: boot shell: index.html mounts directly into <body> with no custom UI overlay
+ok 1 - boot shell: index.html mounts directly into <body> with no custom UI overlay
+  ---
+  duration_ms: 7.933486
+  ...
+# Subtest: boot shell: index.html references workbench config meta
+ok 2 - boot shell: index.html references workbench config meta
+  ---
+  duration_ms: 0.585683
+  ...
+# Subtest: boot shell: workbench config preinstalls our two extensions
+ok 3 - boot shell: workbench config preinstalls our two extensions
+  ---
+  duration_ms: 0.601618
+  ...
+# Subtest: boot shell: index.html points to vendored vscode-web bundle
+ok 4 - boot shell: index.html points to vendored vscode-web bundle
+  ---
+  duration_ms: 0.49529
+  ...
+# Subtest: boot shell: glue modules exist
+ok 5 - boot shell: glue modules exist
+  ---
+  duration_ms: 0.842087
+  ...
+# Subtest: boot shell: extensions are present with package.json + extension.js
+ok 6 - boot shell: extensions are present with package.json + extension.js
+  ---
+  duration_ms: 0.553076
+  ...
+# Subtest: boot shell: webvm-host package.json declares web extensionKind
+ok 7 - boot shell: webvm-host package.json declares web extensionKind
+  ---
+  duration_ms: 3.86705
+  ...
+# Subtest: boot shell: rust-analyzer-web package.json declares rust language
+ok 8 - boot shell: rust-analyzer-web package.json declares rust language
+  ---
+  duration_ms: 1.707617
+  ...
+# Subtest: boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+ok 9 - boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+  ---
+  duration_ms: 0.755087
+  ...
+# Subtest: boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+ok 10 - boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+  ---
+  duration_ms: 1.174763
+  ...
+# Subtest: boot shell: workbench bootstrap provides process.env for browserified dependencies
+ok 11 - boot shell: workbench bootstrap provides process.env for browserified dependencies
+  ---
+  duration_ms: 0.741266
+  ...
+# Subtest: boot shell: rendered index keeps the browser process.env shim
+ok 12 - boot shell: rendered index keeps the browser process.env shim
+  ---
+  duration_ms: 0.644702
+  ...
+# Subtest: boot shell: webvm-host extension shows a "Booting Linux VM" banner
+ok 13 - boot shell: webvm-host extension shows a "Booting Linux VM" banner
+  ---
+  duration_ms: 1.093671
+  ...
+# Subtest: boot shell: webvm-host auto-opens a terminal on activation
+ok 14 - boot shell: webvm-host auto-opens a terminal on activation
+  ---
+  duration_ms: 1.446959
+  ...
+# Subtest: boot shell: webvm-host auto-opens hello_world.rs on activation
+ok 15 - boot shell: webvm-host auto-opens hello_world.rs on activation
+  ---
+  duration_ms: 0.591893
+  ...
+# Subtest: boot shell: workspace-fs seeds hello_world.rs at workspace root
+ok 16 - boot shell: workspace-fs seeds hello_world.rs at workspace root
+  ---
+  duration_ms: 1.225148
+  ...
+# Subtest: boot shell: webvm-server mirrors workspace into the guest via heredocs
+not ok 17 - boot shell: webvm-server mirrors workspace into the guest via heredocs
+  ---
+  duration_ms: 2.726658
+  location: '/tmp/gh-issue-solver-1777525949126/web/tests/boot-shell.test.mjs:151:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /dataDevice\.writeFile/. Input:
+    
+    '// Page-side WebVM server.\n' +
+      '//\n' +
+      '// Holds the live CheerpX handle and exposes its functionality to the VS\n' +
+      '// Code Web extension over the WebVM bus (see webvm-bus.js). The page\n' +
+      '// hosts CheerpX (it owns the SharedArrayBuffer), the extension worker\n' +
+      '// drives the workbench UI; messages flow over a same-origin\n' +
+      '// BroadcastChannel.\n' +
+      '//\n' +
+      '// Filesystem model:\n' +
+      '//\n' +
+      '//   The workspace lives JS-side, in `glue/workspace-fs.js`, persisted\n' +
+      '//   to IndexedDB. The FileSystemProvider in the webvm-host extension\n' +
+      '//   reads/writes it directly via the bus. We mirror every file write\n' +
+      "//   into the guest's `/workspace/` directory (using stdin-injected\n" +
+      '//   here-documents) so `cargo run` from the terminal sees the same\n' +
+      '//   content. Decoupling Explorer from CheerpX boot is the only way the\n' +
+      '//   user sees a populated workspace immediately on page load — the VM\n' +
+      "//   takes 30+ seconds to come up, but the editor doesn't have to wait.\n" +
+      '//\n' +
+      '// Terminal model:\n' +
+      '//\n' +
+      '//   The VM runs a single, long-lived `/bin/bash --login` loop (the\n' +
+      '//   leaningtech/webvm pattern). All bytes coming out of CheerpX are\n' +
+      '//   broadcast to every subscribed terminal as a `proc.stdout` event;\n' +
+      '//   bytes typed into a terminal are forwarded to the VM via\n' +
+      "//   `cx.setCustomConsole`'s `cxReadFunc`. This keeps a single PTY\n" +
+      '//   rather than juggling per-process consoles, matching what users\n' +
+      '//   expect from a "browser tab is the terminal" experience and avoiding\n' +
+      "//   the version-skew of CheerpX's process-management API.\n" +
+      '\n' +
+      "import { attachConsole } from './cheerpx-bridge.js';\n" +
+      "import { createLfToCrlfNormaliser } from './terminal-stream.js';\n" +
+      '\n' +
+      "const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });\n" +
+      'const TEXT_ENCODER = new TextEncoder();\n' +
+      '\n' +
+      '/**\n' +
+      ' * Run the canonical "shell loop" the way leaningtech/webvm does:\n' +
+      ' * spawn `/bin/bash --login`, and when it exits, spawn it again.\n' +
+      ' *\n' +
+      ' * `onFirstReady` is called once bash is about to spawn so callers can\n' +
+      ' * inject one-time setup commands without polluting the scrollback.\n' +
+      ' */\n' +
+      "function runShellLoop(cx, { cwd = '/root', env, onExit, onFirstReady } = {}) {\n" +
+      '  const fullEnv = env ?? [\n' +
+      "    'HOME=/root',\n" +
+      "    'TERM=xterm-256color',\n" +
+      "    'USER=root',\n" +
+      "    'SHELL=/bin/bash',\n" +
+      "    'LANG=C.UTF-8',\n" +
+      '    // PATH covers both Debian (/usr/bin) and Alpine (/usr/local/bin) layouts\n' +
+      "    // plus rustup's $HOME/.cargo/bin.\n" +
+      "    'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',\n" +
+      "    'PS1=root@rust-web-box:\\\\w# ',\n" +
+      '  ];\n' +
+      '  let stopped = false;\n' +
+      '  let firstSpawn = true;\n' +
+      '\n' +
+      '  (async () => {\n' +
+      '    while (!stopped) {\n' +
+      '      try {\n' +
+      '        const fn = cx.run ?? cx.runAsync;\n' +
+      "        if (typeof fn !== 'function') throw new Error('CheerpX missing run()');\n" +
+      '        if (firstSpawn) {\n' +
+      '          firstSpawn = false;\n' +
+      '          queueMicrotask(() => onFirstReady?.());\n' +
+      '        }\n' +
+      "        await fn.call(cx, '/bin/bash', ['--login'], {\n" +
+      '          env: fullEnv,\n' +
+      '          cwd,\n' +
+      '          uid: 0,\n' +
+      '          gid: 0,\n' +
+      '        });\n' +
+      '      } catch (err) {\n' +
+      '        // eslint-disable-next-line no-console\n' +
+      "        console.warn('[rust-web-box] bash loop error:', err);\n" +
+      '        await new Promise((r) => setTimeout(r, 500));\n' +
+      '      }\n' +
+      '      onExit?.();\n' +
+      '    }\n' +
+      '  })();\n' +
+      '\n' +
+      '  return () => {\n' +
+      '    stopped = true;\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      '/**\n' +
+      ' * Build a shell-safe heredoc that writes `bytes` to `path` inside the\n' +
+      " * guest. We pick a marker that doesn't appear in the payload.\n" +
+      ' */\n' +
+      'function heredocForFile(path, bytes) {\n' +
+      '  const text = TEXT_DECODER.decode(bytes);\n' +
+      "  let marker = 'RWB_EOF';\n" +
+      "  while (text.includes(marker)) marker = marker + '_X';\n" +
+      "  const dir = path.replace(/\\/[^/]+$/, '') || '/';\n" +
+      '  return [\n' +
+      "    `mkdir -p '${shellQuote(dir)}'`,\n" +
+      "    `cat > '${shellQuote(path)}' <<'${marker}'`,\n" +
+      '    text,\n' +
+      '    marker,\n' +
+      "  ].join('\\n');\n" +
+      '}\n' +
+      '\n' +
+      'function shellQuote(s) {\n' +
+      `  return String(s).replace(/'/g, "'\\\\''");\n` +
+      '}\n' +
+      '\n' +
+      '/**\n' +
+      ' * Build the methods table for the full server (workspace + VM).\n' +
+      ' *\n' +
+      ' * `cx` is the live CheerpX handle. `workspace` is the JS-side store.\n' +
+      ' * `console_` is an `attachConsole` handle that already has its onData\n' +
+      ' * wired up to broadcast `proc.stdout` events.\n' +
+      ' */\n' +
+      'export function fullServerMethods({ cx, workspace, status, console_, primeGuestWorkspace, subscribers, spawn, killSub }) {\n' +
+      '  const writeStr = (s) => console_.write(TEXT_ENCODER.encode(s));\n' +
+      '  return {\n' +
+      "    'vm.status': async () => ({ booted: true, ...status }),\n" +
+      "    'fs.readFile': async ({ path }) => await workspace.readFile(path),\n" +
+      "    'fs.writeFile': async ({ path, data, options }) => {\n" +
+      '      const buf = data instanceof Uint8Array ? data : new Uint8Array(data ?? []);\n' +
+      '      await workspace.writeFile(path, buf, options);\n' +
+      '      try {\n' +
+      "        writeStr('set +o history\\n');\n" +
+      "        writeStr(heredocForFile(path, buf) + '\\n');\n" +
+      "        writeStr('set -o history\\n');\n" +
+      '      } catch {}\n' +
+      '    },\n' +
+      "    'fs.stat': async ({ path }) => await workspace.stat(path),\n" +
+      "    'fs.readDir': async ({ path }) => await workspace.readDirectory(path),\n" +
+      "    'fs.delete': async ({ path, recursive }) => {\n" +
+      '      await workspace.delete(path, { recursive });\n' +
+      '      try {\n' +
+      "        writeStr(`rm -${recursive ? 'r' : ''}f '${shellQuote(path)}'\\n`);\n" +
+      '      } catch {}\n' +
+      '    },\n' +
+      "    'fs.rename': async ({ from, to }) => {\n" +
+      '      await workspace.rename(from, to);\n' +
+      '      try {\n' +
+      "        writeStr(`mv '${shellQuote(from)}' '${shellQuote(to)}'\\n`);\n" +
+      '      } catch {}\n' +
+      '    },\n' +
+      "    'fs.createDirectory': async ({ path }) => {\n" +
+      '      await workspace.createDirectory(path);\n' +
+      '      try {\n' +
+      "        writeStr(`mkdir -p '${shellQuote(path)}'\\n`);\n" +
+      '      } catch {}\n' +
+      '    },\n' +
+      "    'proc.spawn': async () => spawn(),\n" +
+      "    'proc.write': async ({ bytes }) => {\n" +
+      '      const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);\n' +
+      '      console_.write(buf);\n' +
+      '    },\n' +
+      "    'proc.resize': async ({ cols, rows }) => {\n" +
+      '      console_.resize(cols, rows);\n' +
+      '    },\n' +
+      "    'proc.kill': async ({ sub }) => {\n" +
+      '      if (sub != null) killSub(sub);\n' +
+      '    },\n' +
+      "    'proc.wait': async () => ({ exitCode: 0 }),\n" +
+      "    'cargo.runHello': async () => {\n" +
+      "      writeStr('cd /workspace/hello && cargo run --release\\n');\n" +
+      '    },\n' +
+      "    'workspace.prime': async () => {\n" +
+      '      await primeGuestWorkspace();\n' +
+      '    },\n' +
+      '  };\n' +
+      '}\n' +
+      '\n' +
+      '/**\n' +
+      ' * Bring the full WebVM server online: attach the console, start the\n' +
+      ' * shell loop, prime `/workspace/`, and return the methods table.\n' +
+      ' *\n' +
+      ' * `busServer` is an existing `createBusServer` handle; we call\n' +
+      ' * `setMethods()` on it to swap the workspace-only stage for the full\n' +
+      ' * server. We do NOT register a second message listener (that would\n' +
+      ' * double-respond to every request).\n' +
+      ' */\n' +
+      'export function startWebVMServer({ cx, busServer, status, workspace, opts = {} } = {}) {\n' +
+      "  if (!cx) throw new TypeError('startWebVMServer requires a CheerpX handle');\n" +
+      "  if (!busServer) throw new TypeError('startWebVMServer requires a busServer');\n" +
+      "  if (!workspace) throw new TypeError('startWebVMServer requires a workspace');\n" +
+      '\n' +
+      '  // One console attached to the page; many bus subscribers can listen.\n' +
+      '  const console_ = attachConsole(cx, {\n' +
+      '    cols: opts.cols ?? 120,\n' +
+      '    rows: opts.rows ?? 30,\n' +
+      '  });\n' +
+      '  // Streaming decoder so multi-byte UTF-8 split across CheerpX writes\n' +
+      "  // doesn't decode to U+FFFD. Stateful CRLF normaliser so xterm.js\n" +
+      "  // (under VS Code's Pseudoterminal) renders bash output without the\n" +
+      '  // staircase indentation that bare-LF would otherwise produce.\n' +
+      "  const stdoutDecoder = new TextDecoder('utf-8', { fatal: false });\n" +
+      '  const normaliseCrlf = createLfToCrlfNormaliser();\n' +
+      '  console_.onData((bytes) => {\n' +
+      '    const text = stdoutDecoder.decode(bytes, { stream: true });\n' +
+      '    if (!text) return;\n' +
+      "    busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(text) });\n" +
+      '  });\n' +
+      '\n' +
+      '  function writeStr(s) {\n' +
+      '    console_.write(TEXT_ENCODER.encode(s));\n' +
+      '  }\n' +
+      '\n' +
+      '  // Per-terminal subscriber tracking. Every "spawn" returns the same\n' +
+      '  // virtual pid but bumps a per-subscriber counter so kill() only\n' +
+      '  // affects the one terminal pane.\n' +
+      '  const subscribers = new Map();\n' +
+      '  let nextSub = 1;\n' +
+      '\n' +
+      '  function spawn() {\n' +
+      '    const sub = nextSub++;\n' +
+      '    subscribers.set(sub, { alive: true });\n' +
+      '    return { pid: 1, sub };\n' +
+      '  }\n' +
+      '\n' +
+      '  function killSub(sub) {\n' +
+      '    subscribers.delete(sub);\n' +
+      '  }\n' +
+      '\n' +
+      '  // Mirror the JS-side workspace into the guest: writes every regular\n' +
+      '  // file with `cat <<EOF`, then `cd /workspace` and prints a friendly\n' +
+      '  // greeting + `ls` so the user sees the populated directory in the\n' +
+      '  // terminal exactly like the screenshot feedback asked for.\n' +
+      '  let primed = false;\n' +
+      '  let primingPromise = null;\n' +
+      '  async function primeGuestWorkspace() {\n' +
+      '    if (primed) return;\n' +
+      '    if (primingPromise) return primingPromise;\n' +
+      '    primingPromise = (async () => {\n' +
+      '      const snap = await workspace.snapshot();\n' +
+      '      // Disable echo of the priming script so the user only sees the\n' +
+      '      // banner + cd + ls output.\n' +
+      "      writeStr('set +o history 2>/dev/null\\n');\n" +
+      "      writeStr('stty -echo 2>/dev/null\\n');\n" +
+      `      writeStr("printf '\\\\n[rust-web-box] preparing /workspace …\\\\n'\\n");\n` +
+      '      for (const [path, bytes] of Object.entries(snap)) {\n' +
+      "        writeStr(heredocForFile(path, bytes) + '\\n');\n" +
+      '      }\n' +
+      "      writeStr('chown -R root:root /workspace 2>/dev/null || true\\n');\n" +
+      "      writeStr('cd /workspace\\n');\n" +
+      "      writeStr('stty echo 2>/dev/null\\n');\n" +
+      '      writeStr("printf \'[rust-web-box] /workspace ready — try `cargo run` from /workspace/hello\\\\n\'\\n");\n' +
+      '      // `clear` pulls the eye to the populated directory listing.\n' +
+      "      writeStr('clear 2>/dev/null; ls -la /workspace\\n');\n" +
+      '      primed = true;\n' +
+      '    })();\n' +
+      '    return primingPromise;\n' +
+      '  }\n' +
+      '\n' +
+      '  // Start the shell loop.\n' +
+      '  const stopShell = runShellLoop(cx, {\n' +
+      "    onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),\n" +
+      '    onFirstReady: () => {\n' +
+      '      // Prime once bash is up. A short delay lets login profile scripts\n' +
+      '      // settle before our heredoc payload starts streaming.\n' +
+      '      setTimeout(() => {\n' +
+      '        primeGuestWorkspace().catch((err) => {\n' +
+      '          // eslint-disable-next-line no-console\n' +
+      "          console.warn('[rust-web-box] workspace prime failed:', err);\n" +
+      '        });\n' +
+      '      }, 800);\n' +
+      '    },\n' +
+      '  });\n' +
+      '\n' +
+      '  const methods = fullServerMethods({\n' +
+      '    cx,\n' +
+      '    workspace,\n' +
+      '    status,\n' +
+      '    console_,\n' +
+      '    primeGuestWorkspace,\n' +
+      '    subscr'... 269 more characters
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    // Page-side WebVM server.
+    //
+    // Holds the live CheerpX handle and exposes its functionality to the VS
+    // Code Web extension over the WebVM bus (see webvm-bus.js). The page
+    // hosts CheerpX (it owns the SharedArrayBuffer), the extension worker
+    // drives the workbench UI; messages flow over a same-origin
+    // BroadcastChannel.
+    //
+    // Filesystem model:
+    //
+    //   The workspace lives JS-side, in `glue/workspace-fs.js`, persisted
+    //   to IndexedDB. The FileSystemProvider in the webvm-host extension
+    //   reads/writes it directly via the bus. We mirror every file write
+    //   into the guest's `/workspace/` directory (using stdin-injected
+    //   here-documents) so `cargo run` from the terminal sees the same
+    //   content. Decoupling Explorer from CheerpX boot is the only way the
+    //   user sees a populated workspace immediately on page load — the VM
+    //   takes 30+ seconds to come up, but the editor doesn't have to wait.
+    //
+    // Terminal model:
+    //
+    //   The VM runs a single, long-lived `/bin/bash --login` loop (the
+    //   leaningtech/webvm pattern). All bytes coming out of CheerpX are
+    //   broadcast to every subscribed terminal as a `proc.stdout` event;
+    //   bytes typed into a terminal are forwarded to the VM via
+    //   `cx.setCustomConsole`'s `cxReadFunc`. This keeps a single PTY
+    //   rather than juggling per-process consoles, matching what users
+    //   expect from a "browser tab is the terminal" experience and avoiding
+    //   the version-skew of CheerpX's process-management API.
+    
+    import { attachConsole } from './cheerpx-bridge.js';
+    import { createLfToCrlfNormaliser } from './terminal-stream.js';
+    
+    const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });
+    const TEXT_ENCODER = new TextEncoder();
+    
+    /**
+     * Run the canonical "shell loop" the way leaningtech/webvm does:
+     * spawn `/bin/bash --login`, and when it exits, spawn it again.
+     *
+     * `onFirstReady` is called once bash is about to spawn so callers can
+     * inject one-time setup commands without polluting the scrollback.
+     */
+    function runShellLoop(cx, { cwd = '/root', env, onExit, onFirstReady } = {}) {
+      const fullEnv = env ?? [
+        'HOME=/root',
+        'TERM=xterm-256color',
+        'USER=root',
+        'SHELL=/bin/bash',
+        'LANG=C.UTF-8',
+        // PATH covers both Debian (/usr/bin) and Alpine (/usr/local/bin) layouts
+        // plus rustup's $HOME/.cargo/bin.
+        'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        'PS1=root@rust-web-box:\\w# ',
+      ];
+      let stopped = false;
+      let firstSpawn = true;
+    
+      (async () => {
+        while (!stopped) {
+          try {
+            const fn = cx.run ?? cx.runAsync;
+            if (typeof fn !== 'function') throw new Error('CheerpX missing run()');
+            if (firstSpawn) {
+              firstSpawn = false;
+              queueMicrotask(() => onFirstReady?.());
+            }
+            await fn.call(cx, '/bin/bash', ['--login'], {
+              env: fullEnv,
+              cwd,
+              uid: 0,
+              gid: 0,
+            });
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('[rust-web-box] bash loop error:', err);
+            await new Promise((r) => setTimeout(r, 500));
+          }
+          onExit?.();
+        }
+      })();
+    
+      return () => {
+        stopped = true;
+      };
+    }
+    
+    /**
+     * Build a shell-safe heredoc that writes `bytes` to `path` inside the
+     * guest. We pick a marker that doesn't appear in the payload.
+     */
+    function heredocForFile(path, bytes) {
+      const text = TEXT_DECODER.decode(bytes);
+      let marker = 'RWB_EOF';
+      while (text.includes(marker)) marker = marker + '_X';
+      const dir = path.replace(/\/[^/]+$/, '') || '/';
+      return [
+        `mkdir -p '${shellQuote(dir)}'`,
+        `cat > '${shellQuote(path)}' <<'${marker}'`,
+        text,
+        marker,
+      ].join('\n');
+    }
+    
+    function shellQuote(s) {
+      return String(s).replace(/'/g, "'\\''");
+    }
+    
+    /**
+     * Build the methods table for the full server (workspace + VM).
+     *
+     * `cx` is the live CheerpX handle. `workspace` is the JS-side store.
+     * `console_` is an `attachConsole` handle that already has its onData
+     * wired up to broadcast `proc.stdout` events.
+     */
+    export function fullServerMethods({ cx, workspace, status, console_, primeGuestWorkspace, subscribers, spawn, killSub }) {
+      const writeStr = (s) => console_.write(TEXT_ENCODER.encode(s));
+      return {
+        'vm.status': async () => ({ booted: true, ...status }),
+        'fs.readFile': async ({ path }) => await workspace.readFile(path),
+        'fs.writeFile': async ({ path, data, options }) => {
+          const buf = data instanceof Uint8Array ? data : new Uint8Array(data ?? []);
+          await workspace.writeFile(path, buf, options);
+          try {
+            writeStr('set +o history\n');
+            writeStr(heredocForFile(path, buf) + '\n');
+            writeStr('set -o history\n');
+          } catch {}
+        },
+        'fs.stat': async ({ path }) => await workspace.stat(path),
+        'fs.readDir': async ({ path }) => await workspace.readDirectory(path),
+        'fs.delete': async ({ path, recursive }) => {
+          await workspace.delete(path, { recursive });
+          try {
+            writeStr(`rm -${recursive ? 'r' : ''}f '${shellQuote(path)}'\n`);
+          } catch {}
+        },
+        'fs.rename': async ({ from, to }) => {
+          await workspace.rename(from, to);
+          try {
+            writeStr(`mv '${shellQuote(from)}' '${shellQuote(to)}'\n`);
+          } catch {}
+        },
+        'fs.createDirectory': async ({ path }) => {
+          await workspace.createDirectory(path);
+          try {
+            writeStr(`mkdir -p '${shellQuote(path)}'\n`);
+          } catch {}
+        },
+        'proc.spawn': async () => spawn(),
+        'proc.write': async ({ bytes }) => {
+          const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+          console_.write(buf);
+        },
+        'proc.resize': async ({ cols, rows }) => {
+          console_.resize(cols, rows);
+        },
+        'proc.kill': async ({ sub }) => {
+          if (sub != null) killSub(sub);
+        },
+        'proc.wait': async () => ({ exitCode: 0 }),
+        'cargo.runHello': async () => {
+          writeStr('cd /workspace/hello && cargo run --release\n');
+        },
+        'workspace.prime': async () => {
+          await primeGuestWorkspace();
+        },
+      };
+    }
+    
+    /**
+     * Bring the full WebVM server online: attach the console, start the
+     * shell loop, prime `/workspace/`, and return the methods table.
+     *
+     * `busServer` is an existing `createBusServer` handle; we call
+     * `setMethods()` on it to swap the workspace-only stage for the full
+     * server. We do NOT register a second message listener (that would
+     * double-respond to every request).
+     */
+    export function startWebVMServer({ cx, busServer, status, workspace, opts = {} } = {}) {
+      if (!cx) throw new TypeError('startWebVMServer requires a CheerpX handle');
+      if (!busServer) throw new TypeError('startWebVMServer requires a busServer');
+      if (!workspace) throw new TypeError('startWebVMServer requires a workspace');
+    
+      // One console attached to the page; many bus subscribers can listen.
+      const console_ = attachConsole(cx, {
+        cols: opts.cols ?? 120,
+        rows: opts.rows ?? 30,
+      });
+      // Streaming decoder so multi-byte UTF-8 split across CheerpX writes
+      // doesn't decode to U+FFFD. Stateful CRLF normaliser so xterm.js
+      // (under VS Code's Pseudoterminal) renders bash output without the
+      // staircase indentation that bare-LF would otherwise produce.
+      const stdoutDecoder = new TextDecoder('utf-8', { fatal: false });
+      const normaliseCrlf = createLfToCrlfNormaliser();
+      console_.onData((bytes) => {
+        const text = stdoutDecoder.decode(bytes, { stream: true });
+        if (!text) return;
+        busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(text) });
+      });
+    
+      function writeStr(s) {
+        console_.write(TEXT_ENCODER.encode(s));
+      }
+    
+      // Per-terminal subscriber tracking. Every "spawn" returns the same
+      // virtual pid but bumps a per-subscriber counter so kill() only
+      // affects the one terminal pane.
+      const subscribers = new Map();
+      let nextSub = 1;
+    
+      function spawn() {
+        const sub = nextSub++;
+        subscribers.set(sub, { alive: true });
+        return { pid: 1, sub };
+      }
+    
+      function killSub(sub) {
+        subscribers.delete(sub);
+      }
+    
+      // Mirror the JS-side workspace into the guest: writes every regular
+      // file with `cat <<EOF`, then `cd /workspace` and prints a friendly
+      // greeting + `ls` so the user sees the populated directory in the
+      // terminal exactly like the screenshot feedback asked for.
+      let primed = false;
+      let primingPromise = null;
+      async function primeGuestWorkspace() {
+        if (primed) return;
+        if (primingPromise) return primingPromise;
+        primingPromise = (async () => {
+          const snap = await workspace.snapshot();
+          // Disable echo of the priming script so the user only sees the
+          // banner + cd + ls output.
+          writeStr('set +o history 2>/dev/null\n');
+          writeStr('stty -echo 2>/dev/null\n');
+          writeStr("printf '\\n[rust-web-box] preparing /workspace …\\n'\n");
+          for (const [path, bytes] of Object.entries(snap)) {
+            writeStr(heredocForFile(path, bytes) + '\n');
+          }
+          writeStr('chown -R root:root /workspace 2>/dev/null || true\n');
+          writeStr('cd /workspace\n');
+          writeStr('stty echo 2>/dev/null\n');
+          writeStr("printf '[rust-web-box] /workspace ready — try `cargo run` from /workspace/hello\\n'\n");
+          // `clear` pulls the eye to the populated directory listing.
+          writeStr('clear 2>/dev/null; ls -la /workspace\n');
+          primed = true;
+        })();
+        return primingPromise;
+      }
+    
+      // Start the shell loop.
+      const stopShell = runShellLoop(cx, {
+        onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
+        onFirstReady: () => {
+          // Prime once bash is up. A short delay lets login profile scripts
+          // settle before our heredoc payload starts streaming.
+          setTimeout(() => {
+            primeGuestWorkspace().catch((err) => {
+              // eslint-disable-next-line no-console
+              console.warn('[rust-web-box] workspace prime failed:', err);
+            });
+          }, 800);
+        },
+      });
+    
+      const methods = fullServerMethods({
+        cx,
+        workspace,
+        status,
+        console_,
+        primeGuestWorkspace,
+        subscribers,
+        spawn,
+        killSub,
+      });
+      busServer.setMethods(methods);
+      busServer.emit('vm.boot', { phase: 'ready' });
+      return {
+        methods,
+        consoleHandle: console_,
+        primeGuestWorkspace,
+        stop() {
+          stopShell();
+          console_.dispose();
+        },
+      };
+    }
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777525949126/web/tests/boot-shell.test.mjs:155:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: boot shell: boot.js passes CheerpX DataDevice to the WebVM server
+not ok 18 - boot shell: boot.js passes CheerpX DataDevice to the WebVM server
+  ---
+  duration_ms: 2.299702
+  location: '/tmp/gh-issue-solver-1777525949126/web/tests/boot-shell.test.mjs:160:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /dataDevice:\s*vm\.dataDevice/. Input:
+    
+    '// Boot orchestrator for rust-web-box.\n' +
+      '//\n' +
+      '// The page is intentionally minimal: a single VS Code Web workbench\n' +
+      '// fills the viewport, exactly like vscode.dev. CheerpX boots in the\n' +
+      '// background; loading status surfaces inside the VS Code terminal\n' +
+      '// pane (rendered by the webvm-host extension), not as a custom HTML\n' +
+      '// overlay. A tiny corner toast appears only if booting actually fails.\n' +
+      '//\n' +
+      '// Boot order (each step decoupled from the next so VS Code can show a\n' +
+      '// populated workspace immediately, even while CheerpX is still\n' +
+      '// downloading):\n' +
+      '//\n' +
+      '//   1. Self-check the network shim (routes static/proxy/blocked correctly).\n' +
+      '//   2. Register the COOP/COEP service worker so SharedArrayBuffer is\n' +
+      '//      available for CheerpX threading.\n' +
+      '//   3. Patch the workbench config so VS Code Web finds our extensions.\n' +
+      '//   4. Open the JS-side workspace (IDB-backed) and start serving its\n' +
+      '//      contents over the bus IMMEDIATELY. The Explorer populates from\n' +
+      '//      this — the user sees `hello_world.rs` the moment the page loads.\n' +
+      '//   5. (Background) Load CheerpX, boot Linux, then upgrade the bus to\n' +
+      '//      the full server with terminal support. The workspace is mirrored\n' +
+      '//      into the VM at this point so `cargo run` works.\n' +
+      '\n' +
+      "import { createNetworkShim, classifyHost } from './network-shim.js';\n" +
+      "import { loadCheerpX, bootLinux } from './cheerpx-bridge.js';\n" +
+      "import { startWebVMServer } from './webvm-server.js';\n" +
+      "import { workspaceOnlyMethods } from './workspace-server.js';\n" +
+      "import { createBusServer, openBroadcastChannel } from './webvm-bus.js';\n" +
+      "import { openWorkspaceFS } from './workspace-fs.js';\n" +
+      "import { applyWorkbenchPlaceholders } from './workbench-config.js';\n" +
+      "import { createDebug, dumpRuntime } from './debug.js';\n" +
+      '\n' +
+      'const debugOpts = {\n' +
+      '  search: location.search,\n' +
+      "  storage: typeof localStorage !== 'undefined' ? localStorage : null,\n" +
+      '};\n' +
+      "const dbgBoot = createDebug('boot', debugOpts);\n" +
+      "const dbgWorkbench = createDebug('workbench', debugOpts);\n" +
+      '\n' +
+      'const shim = createNetworkShim();\n' +
+      'globalThis.__rustWebBox = globalThis.__rustWebBox || {};\n' +
+      'globalThis.__rustWebBox.shim = shim;\n' +
+      'globalThis.__rustWebBox.classifyHost = classifyHost;\n' +
+      'globalThis.__rustWebBox.dump = () => dumpRuntime(globalThis);\n' +
+      '\n' +
+      "const toast = document.getElementById('boot-toast');\n" +
+      "const toastText = toast?.querySelector('[data-toast-text]');\n" +
+      '\n' +
+      "function setToast(text, kind = 'info') {\n" +
+      '  if (!toast || !toastText) return;\n' +
+      '  toastText.textContent = text;\n' +
+      '  toast.dataset.kind = kind;\n' +
+      '  toast.hidden = false;\n' +
+      '}\n' +
+      '\n' +
+      'function hideToast() {\n' +
+      '  if (!toast) return;\n' +
+      '  toast.hidden = true;\n' +
+      '}\n' +
+      '\n' +
+      '// Substitute {ORIGIN_SCHEME}/{ORIGIN_HOST}/{BASE_PATH} placeholders in\n' +
+      '// the workbench configuration so VS Code Web resolves our extensions\n' +
+      '// against the current origin AND the directory the page is served from.\n' +
+      '// The build step writes URI components into the meta tag using literal\n' +
+      '// placeholders so the rendered HTML is portable.\n' +
+      '//\n' +
+      '// Why {BASE_PATH} matters: under GitHub Pages our document is at\n' +
+      '// `/rust-web-box/`, but `additionalBuiltinExtensions[].path` is a\n' +
+      '// host-absolute URL path. Without prefixing the deploy base, the\n' +
+      '// browser asks for `https://host/extensions/...` and 404s silently —\n' +
+      '// the workbench then has no FileSystemProvider for `webvm:`, no\n' +
+      '// terminal profile, and the user sees an empty Welcome page (issue #3).\n' +
+      '//\n' +
+      '// This runs as a defensive backstop for the inline copy in\n' +
+      '// index.html — both copies must agree, otherwise the inline copy wins\n' +
+      '// (it executes before this module loads).\n' +
+      '(function patchWorkbenchConfig() {\n' +
+      "  const meta = document.getElementById('vscode-workbench-web-configuration');\n" +
+      '  if (!meta) return;\n' +
+      "  const raw = meta.getAttribute('data-settings');\n" +
+      `  if (!raw || raw === '"not-built"') return;\n` +
+      '  try {\n' +
+      '    const cfg = JSON.parse(raw);\n' +
+      '    const ctx = {\n' +
+      "      scheme: location.protocol.replace(':', ''),\n" +
+      '      host: location.host,\n' +
+      "      basePath: new URL('./', location.href).pathname.replace(/\\/$/, ''),\n" +
+      '    };\n' +
+      "    dbgWorkbench('substituting placeholders with', ctx);\n" +
+      '    applyWorkbenchPlaceholders(cfg, ctx);\n' +
+      "    dbgWorkbench('extensions resolved to', cfg.additionalBuiltinExtensions);\n" +
+      "    meta.setAttribute('data-settings', JSON.stringify(cfg));\n" +
+      '  } catch (err) {\n' +
+      "    console.warn('[rust-web-box] could not patch workbench config:', err);\n" +
+      '  }\n' +
+      '})();\n' +
+      '\n' +
+      '(function selfCheckShim() {\n' +
+      '  try {\n' +
+      "    const direct = classifyHost('static.crates.io');\n" +
+      "    const proxy = classifyHost('index.crates.io');\n" +
+      "    const blocked = classifyHost('example.com');\n" +
+      "    if (!(direct === 'direct' && proxy === 'proxy' && blocked === 'blocked')) {\n" +
+      "      console.warn('[rust-web-box] network-shim routing self-check failed');\n" +
+      '    }\n' +
+      '  } catch (err) {\n' +
+      "    console.warn('[rust-web-box] network-shim self-check threw:', err);\n" +
+      '  }\n' +
+      '})();\n' +
+      '\n' +
+      '// Service worker registration is owned by `./coi-bootstrap.js`, which\n' +
+      '// runs as a classic <script> in <head> before this module loads. It\n' +
+      '// registers `./sw.js`, then forces a one-shot reload if the page is\n' +
+      '// not yet `crossOriginIsolated` so the next navigation receives the\n' +
+      '// SW-synthesized COOP/COEP headers. Issue #7 root-cause fix.\n' +
+      '\n' +
+      'async function bringUpWorkspace() {\n' +
+      '  let workspace;\n' +
+      '  try {\n' +
+      '    workspace = await openWorkspaceFS();\n' +
+      '  } catch (err) {\n' +
+      "    setToast(`Workspace store unavailable: ${err?.message ?? err}`, 'error');\n" +
+      '    throw err;\n' +
+      '  }\n' +
+      '\n' +
+      '  let channel;\n' +
+      '  try {\n' +
+      '    channel = openBroadcastChannel();\n' +
+      '  } catch (err) {\n' +
+      "    setToast(`Bus init failed: ${err?.message ?? err}`, 'error');\n" +
+      '    throw err;\n' +
+      '  }\n' +
+      '\n' +
+      '  // Stage 1 method table: serves fs.* immediately so the Explorer\n' +
+      '  // populates without waiting on CheerpX.\n' +
+      '  const busServer = createBusServer({\n' +
+      '    channel,\n' +
+      '    methods: workspaceOnlyMethods({ workspace }),\n' +
+      '  });\n' +
+      '  // Tell any extensions that started up first that the bus is alive.\n' +
+      "  busServer.emit('vm.boot', { phase: 'workspace-ready' });\n" +
+      '\n' +
+      '  globalThis.__rustWebBox.busChannel = channel;\n' +
+      '  globalThis.__rustWebBox.workspace = workspace;\n' +
+      '  globalThis.__rustWebBox.busServer = busServer;\n' +
+      '  return { workspace, channel, busServer };\n' +
+      '}\n' +
+      '\n' +
+      'async function bringUpVM({ workspace, channel, busServer }) {\n' +
+      "  busServer.emit('vm.boot', { phase: 'loading-cheerpx' });\n" +
+      "  dbgBoot('loading CheerpX');\n" +
+      '  let CheerpX;\n' +
+      '  try {\n' +
+      '    CheerpX = await loadCheerpX();\n' +
+      '  } catch (err) {\n' +
+      "    setToast(`CheerpX failed to load: ${err?.message ?? err}`, 'error');\n" +
+      '    return null;\n' +
+      '  }\n' +
+      '\n' +
+      "  busServer.emit('vm.boot', { phase: 'booting-linux' });\n" +
+      "  dbgBoot('CheerpX loaded; booting Linux');\n" +
+      '  let vm;\n' +
+      '  try {\n' +
+      '    vm = await bootLinux({\n' +
+      '      CheerpX,\n' +
+      '      onProgress: (phase) => {\n' +
+      '        globalThis.__rustWebBox.vmPhase = phase;\n' +
+      "        dbgBoot('vm phase', phase);\n" +
+      "        try { busServer.emit('vm.boot', { phase }); } catch {}\n" +
+      '      },\n' +
+      '    });\n' +
+      '  } catch (err) {\n' +
+      "    setToast(`Linux VM failed to boot: ${err?.message ?? err}`, 'error');\n" +
+      '    return null;\n' +
+      '  }\n' +
+      "  dbgBoot('VM booted with disk', vm.diskUrl);\n" +
+      '\n' +
+      '  // Stage 2: hot-swap to the full server (workspace + terminal).\n' +
+      '  startWebVMServer({\n' +
+      '    cx: vm.cx,\n' +
+      '    busServer,\n' +
+      '    workspace,\n' +
+      '    status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },\n' +
+      '  });\n' +
+      '\n' +
+      '  globalThis.__rustWebBox.vm = vm;\n' +
+      '  return vm;\n' +
+      '}\n' +
+      '\n' +
+      '// Watch for the workbench mounting; when it does, hide the toast (which\n' +
+      '// was only visible on errors).\n' +
+      'function watchVSCode() {\n' +
+      '  if (window.__vscodeMissing) {\n' +
+      '    setToast(\n' +
+      "      'VS Code Web bundle not vendored — run `node web/build/build-workbench.mjs`.',\n" +
+      "      'error',\n" +
+      '    );\n' +
+      '    return;\n' +
+      '  }\n' +
+      '  const obs = new MutationObserver(() => {\n' +
+      "    if (document.querySelector('.monaco-workbench')) {\n" +
+      '      hideToast();\n' +
+      '      obs.disconnect();\n' +
+      '    }\n' +
+      '  });\n' +
+      '  obs.observe(document.body, { childList: true, subtree: true });\n' +
+      '}\n' +
+      '\n' +
+      'watchVSCode();\n' +
+      '\n' +
+      '(async () => {\n' +
+      '  try {\n' +
+      '    const ws = await bringUpWorkspace();\n' +
+      '    // Bring up the VM in the background; the workspace is already\n' +
+      "    // serving fs.* requests so VS Code's Explorer populates on its own\n" +
+      '    // schedule.\n' +
+      '    bringUpVM(ws);\n' +
+      '  } catch (err) {\n' +
+      '    // bringUpWorkspace already surfaces a toast; nothing more to do.\n' +
+      '    // eslint-disable-next-line no-console\n' +
+      "    console.warn('[rust-web-box] boot failed:', err);\n" +
+      '  }\n' +
+      '})();\n'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    // Boot orchestrator for rust-web-box.
+    //
+    // The page is intentionally minimal: a single VS Code Web workbench
+    // fills the viewport, exactly like vscode.dev. CheerpX boots in the
+    // background; loading status surfaces inside the VS Code terminal
+    // pane (rendered by the webvm-host extension), not as a custom HTML
+    // overlay. A tiny corner toast appears only if booting actually fails.
+    //
+    // Boot order (each step decoupled from the next so VS Code can show a
+    // populated workspace immediately, even while CheerpX is still
+    // downloading):
+    //
+    //   1. Self-check the network shim (routes static/proxy/blocked correctly).
+    //   2. Register the COOP/COEP service worker so SharedArrayBuffer is
+    //      available for CheerpX threading.
+    //   3. Patch the workbench config so VS Code Web finds our extensions.
+    //   4. Open the JS-side workspace (IDB-backed) and start serving its
+    //      contents over the bus IMMEDIATELY. The Explorer populates from
+    //      this — the user sees `hello_world.rs` the moment the page loads.
+    //   5. (Background) Load CheerpX, boot Linux, then upgrade the bus to
+    //      the full server with terminal support. The workspace is mirrored
+    //      into the VM at this point so `cargo run` works.
+    
+    import { createNetworkShim, classifyHost } from './network-shim.js';
+    import { loadCheerpX, bootLinux } from './cheerpx-bridge.js';
+    import { startWebVMServer } from './webvm-server.js';
+    import { workspaceOnlyMethods } from './workspace-server.js';
+    import { createBusServer, openBroadcastChannel } from './webvm-bus.js';
+    import { openWorkspaceFS } from './workspace-fs.js';
+    import { applyWorkbenchPlaceholders } from './workbench-config.js';
+    import { createDebug, dumpRuntime } from './debug.js';
+    
+    const debugOpts = {
+      search: location.search,
+      storage: typeof localStorage !== 'undefined' ? localStorage : null,
+    };
+    const dbgBoot = createDebug('boot', debugOpts);
+    const dbgWorkbench = createDebug('workbench', debugOpts);
+    
+    const shim = createNetworkShim();
+    globalThis.__rustWebBox = globalThis.__rustWebBox || {};
+    globalThis.__rustWebBox.shim = shim;
+    globalThis.__rustWebBox.classifyHost = classifyHost;
+    globalThis.__rustWebBox.dump = () => dumpRuntime(globalThis);
+    
+    const toast = document.getElementById('boot-toast');
+    const toastText = toast?.querySelector('[data-toast-text]');
+    
+    function setToast(text, kind = 'info') {
+      if (!toast || !toastText) return;
+      toastText.textContent = text;
+      toast.dataset.kind = kind;
+      toast.hidden = false;
+    }
+    
+    function hideToast() {
+      if (!toast) return;
+      toast.hidden = true;
+    }
+    
+    // Substitute {ORIGIN_SCHEME}/{ORIGIN_HOST}/{BASE_PATH} placeholders in
+    // the workbench configuration so VS Code Web resolves our extensions
+    // against the current origin AND the directory the page is served from.
+    // The build step writes URI components into the meta tag using literal
+    // placeholders so the rendered HTML is portable.
+    //
+    // Why {BASE_PATH} matters: under GitHub Pages our document is at
+    // `/rust-web-box/`, but `additionalBuiltinExtensions[].path` is a
+    // host-absolute URL path. Without prefixing the deploy base, the
+    // browser asks for `https://host/extensions/...` and 404s silently —
+    // the workbench then has no FileSystemProvider for `webvm:`, no
+    // terminal profile, and the user sees an empty Welcome page (issue #3).
+    //
+    // This runs as a defensive backstop for the inline copy in
+    // index.html — both copies must agree, otherwise the inline copy wins
+    // (it executes before this module loads).
+    (function patchWorkbenchConfig() {
+      const meta = document.getElementById('vscode-workbench-web-configuration');
+      if (!meta) return;
+      const raw = meta.getAttribute('data-settings');
+      if (!raw || raw === '"not-built"') return;
+      try {
+        const cfg = JSON.parse(raw);
+        const ctx = {
+          scheme: location.protocol.replace(':', ''),
+          host: location.host,
+          basePath: new URL('./', location.href).pathname.replace(/\/$/, ''),
+        };
+        dbgWorkbench('substituting placeholders with', ctx);
+        applyWorkbenchPlaceholders(cfg, ctx);
+        dbgWorkbench('extensions resolved to', cfg.additionalBuiltinExtensions);
+        meta.setAttribute('data-settings', JSON.stringify(cfg));
+      } catch (err) {
+        console.warn('[rust-web-box] could not patch workbench config:', err);
+      }
+    })();
+    
+    (function selfCheckShim() {
+      try {
+        const direct = classifyHost('static.crates.io');
+        const proxy = classifyHost('index.crates.io');
+        const blocked = classifyHost('example.com');
+        if (!(direct === 'direct' && proxy === 'proxy' && blocked === 'blocked')) {
+          console.warn('[rust-web-box] network-shim routing self-check failed');
+        }
+      } catch (err) {
+        console.warn('[rust-web-box] network-shim self-check threw:', err);
+      }
+    })();
+    
+    // Service worker registration is owned by `./coi-bootstrap.js`, which
+    // runs as a classic <script> in <head> before this module loads. It
+    // registers `./sw.js`, then forces a one-shot reload if the page is
+    // not yet `crossOriginIsolated` so the next navigation receives the
+    // SW-synthesized COOP/COEP headers. Issue #7 root-cause fix.
+    
+    async function bringUpWorkspace() {
+      let workspace;
+      try {
+        workspace = await openWorkspaceFS();
+      } catch (err) {
+        setToast(`Workspace store unavailable: ${err?.message ?? err}`, 'error');
+        throw err;
+      }
+    
+      let channel;
+      try {
+        channel = openBroadcastChannel();
+      } catch (err) {
+        setToast(`Bus init failed: ${err?.message ?? err}`, 'error');
+        throw err;
+      }
+    
+      // Stage 1 method table: serves fs.* immediately so the Explorer
+      // populates without waiting on CheerpX.
+      const busServer = createBusServer({
+        channel,
+        methods: workspaceOnlyMethods({ workspace }),
+      });
+      // Tell any extensions that started up first that the bus is alive.
+      busServer.emit('vm.boot', { phase: 'workspace-ready' });
+    
+      globalThis.__rustWebBox.busChannel = channel;
+      globalThis.__rustWebBox.workspace = workspace;
+      globalThis.__rustWebBox.busServer = busServer;
+      return { workspace, channel, busServer };
+    }
+    
+    async function bringUpVM({ workspace, channel, busServer }) {
+      busServer.emit('vm.boot', { phase: 'loading-cheerpx' });
+      dbgBoot('loading CheerpX');
+      let CheerpX;
+      try {
+        CheerpX = await loadCheerpX();
+      } catch (err) {
+        setToast(`CheerpX failed to load: ${err?.message ?? err}`, 'error');
+        return null;
+      }
+    
+      busServer.emit('vm.boot', { phase: 'booting-linux' });
+      dbgBoot('CheerpX loaded; booting Linux');
+      let vm;
+      try {
+        vm = await bootLinux({
+          CheerpX,
+          onProgress: (phase) => {
+            globalThis.__rustWebBox.vmPhase = phase;
+            dbgBoot('vm phase', phase);
+            try { busServer.emit('vm.boot', { phase }); } catch {}
+          },
+        });
+      } catch (err) {
+        setToast(`Linux VM failed to boot: ${err?.message ?? err}`, 'error');
+        return null;
+      }
+      dbgBoot('VM booted with disk', vm.diskUrl);
+    
+      // Stage 2: hot-swap to the full server (workspace + terminal).
+      startWebVMServer({
+        cx: vm.cx,
+        busServer,
+        workspace,
+        status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
+      });
+    
+      globalThis.__rustWebBox.vm = vm;
+      return vm;
+    }
+    
+    // Watch for the workbench mounting; when it does, hide the toast (which
+    // was only visible on errors).
+    function watchVSCode() {
+      if (window.__vscodeMissing) {
+        setToast(
+          'VS Code Web bundle not vendored — run `node web/build/build-workbench.mjs`.',
+          'error',
+        );
+        return;
+      }
+      const obs = new MutationObserver(() => {
+        if (document.querySelector('.monaco-workbench')) {
+          hideToast();
+          obs.disconnect();
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    }
+    
+    watchVSCode();
+    
+    (async () => {
+      try {
+        const ws = await bringUpWorkspace();
+        // Bring up the VM in the background; the workspace is already
+        // serving fs.* requests so VS Code's Explorer populates on its own
+        // schedule.
+        bringUpVM(ws);
+      } catch (err) {
+        // bringUpWorkspace already surfaces a toast; nothing more to do.
+        // eslint-disable-next-line no-console
+        console.warn('[rust-web-box] boot failed:', err);
+      }
+    })();
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777525949126/web/tests/boot-shell.test.mjs:162:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+ok 19 - boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+  ---
+  duration_ms: 1.398917
+  ...
+# Subtest: boot shell: boot.js stages workspace-only server before VM is up
+ok 20 - boot shell: boot.js stages workspace-only server before VM is up
+  ---
+  duration_ms: 0.719904
+  ...
+# Subtest: boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+ok 21 - boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+  ---
+  duration_ms: 0.833664
+  ...
+# Subtest: boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+ok 22 - boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+  ---
+  duration_ms: 4.258463
+  ...
+# Subtest: boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+ok 23 - boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+  ---
+  duration_ms: 1.477844
+  ...
+# Subtest: boot shell: pages workflow deploys to GitHub Pages on main
+ok 24 - boot shell: pages workflow deploys to GitHub Pages on main
+  ---
+  duration_ms: 1.103457
+  ...
+# Subtest: boot shell: disk-image workflow exists and triggers on workflow_dispatch
+ok 25 - boot shell: disk-image workflow exists and triggers on workflow_dispatch
+  ---
+  duration_ms: 2.156477
+  ...
+# Subtest: boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+ok 26 - boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+  ---
+  duration_ms: 1.035584
+  ...
+# Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
+ok 27 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
+  ---
+  duration_ms: 8.719368
+  ...
+# Subtest: webvm-server: existing CRLF passed through, bare CR untouched
+ok 28 - webvm-server: existing CRLF passed through, bare CR untouched
+  ---
+  duration_ms: 5.420517
+  ...
+# Subtest: webvm-server: vt channel filtered (only stdout broadcast)
+ok 29 - webvm-server: vt channel filtered (only stdout broadcast)
+  ---
+  duration_ms: 5.236552
+  ...
+# Subtest: webvm-server: primes /workspace through a /data script, not terminal input
+not ok 30 - webvm-server: primes /workspace through a /data script, not terminal input
+  ---
+  duration_ms: 1.608801
+  location: '/tmp/gh-issue-solver-1777525949126/web/tests/webvm-server.test.mjs:159:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    expected a staged /data script
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777525949126/web/tests/webvm-server.test.mjs:171:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: webvm-server: makeChannelPair sanity
+ok 31 - webvm-server: makeChannelPair sanity
+  ---
+  duration_ms: 0.403281
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 28
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 867.80024

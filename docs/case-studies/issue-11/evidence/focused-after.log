@@ -1,0 +1,165 @@
+TAP version 13
+# Subtest: boot shell: index.html mounts directly into <body> with no custom UI overlay
+ok 1 - boot shell: index.html mounts directly into <body> with no custom UI overlay
+  ---
+  duration_ms: 7.393652
+  ...
+# Subtest: boot shell: index.html references workbench config meta
+ok 2 - boot shell: index.html references workbench config meta
+  ---
+  duration_ms: 2.532909
+  ...
+# Subtest: boot shell: workbench config preinstalls our two extensions
+ok 3 - boot shell: workbench config preinstalls our two extensions
+  ---
+  duration_ms: 1.428171
+  ...
+# Subtest: boot shell: index.html points to vendored vscode-web bundle
+ok 4 - boot shell: index.html points to vendored vscode-web bundle
+  ---
+  duration_ms: 0.649839
+  ...
+# Subtest: boot shell: glue modules exist
+ok 5 - boot shell: glue modules exist
+  ---
+  duration_ms: 0.905651
+  ...
+# Subtest: boot shell: extensions are present with package.json + extension.js
+ok 6 - boot shell: extensions are present with package.json + extension.js
+  ---
+  duration_ms: 0.456912
+  ...
+# Subtest: boot shell: webvm-host package.json declares web extensionKind
+ok 7 - boot shell: webvm-host package.json declares web extensionKind
+  ---
+  duration_ms: 7.402956
+  ...
+# Subtest: boot shell: rust-analyzer-web package.json declares rust language
+ok 8 - boot shell: rust-analyzer-web package.json declares rust language
+  ---
+  duration_ms: 1.074023
+  ...
+# Subtest: boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+ok 9 - boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+  ---
+  duration_ms: 0.72321
+  ...
+# Subtest: boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+ok 10 - boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11
+  ---
+  duration_ms: 2.308614
+  ...
+# Subtest: boot shell: workbench bootstrap provides process.env for browserified dependencies
+ok 11 - boot shell: workbench bootstrap provides process.env for browserified dependencies
+  ---
+  duration_ms: 2.875621
+  ...
+# Subtest: boot shell: rendered index keeps the browser process.env shim
+ok 12 - boot shell: rendered index keeps the browser process.env shim
+  ---
+  duration_ms: 5.154972
+  ...
+# Subtest: boot shell: webvm-host extension shows a "Booting Linux VM" banner
+ok 13 - boot shell: webvm-host extension shows a "Booting Linux VM" banner
+  ---
+  duration_ms: 1.131698
+  ...
+# Subtest: boot shell: webvm-host auto-opens a terminal on activation
+ok 14 - boot shell: webvm-host auto-opens a terminal on activation
+  ---
+  duration_ms: 0.944078
+  ...
+# Subtest: boot shell: webvm-host auto-opens hello_world.rs on activation
+ok 15 - boot shell: webvm-host auto-opens hello_world.rs on activation
+  ---
+  duration_ms: 0.636981
+  ...
+# Subtest: boot shell: workspace-fs seeds hello_world.rs at workspace root
+ok 16 - boot shell: workspace-fs seeds hello_world.rs at workspace root
+  ---
+  duration_ms: 0.640927
+  ...
+# Subtest: boot shell: webvm-server mirrors workspace into the guest via heredocs
+ok 17 - boot shell: webvm-server mirrors workspace into the guest via heredocs
+  ---
+  duration_ms: 0.821325
+  ...
+# Subtest: boot shell: boot.js passes CheerpX DataDevice to the WebVM server
+ok 18 - boot shell: boot.js passes CheerpX DataDevice to the WebVM server
+  ---
+  duration_ms: 0.93187
+  ...
+# Subtest: boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+ok 19 - boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+  ---
+  duration_ms: 0.728297
+  ...
+# Subtest: boot shell: boot.js stages workspace-only server before VM is up
+ok 20 - boot shell: boot.js stages workspace-only server before VM is up
+  ---
+  duration_ms: 0.713554
+  ...
+# Subtest: boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+ok 21 - boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+  ---
+  duration_ms: 0.695547
+  ...
+# Subtest: boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+ok 22 - boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+  ---
+  duration_ms: 0.85097
+  ...
+# Subtest: boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+ok 23 - boot shell: Dockerfile.disk uses Alpine and pre-bakes hello-world
+  ---
+  duration_ms: 0.718382
+  ...
+# Subtest: boot shell: pages workflow deploys to GitHub Pages on main
+ok 24 - boot shell: pages workflow deploys to GitHub Pages on main
+  ---
+  duration_ms: 2.56666
+  ...
+# Subtest: boot shell: disk-image workflow exists and triggers on workflow_dispatch
+ok 25 - boot shell: disk-image workflow exists and triggers on workflow_dispatch
+  ---
+  duration_ms: 1.934366
+  ...
+# Subtest: boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+ok 26 - boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+  ---
+  duration_ms: 1.133802
+  ...
+# Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
+ok 27 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
+  ---
+  duration_ms: 8.184762
+  ...
+# Subtest: webvm-server: existing CRLF passed through, bare CR untouched
+ok 28 - webvm-server: existing CRLF passed through, bare CR untouched
+  ---
+  duration_ms: 6.605856
+  ...
+# Subtest: webvm-server: vt channel filtered (only stdout broadcast)
+ok 29 - webvm-server: vt channel filtered (only stdout broadcast)
+  ---
+  duration_ms: 5.393698
+  ...
+# Subtest: webvm-server: primes /workspace through a /data script, not terminal input
+ok 30 - webvm-server: primes /workspace through a /data script, not terminal input
+  ---
+  duration_ms: 1.239059
+  ...
+# Subtest: webvm-server: makeChannelPair sanity
+ok 31 - webvm-server: makeChannelPair sanity
+  ---
+  duration_ms: 0.469631
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 110.054146
