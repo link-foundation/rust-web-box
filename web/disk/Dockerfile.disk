@@ -43,11 +43,23 @@ RUN apk add --no-cache \
 
 # Convenience: drop the user into bash on login, with a useful PATH and
 # CARGO_HOME set so warm-cached crates are picked up automatically.
+#
+# CARGO_INCREMENTAL=0 (issue #17): cargo's incremental compilation
+# generates a flood of fresh inodes under target/<profile>/incremental/
+# (one fingerprint dir per build, rotated on every change). CheerpX
+# 1.3.0's OverlayDevice 'a1' bug is biased toward fresh inode
+# allocation, so incremental builds reliably wedge the runtime. With
+# CARGO_INCREMENTAL=0 the build still re-uses the pre-baked
+# target/debug/<crate> artifacts when nothing has changed, and on
+# changes it overwrites a stable, smaller set of inodes instead of
+# allocating new ones. This is the per-user counterpart to the
+# Dockerfile's pre-baked debug build.
 RUN printf '%s\n' \
       'export PS1="root@rust-web-box:\w# "' \
       'export TERM=xterm-256color' \
       'export CARGO_HOME=/root/.cargo' \
       'export PATH=/root/.cargo/bin:$PATH' \
+      'export CARGO_INCREMENTAL=0' \
       'cd /workspace 2>/dev/null || cd /root' \
       > /root/.bash_profile && \
     cp /root/.bash_profile /root/.profile
@@ -55,22 +67,41 @@ RUN printf '%s\n' \
 # Configure cargo to use the sparse registry (matches the page-side
 # network shim's expectations: `index.crates.io` over the sparse
 # protocol, with downloads from `static.crates.io`).
+#
+# `[build] incremental = false` (issue #17): same reason as
+# CARGO_INCREMENTAL=0 in /root/.bash_profile — cargo's incremental
+# fingerprint allocations trip the OverlayDevice 'a1' wedge in CheerpX
+# 1.3.0. Setting it in the cargo config means non-interactive cargo
+# invocations (VS Code tasks, RPC-driven builds) inherit it too.
 RUN mkdir -p /root/.cargo && \
-    printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n' \
+    printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n\n[build]\nincremental = false\n' \
       > /root/.cargo/config.toml
 
 # Pre-bake a hello-world cargo project at /workspace so users can edit
 # `src/main.rs` and run plain `cargo run` from the opened terminal.
-# We pre-compile it once so the first `cargo run` only re-links the
-# binary (sub-second on warm caches). The build is intentionally fatal:
-# a broken disk image must fail CI instead of shipping a no-cargo box.
+#
+# CRITICAL (issue #17): we pre-build BOTH the debug AND release profiles.
+# CheerpX 1.3.0's OverlayDevice has a flaky 'a1' bug that wedges the
+# entire runtime when allocating brand-new inodes under /workspace.
+# Plain `cargo run` does a debug build, which writes ~hundreds of fresh
+# inodes (target/debug/build/*, target/debug/deps/*,
+# target/debug/.fingerprint/*) and reliably trips the wedge. Pre-baking
+# the debug build means the first `cargo run` only RE-USES existing
+# inodes (the workspace mtime check is satisfied immediately) — no fresh
+# allocations, no wedge. Same applies to `cargo run --release`. After
+# both pre-bakes, every common invocation of cargo from the user's
+# terminal hits a "Finished … 0.00s" path and avoids the bug entirely.
+#
+# The build is intentionally fatal: a broken disk image must fail CI
+# instead of shipping a no-cargo box.
 RUN mkdir -p /workspace/src && \
     printf '[package]\nname = "hello"\nversion = "0.1.0"\nedition = "2021"\n\n[[bin]]\nname = "hello"\npath = "src/main.rs"\n\n[dependencies]\n' \
       > /workspace/Cargo.toml && \
     printf 'fn main() {\n    println!("Hello from rust-web-box!");\n    println!("This binary was compiled inside CheerpX.");\n}\n' \
       > /workspace/src/main.rs && \
     cd /workspace && \
-    cargo build --release
+    cargo build --release && \
+    cargo build
 
 # Pre-create the workspace seed paths that boot-time priming overwrites.
 # CheerpX 1.3.0 has a flaky bug allocating new inodes on the OverlayDevice
@@ -100,11 +131,19 @@ RUN mkdir -p /workspace/.vscode && \
       '  "version": "2.0.0",' \
       '  "tasks": [' \
       '    {' \
-      '      "label": "cargo run",' \
+      '      "label": "cargo run (release)",' \
+      '      "type": "shell",' \
+      '      "command": "cargo run --release",' \
+      '      "problemMatcher": ["$rustc"],' \
+      '      "group": { "kind": "build", "isDefault": true },' \
+      '      "detail": "Use --release: the disk image pre-bakes the release artifact and avoids CheerpX 1.3.0 OverlayDevice fresh-inode wedges (issue #17)."' \
+      '    },' \
+      '    {' \
+      '      "label": "cargo run (debug)",' \
       '      "type": "shell",' \
       '      "command": "cargo run",' \
       '      "problemMatcher": ["$rustc"],' \
-      '      "group": { "kind": "build", "isDefault": true }' \
+      '      "detail": "Plain debug build. Slower first run; prefer the release task until CheerpX 1.3.x lands the OverlayDevice fix."' \
       '    }' \
       '  ]' \
       '}' \

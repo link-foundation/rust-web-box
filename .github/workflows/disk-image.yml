@@ -64,21 +64,40 @@ jobs:
             || (echo "missing /usr/bin/tree in image" && exit 1)
           test -x "$MNT/bin/bash" \
             || (echo "missing /bin/bash in image" && exit 1)
+          # Issue #17: verify BOTH the debug AND the release pre-bakes
+          # exist in the image. If either is missing, plain `cargo run`
+          # in the browser would have to allocate fresh inodes from
+          # scratch, which trips the CheerpX 1.3.0 OverlayDevice 'a1'
+          # wedge. The pre-baked artifacts let cargo's mtime check
+          # finish early ("Finished … 0.00s") instead.
+          test -x "$MNT/workspace/target/release/hello" \
+            || (echo "missing /workspace/target/release/hello in image (cargo build --release pre-bake failed)" && exit 1)
+          test -x "$MNT/workspace/target/debug/hello" \
+            || (echo "missing /workspace/target/debug/hello in image (cargo build pre-bake failed — this is the issue #17 mitigation; do not remove)" && exit 1)
           sudo chroot "$MNT" /bin/bash -lc '
             set -euo pipefail
             tree --version
             cargo --version
             cd /workspace
-            cargo_output=$(cargo run --release 2>&1) || {
-              status=$?
+            # Issue #17: smoke both `cargo run --release` (the prebuilt
+            # path the user hits via tasks.json default) and plain
+            # `cargo run` (the path that historically wedged CheerpX).
+            # On real Linux both succeed instantly because the artifact
+            # is already up-to-date — that is the whole point of the
+            # pre-bakes.
+            for variant in "--release" ""; do
+              cargo_output=$(cargo run $variant 2>&1) || {
+                status=$?
+                printf "%s\n" "$cargo_output"
+                echo "cargo run $variant failed inside disk smoke test"
+                exit "$status"
+              }
               printf "%s\n" "$cargo_output"
-              exit "$status"
-            }
-            printf "%s\n" "$cargo_output"
-            [[ "$cargo_output" == *"Hello from rust-web-box!"* ]] \
-              || (echo "missing hello output from cargo run" && exit 1)
-            [[ "$cargo_output" == *"This binary was compiled inside CheerpX."* ]] \
-              || (echo "missing CheerpX output from cargo run" && exit 1)
+              [[ "$cargo_output" == *"Hello from rust-web-box!"* ]] \
+                || (echo "missing hello output from cargo run $variant" && exit 1)
+              [[ "$cargo_output" == *"This binary was compiled inside CheerpX."* ]] \
+                || (echo "missing CheerpX output from cargo run $variant" && exit 1)
+            done
           '
 
       - name: Upload as workflow artifact

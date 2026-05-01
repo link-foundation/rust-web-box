@@ -1,0 +1,89 @@
+[       4ms] [LOG] %c INFO color: #33f [lifecycle] onBeforeUnload triggered and handled with veto support @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[     777ms] [LOG] %c WARN color: #993 Ignoring the error while validating workspace folder webvm:/workspace - ENOPRO: No file system provider found for resource 'webvm:/workspace' @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[     950ms] [WARNING] The web worker extension host is started in a same-origin iframe! @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:1885
+[     952ms] [LOG] %c INFO color: #33f Found additional builtin location extensions in env [https://link-foundation.github.io/rust-web-box/extensions/webvm-host, https://link-foundation.github.io/rust-web-box/extensions/rust-analyzer-web] @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[     953ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[     985ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=6feeece5-b0d3-4311-b958-1b1603e303b4:0
+[    1018ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    1250ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    1318ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    1370ms] [LOG] %c WARN color: #993 No search provider registered for scheme: webvm, waiting @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    1534ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    1590ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    1598ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    1954ms] TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364000)
+[    1972ms] TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364000)
+[    2170ms] TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364000)
+[    2178ms] TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364000)
+[    3925ms] [LOG] %c INFO color: #33f Updating additional builtin extensions cache @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    3991ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    3992ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    4002ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[    4004ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656
+[   31437ms] TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364000)
+[   44968ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44968ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44968ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44969ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44969ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44970ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44990ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44991ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   44991ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   45878ms] TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364000)
+[   65096ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65097ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65097ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65097ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65098ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65098ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65120ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65121ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65121ms] [LOG] [24:24] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   65203ms] TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364000)
+[   74492ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74492ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74492ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74493ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74493ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74493ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74513ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74513ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74514ms] [LOG] [26:26] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74538ms] [LOG] Unexpected exit CheerpException: Program exited with code 71
+    at ari (blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:1:65128)
+    at wasm://wasm/0074a58e:wasm-function[2523]:0xfcacb
+    at wasm://wasm/0074a58e:wasm-function[2524]:0xfcad1
+    at wasm://wasm/0074a58e:wasm-function[2525]:0xfcad8
+    at wasm://wasm/0074a58e:wasm-function[122]:0x6a9c
+    at wasm://wasm/0074a58e:wasm-function[402]:0x2294c
+    at wasm://wasm/0074a58e:wasm-function[3362]:0x17685a
+    at wasm://wasm/0074a58e:wasm-function[1307]:0x862bf
+    at wasm://wasm/0074a58e:wasm-function[3831]:0x1a4141
+    at wasm://wasm/0074a58e:wasm-function[3774]:0x197145 @ blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:0
+[   74539ms] TypeError: e is not a function
+    at aTt (blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:1:57593)
+    at wasm://wasm/0074a58e:wasm-function[2518]:0xfc9fb
+    at MessagePort.VF (blob:https://link-foundation.github.io/e9d70d30-da53-41ab-930c-4d993fb3553d:1:59850)
+[  304022ms] [LOG] %c INFO color: #33f Ignoring fetching additional builtin extensions from gallery as it is disabled. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:656

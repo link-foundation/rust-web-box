@@ -108,14 +108,26 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     assert.match(ls.output, /Cargo\.toml/);
     assert.match(ls.output, /src/);
 
-    // Stage C: pre-built `cargo run` artifact. Real `cargo run` from
-    // cold takes minutes (orthogonal scaling work, see issue #15
-    // discussion); the disk image bakes a release binary so we can
-    // verify the *execution* path of `cargo run --release` without
-    // waiting on the build itself.
+    // Stage C: pre-built `cargo run` artifact. The disk image bakes a
+    // release binary so we can verify the *execution* path without
+    // waiting on a build.
     const hello = await runInVM(page, '/workspace/target/release/hello');
     assert.equal(hello.status?.status ?? hello.status, 0);
     assert.match(hello.output, /Hello from rust-web-box!/);
+
+    // Stage D: end-to-end `cargo run --release` (issue #17). This is
+    // the operation that actually broke on the live site — running the
+    // pre-built binary directly proved CheerpX could execute it but
+    // skipped cargo's own code path (mtime check + linker invocation).
+    // With the disk pre-bake (Dockerfile.disk: `cargo build --release`
+    // AND `cargo build`), cargo's mtime check returns "Finished … 0.00s"
+    // and no fresh inodes are allocated, so the OverlayDevice 'a1'
+    // wedge cannot fire here.
+    const cargoRun = await runInVM(page, 'cd /workspace && cargo run --release 2>&1', { timeoutMs: 120_000 });
+    assert.equal(cargoRun.timedOut, false, `cargo run --release timed out — likely OverlayDevice wedge: ${cargoRun.output}`);
+    assert.equal(cargoRun.status?.status ?? cargoRun.status, 0, `cargo run exit: ${JSON.stringify(cargoRun.status)}\noutput:\n${cargoRun.output}`);
+    assert.match(cargoRun.output, /Hello from rust-web-box!/, `cargo run output:\n${cargoRun.output}`);
+    assert.match(cargoRun.output, /Finished/, `cargo run did not print Finished:\n${cargoRun.output}`);
 
     // No CheerpException must have leaked into console.error during the
     // run. (CheerpX 1.2.11 logged it asynchronously, after `cx.run`
