@@ -203,8 +203,15 @@ export async function withWorkbench(url, body, {
     // Stage 1: wait for the workspace shim to populate
     // `globalThis.__rustWebBox`. That confirms `boot.js` ran and the
     // BroadcastChannel server is listening.
+    //
+    // Note: Playwright's `page.waitForFunction(fn, arg, options)` takes
+    // *three* positional arguments; the options object is third, not
+    // second. Passing `{ timeout }` as the second arg silently falls
+    // through to the default 30s timeout — which is too short for a
+    // cold CheerpX boot in CI. Always pass `undefined` as `arg`.
     await page.waitForFunction(
       () => Boolean(globalThis.__rustWebBox && globalThis.__rustWebBox.shim),
+      undefined,
       { timeout: bootTimeoutMs },
     );
 
@@ -220,11 +227,16 @@ export async function withWorkbench(url, body, {
  * string (e.g. `'ready'`).
  */
 export async function waitForLinux(page, { timeoutMs = DEFAULT_BOOT_TIMEOUT_MS } = {}) {
+  // See note in `withWorkbench` — `waitForFunction` takes (fn, arg,
+  // options). Pass `undefined` as `arg` so the options object lands on
+  // the third positional, otherwise the default 30s timeout silently
+  // applies and CheerpX cold boots in CI fail before they finish.
   return page.waitForFunction(
     () => {
       const rwb = globalThis.__rustWebBox;
       return rwb && rwb.vm && rwb.vmPhase === 'ready' ? rwb.vmPhase : false;
     },
+    undefined,
     { timeout: timeoutMs },
   ).then((handle) => handle.jsonValue());
 }
