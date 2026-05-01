@@ -164,7 +164,9 @@ test('boot shell: webvm-server mirrors workspace through a quiet DataDevice scri
 test('boot shell: boot.js wires guest debug logs for ?debug routes', async () => {
   const boot = await read('glue/boot.js');
   assert.match(boot, /createDebug\('guest'/);
-  assert.match(boot, /opts:\s*\{\s*debug:\s*dbgGuest\s*\}/);
+  // `opts` may carry other keys (skipPrime, skipShellLoop) — only assert
+  // that `debug: dbgGuest` is present.
+  assert.match(boot, /opts:\s*\{[^}]*debug:\s*dbgGuest/);
 });
 
 test('boot shell: boot.js passes CheerpX DataDevice to the WebVM server', async () => {

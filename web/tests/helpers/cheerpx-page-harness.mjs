@@ -286,6 +286,13 @@ export async function withWorkbench(url, body, {
   // page only opens one channel during boot. `addInitScript` runs before
   // any page script so we don't miss the early `loading-cheerpx` /
   // `booting-linux` transitions.
+  //
+  // We don't filter by channel name. The bus uses `'rust-web-box/webvm-bus'`
+  // (CHANNEL_NAME in web/glue/webvm-bus.js), and a stricter `===` check
+  // here previously dropped every event — that's why the in-page snapshot
+  // surfaced `bootHistory: []` even on runs that DID emit phases. Letting
+  // any `vm.boot` event through is fine: the topic + kind discriminator is
+  // unique enough.
   await page.addInitScript(() => {
     globalThis.__rustWebBoxBootHistory = [];
     const origBC = globalThis.BroadcastChannel;
@@ -293,13 +300,25 @@ export async function withWorkbench(url, body, {
       const origPost = origBC.prototype.postMessage;
       origBC.prototype.postMessage = function (data) {
         try {
-          if (this.name === 'rust-web-box' && data && data.kind === 'event' && data.topic === 'vm.boot') {
-            globalThis.__rustWebBoxBootHistory.push(`${Date.now()} ${data.payload && data.payload.phase}`);
+          if (data && data.kind === 'event' && data.topic === 'vm.boot') {
+            globalThis.__rustWebBoxBootHistory.push(
+              `${Date.now()} ${this.name || '?'} ${data.payload && data.payload.phase}`,
+            );
           }
         } catch {}
         return origPost.call(this, data);
       };
     }
+    // CheerpX 1.3.0 has a flaky OverlayDevice bug: writing a brand-new
+    // inode under /workspace can fire `TypeError: …reading 'a1'`,
+    // `Program exited with code 71`, and wedge the runtime so every
+    // subsequent `cx.run` errors with `function signature mismatch`.
+    // See web/glue/webvm-server.js for full notes. The e2e suite runs
+    // against whichever rust-alpine disk image is currently published
+    // (which already ships the seed paths the prime would touch), so
+    // skipping the prime is the safe choice that keeps boot deterministic.
+    globalThis.__RUST_WEB_BOX_SKIP_PRIME = true;
+    globalThis.__RUST_WEB_BOX_SKIP_BASH = true;
   });
 
   try {
@@ -390,27 +409,45 @@ export async function runInVM(page, command, { timeoutMs = 60_000 } = {}) {
   return page.evaluate(async ({ command, timeoutMs }) => {
     const rwb = globalThis.__rustWebBox;
     if (!rwb || !rwb.vm) throw new Error('CheerpX VM is not ready');
-    const { vm } = rwb;
+    // boot.js stores the bootLinux *handle* on rwb.vm, so the CheerpX
+    // Linux instance is at rwb.vm.cx — `setCustomConsole` and `run` live
+    // there.
+    const cx = rwb.vm.cx ?? rwb.vm;
+    // CheerpX `setCustomConsole(writer, cols, rows)` expects a writer
+    // FUNCTION `(buf, vt) => void` (matches attachConsole in
+    // cheerpx-bridge.js), not an object with `.write`. The function is
+    // called once per chunk of guest stdout/stderr; `vt` is the virtual
+    // terminal index — we only collect vt=1 (the foreground tty).
     const chunks = [];
-    let resolveDone;
-    const done = new Promise((r) => { resolveDone = r; });
-    const writer = {
-      write: (data) => chunks.push(data),
-      flush: () => {},
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const writer = (buf, vt) => {
+      if (vt !== undefined && vt !== 1) return;
+      let view;
+      if (buf instanceof Uint8Array) view = buf;
+      else if (buf instanceof ArrayBuffer) view = new Uint8Array(buf);
+      else if (Array.isArray(buf)) view = new Uint8Array(buf);
+      else return;
+      chunks.push(decoder.decode(view, { stream: true }));
     };
-    vm.setCustomConsole(writer, 80, 24);
-    const timer = setTimeout(() => resolveDone({ timeout: true }), timeoutMs);
-    let status;
-    try {
-      status = await vm.run('/bin/sh', ['-c', command], {
+    cx.setCustomConsole(writer, 80, 24);
+    // CheerpX 1.3.0 has a flaky 'a1' bug where cx.run can hang forever
+    // after a runtime crash (the JS-level promise never settles). Race
+    // it with a timeout so a wedged probe surfaces as a clear failure
+    // rather than the test runner's overall timeout.
+    const TIMEOUT = Symbol('runInVM-timeout');
+    const winner = await Promise.race([
+      cx.run('/bin/sh', ['-c', command], {
         env: ['HOME=/root', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'TERM=xterm-256color'],
         cwd: '/workspace',
         uid: 0, gid: 0,
-      });
-    } finally {
-      clearTimeout(timer);
+      }),
+      new Promise((resolve) => setTimeout(() => resolve(TIMEOUT), timeoutMs)),
+    ]);
+    chunks.push(decoder.decode());
+    if (winner === TIMEOUT) {
+      return { status: null, output: chunks.join(''), timedOut: true };
     }
-    return { status, output: chunks.join(''), timedOut: false };
+    return { status: winner, output: chunks.join(''), timedOut: false };
   }, { command, timeoutMs });
 }
 

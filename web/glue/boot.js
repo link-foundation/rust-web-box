@@ -189,15 +189,51 @@ async function bringUpVM({ workspace, channel, busServer }) {
   // server emits `syncing-workspace` → `ready` from inside its bootTask;
   // forward those into our single-source-of-truth `setPhase` so the
   // page-level shim observes the entire lifecycle.
-  startWebVMServer({
-    cx: vm.cx,
-    dataDevice: vm.dataDevice,
-    busServer,
-    workspace,
-    status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
-    onPhase: setPhase,
-    opts: { debug: dbgGuest },
-  });
+  //
+  // `?skipPrime=1` (or `globalThis.__RUST_WEB_BOX_SKIP_PRIME = true` set
+  // before navigation) disables the workspace-prime + shell-profile
+  // heredocs. We expose this for e2e tests that need a deterministic boot
+  // against the *currently published* disk image, before that image
+  // republishes with the new pre-baked seed paths. See the comment above
+  // `skipPrime` in webvm-server.js for the underlying CheerpX 1.3.0 bug.
+  const skipPrime = (() => {
+    try {
+      if (globalThis.__RUST_WEB_BOX_SKIP_PRIME === true) return true;
+      const params = new URLSearchParams(location.search);
+      const v = params.get('skipPrime');
+      return v === '1' || v === 'true';
+    } catch {
+      return false;
+    }
+  })();
+  const skipShellLoop = (() => {
+    try {
+      if (globalThis.__RUST_WEB_BOX_SKIP_BASH === true) return true;
+      const params = new URLSearchParams(location.search);
+      const v = params.get('skipShellLoop');
+      return v === '1' || v === 'true';
+    } catch {
+      return false;
+    }
+  })();
+  // Bisect-only escape hatch: when set, do NOT call startWebVMServer at
+  // all. Used by experiments/cx-130-bisect-no-server.mjs to test whether
+  // the 'a1' wedge fires from CheerpX/VS Code alone, without our server.
+  // Safe to leave in place — has no effect unless the flag is set.
+  if (globalThis.__RUST_WEB_BOX_BISECT_SKIP_SERVER === true) {
+    dbgBoot('startWebVMServer skipped (bisect mode)');
+    setPhase('ready');
+  } else {
+    startWebVMServer({
+      cx: vm.cx,
+      dataDevice: vm.dataDevice,
+      busServer,
+      workspace,
+      status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
+      onPhase: setPhase,
+      opts: { debug: dbgGuest, skipPrime, skipShellLoop },
+    });
+  }
 
   globalThis.__rustWebBox.vm = vm;
   return vm;

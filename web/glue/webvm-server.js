@@ -225,6 +225,7 @@ export function fullServerMethods({
   primeGuestWorkspace,
   spawn,
   killSub,
+  skipPrime = false,
 }) {
   const writeStr = (s) => console_.write(TEXT_ENCODER.encode(s));
   async function syncGuest(script, name) {
@@ -283,6 +284,12 @@ export function fullServerMethods({
       writeStr('cd /workspace && cargo run --release\n');
     },
     'workspace.prime': async () => {
+      // VS Code's webvm-host extension calls this when a terminal opens.
+      // When skipPrime is set we must NOT actually run the prime — that
+      // would trip the CheerpX 1.3.0 OverlayDevice 'a1' wedge that
+      // skipPrime exists to avoid. The disk image already ships a
+      // populated /workspace, so a no-op here is safe.
+      if (skipPrime) return;
       await primeGuestWorkspace();
     },
   };
@@ -362,6 +369,19 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   // `/data` mount and executed through `cx.run`, so the setup does not
   // echo heredocs, prompts, or temporary commands into the visible
   // terminal.
+  //
+  // CheerpX 1.3.0 has a flaky bug allocating new inodes on the
+  // OverlayDevice (rust-alpine ext2 + IDBDevice writable layer): roughly
+  // 1 in N attempts to mkdir/touch a brand-new path under `/workspace`
+  // hangs the underlying `cx.run` *forever* with `TypeError: …reading
+  // 'a1'` and `Program exited with code 71`. The exception is logged via
+  // `pageerror` but the JS-level promise never settles. Without a
+  // timeout, the entire boot stalls at `vmPhase: 'syncing-workspace'`.
+  // We bound the prime call so the workbench still reaches
+  // `vmPhase: 'ready'` even when the runtime trips the bug; the warm
+  // disk image already contains the seed files so the user-facing
+  // workspace is intact even if the prime never wrote anything new.
+  const PRIME_TIMEOUT_MS = opts.primeTimeoutMs ?? 30_000;
   let primed = false;
   let primingPromise = null;
   async function primeGuestWorkspace() {
@@ -370,10 +390,21 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     primingPromise = (async () => {
       const snap = await workspace.snapshot();
       try {
-        await runGuestScript(buildWorkspacePrimeScript(snap), {
-          name: 'workspace-prime',
-          cwd: '/root',
-        });
+        await Promise.race([
+          runGuestScript(buildWorkspacePrimeScript(snap), {
+            name: 'workspace-prime',
+            cwd: '/root',
+          }),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error(
+                `workspace prime timed out after ${PRIME_TIMEOUT_MS}ms ` +
+                `(suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)`,
+              )),
+              PRIME_TIMEOUT_MS,
+            ),
+          ),
+        ]);
         primed = true;
         runtime.primed = true;
         runtime.workspacePrimeError = null;
@@ -387,6 +418,8 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
 
   let stopShell = () => {};
 
+  const skipPrime = opts.skipPrime === true;
+  const skipShellLoop = opts.skipShellLoop === true;
   const methods = fullServerMethods({
     workspace,
     status,
@@ -396,14 +429,32 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     primeGuestWorkspace,
     spawn,
     killSub,
+    skipPrime,
   });
   busServer.setMethods(methods);
+  // Same bound as primeGuestWorkspace: if the 'a1' hang strikes here,
+  // we still want bootTask to reach `vmPhase: 'ready'`. The shell
+  // profile is convenience; the disk image already ships an equivalent
+  // /root/.bash_profile via Dockerfile.disk so the interactive terminal
+  // works either way.
+  const SHELL_PREPARE_TIMEOUT_MS = opts.shellPrepareTimeoutMs ?? 30_000;
   async function prepareInteractiveShell() {
     try {
-      await runGuestScript(buildShellProfileScript(), {
-        name: 'shell-profile',
-        cwd: '/root',
-      });
+      await Promise.race([
+        runGuestScript(buildShellProfileScript(), {
+          name: 'shell-profile',
+          cwd: '/root',
+        }),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error(
+              `shell profile prepare timed out after ${SHELL_PREPARE_TIMEOUT_MS}ms ` +
+              `(suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)`,
+            )),
+            SHELL_PREPARE_TIMEOUT_MS,
+          ),
+        ),
+      ]);
       runtime.shellPrepareError = null;
     } catch (err) {
       runtime.shellPrepareError = err?.message ?? String(err);
@@ -411,20 +462,47 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     }
   }
 
+  // CheerpX 1.3.0 has a flaky OverlayDevice bug: writing a brand-new
+  // inode under /workspace tends to fire a `TypeError: …reading 'a1'`
+  // followed by `Program exited with code 71` and — critically — leaves
+  // the entire CheerpX runtime wedged. Once wedged, every subsequent
+  // `cx.run` errors with `function signature mismatch`. The wedge can't
+  // be recovered from in-process; we have to avoid triggering the bug.
+  //
+  // The warm rust-alpine disk image now pre-creates every path the prime
+  // would otherwise allocate (Cargo.toml, src/main.rs, .vscode/*,
+  // README.md, /root/.bash_profile — see web/disk/Dockerfile.disk). Once
+  // the disk-latest release is rebuilt against this PR, the prime
+  // overwrites EXISTING inodes only, which is reliable. Until the disk
+  // republishes, callers that need a guaranteed-clean boot can opt out
+  // of the prime entirely with `opts.skipPrime: true`. The e2e harness
+  // (which runs against whichever disk-latest is currently published)
+  // sets this flag so the boot reaches `vmPhase: 'ready'` without
+  // tripping the wedge. End users still get a populated /workspace
+  // because Cargo.toml + src/main.rs ship in the disk image.
   const bootTask = (async () => {
     emitPhase('syncing-workspace');
-    await prepareInteractiveShell();
-    try {
-      await primeGuestWorkspace();
-    } catch (err) {
-      runtime.workspacePrimeError = err?.message ?? String(err);
-      // eslint-disable-next-line no-console
-      logger?.error?.('[rust-web-box] workspace prime failed:', err);
+    if (!skipPrime) {
+      await prepareInteractiveShell();
+      try {
+        await primeGuestWorkspace();
+      } catch (err) {
+        runtime.workspacePrimeError = err?.message ?? String(err);
+        // eslint-disable-next-line no-console
+        logger?.error?.('[rust-web-box] workspace prime failed:', err);
+      }
+    } else {
+      logger?.warn?.('[rust-web-box] workspace prime skipped (opts.skipPrime=true)');
+      runtime.workspacePrimeError = 'skipped';
     }
-    stopShell = runShellLoop(cx, {
-      cwd: runtime.primed ? '/workspace' : '/root',
-      onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
-    });
+    if (!skipShellLoop) {
+      stopShell = runShellLoop(cx, {
+        cwd: runtime.primed ? '/workspace' : '/root',
+        onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
+      });
+    } else {
+      logger?.warn?.('[rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)');
+    }
     runtime.ready = true;
     runtime.stage = 'ready';
     emitPhase('ready');
