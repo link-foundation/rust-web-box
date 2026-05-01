@@ -26,7 +26,12 @@
 // Resolved relative to this module — the static layout is
 // `web/glue/cheerpx-bridge.js` and `web/cheerpx/cx.esm.js`.
 const VENDORED_CHEERPX_ESM = new URL('../cheerpx/cx.esm.js', import.meta.url).href;
-const CHEERPX_VERSION = '1.2.11';
+// Keep this in sync with CHEERPX_VERSION in web/build/build-workbench.mjs.
+// 1.2.11 crashed the worker on the first cx.run with `Cannot read properties
+// of undefined (reading 'a1')` and exit code 71; 1.3.0 (published 2026-04-29)
+// fixes that. Issue #15 has the live-site reproduction and the e2e test that
+// guards against a regression.
+const CHEERPX_VERSION = '1.3.0';
 const CDN_CHEERPX_ESM = `https://cxrtnc.leaningtech.com/${CHEERPX_VERSION}/cx.esm.js`;
 
 // Hard fallback if the manifest is missing entirely.

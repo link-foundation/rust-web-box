@@ -20,7 +20,7 @@ GitHub Pages (static)
 │   └── webvm-server.js                  # stage-2 server (workspace + VM)
 ├── web/sw.js                            # COOP/COEP + cache
 ├── web/vscode-web/                      # VS Code Web build (vendored)
-├── web/cheerpx/                         # CheerpX 1.2.11 (vendored)
+├── web/cheerpx/                         # CheerpX 1.3.0 (vendored)
 ├── web/extensions/
 │   ├── webvm-host/                      # FS provider, terminal, tasks
 │   └── rust-analyzer-web/               # rust-analyzer WASM client
@@ -97,7 +97,7 @@ exactly where they would be with `vscode.dev` plus a working terminal.
 |---|---------------------------------|--------|----------------------------------------------|
 | 1 | Page-level network shim         | ✅     | 18 unit tests; routes static/api direct, index via proxy chain |
 | 2 | Service worker COOP/COEP cache  | ✅     | Caches shell + glue, synthesises COOP/COEP/CORP |
-| 3 | CheerpX 1.2.11 loader + boot    | ✅     | Vendored at build time (engine + tun helpers); CDN fallback at runtime |
+| 3 | CheerpX 1.3.0 loader + boot     | ✅     | Vendored at build time (engine + tun helpers); CDN fallback at runtime. Bumped from 1.2.11 in issue #15 — 1.2.11 crashed `cx.run` with exit 71. |
 | 4 | WebVM bus (page ↔ extension)    | ✅     | 8 unit tests; request/response + events over BroadcastChannel |
 | 5 | Page-side server (FS + procs)   | ✅     | Persistent bash loop for user I/O; `/data` scripts for quiet workspace sync |
 | 6 | webvm-host extension            | ✅     | Auto-opens terminal with "Booting…" loading status, `webvm:` FS, cargo tasks, Run button |
