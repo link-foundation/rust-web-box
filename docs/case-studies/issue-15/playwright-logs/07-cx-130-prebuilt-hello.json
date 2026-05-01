@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "exitCode": {
+    "status": 0
+  },
+  "output": "Hello from rust-web-box!\nThis binary was compiled inside CheerpX.\n"
+}

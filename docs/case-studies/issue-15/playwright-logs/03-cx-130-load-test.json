@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "keys": [
+    "CloudDevice",
+    "DataDevice",
+    "DirectSocketsNetwork",
+    "GitHubDevice",
+    "HttpBytesDevice",
+    "IDBDevice",
+    "Linux",
+    "OverlayDevice",
+    "System",
+    "TailscaleNetwork",
+    "WebDevice"
+  ],
+  "hasLinux": true,
+  "hasGitHubDevice": true,
+  "hasDataDevice": true
+}

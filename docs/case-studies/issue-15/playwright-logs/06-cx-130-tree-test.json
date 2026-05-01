@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "log": [
+    [
+      868555,
+      "importing 1.3.0"
+    ],
+    [
+      868779,
+      "Linux.create OK"
+    ],
+    [
+      868779,
+      "tree /workspace"
+    ],
+    [
+      869321,
+      "e1={\"status\":0}"
+    ],
+    [
+      869321,
+      "ls binary"
+    ],
+    [
+      869377,
+      "e2={\"status\":0}"
+    ]
+  ],
+  "output": "/workspace\n├── Cargo.lock\n├── Cargo.toml\n├── src\n│   └── main.rs\n└── target\n    ├── CACHEDIR.TAG\n    └── release\n        ├── build\n        ├── deps\n        │   ├── hello-2b7fd4f5e9982670\n        │   └── hello-2b7fd4f5e9982670.d\n        ├── examples\n        ├── hello\n        ├── hello.d\n        └── incremental\n\n8 directories, 8 files\n\u001b[1;34mbuild\u001b[m        \u001b[1;34mdeps\u001b[m         \u001b[1;34mexamples\u001b[m     \u001b[1;32mhello\u001b[m        \u001b[0;0mhello.d\u001b[m      \u001b[1;34mincremental\u001b[m\n[package]\nname = \"hello\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[[bin]]\nname = \"hello\"\npath = \"src/main.rs\"\n\n[dependencies]\n"
+}
