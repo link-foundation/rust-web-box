@@ -135,10 +135,26 @@ jobs:
         working-directory: web/tests
         run: npm ci
 
-      - name: Install Chromium for Playwright
+      # `npx playwright install --with-deps` shells out to `apt-get`, which
+      # has hit minute-long hangs against the Azure-hosted Ubuntu mirrors on
+      # the GitHub-hosted runners (actions/runner-images#11347,
+      # microsoft/playwright#20665, #34297). We split the install — apt deps
+      # under DEBIAN_FRONTEND=noninteractive, then the browser binary
+      # separately — so a stalled mirror surfaces as a fast failure on the
+      # right step rather than a silent multi-hour hang.
+      - name: Install Playwright system deps
         if: steps.warm.outputs.staged == '1'
+        timeout-minutes: 5
         working-directory: web/tests
-        run: npx playwright install --with-deps chromium
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo -E npx playwright install-deps chromium
+
+      - name: Install Chromium browser for Playwright
+        if: steps.warm.outputs.staged == '1'
+        timeout-minutes: 5
+        working-directory: web/tests
+        run: npx playwright install chromium
 
       - name: Run local e2e against built artifact
         if: steps.warm.outputs.staged == '1'
@@ -185,9 +201,19 @@ jobs:
         working-directory: web/tests
         run: npm ci
 
-      - name: Install Chromium for Playwright
+      # See note on the local-e2e job — split install + 5-minute timeout
+      # so a stalled apt mirror fails fast instead of consuming the job.
+      - name: Install Playwright system deps
+        timeout-minutes: 5
         working-directory: web/tests
-        run: npx playwright install --with-deps chromium
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo -E npx playwright install-deps chromium
+
+      - name: Install Chromium browser for Playwright
+        timeout-minutes: 5
+        working-directory: web/tests
+        run: npx playwright install chromium
 
       - name: Run live e2e against ${{ needs.deploy.outputs.page_url }}
         working-directory: web/tests
