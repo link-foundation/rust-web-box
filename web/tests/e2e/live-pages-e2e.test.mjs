@@ -68,6 +68,19 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
     assert.equal(hello.status?.status ?? hello.status, 0);
     assert.match(hello.output, /Hello from rust-web-box!/);
 
+    // Issue #17 regression guard: `cargo run --release` was the user-
+    // facing operation that broke on the live site (CheerpException 71
+    // / 'a1' wedge). The earlier suite only proved the prebuilt binary
+    // could execute, which doesn't catch a regression in cargo's own
+    // path. With the disk pre-bake (Dockerfile.disk), cargo's mtime
+    // check is satisfied immediately and `cargo run --release` returns
+    // in ~1s — no fresh inodes, no wedge.
+    const cargoRun = await runInVM(page, 'cd /workspace && cargo run --release 2>&1', { timeoutMs: 120_000 });
+    assert.equal(cargoRun.timedOut, false, `cargo run --release timed out — likely OverlayDevice wedge: ${cargoRun.output}`);
+    assert.equal(cargoRun.status?.status ?? cargoRun.status, 0, `cargo run exit: ${JSON.stringify(cargoRun.status)}\noutput:\n${cargoRun.output}`);
+    assert.match(cargoRun.output, /Hello from rust-web-box!/, `cargo run output:\n${cargoRun.output}`);
+    assert.match(cargoRun.output, /Finished/, `cargo run did not print Finished:\n${cargoRun.output}`);
+
     const fatal = errors.filter((e) => /CheerpException|Program exited with code 71/.test(e));
     assert.deepEqual(fatal, [], `unexpected fatal CheerpX errors on live site:\n${fatal.join('\n')}`);
   }, { commander, bootTimeoutMs: BOOT_MS });

@@ -437,7 +437,16 @@ export async function runInVM(page, command, { timeoutMs = 60_000 } = {}) {
     const TIMEOUT = Symbol('runInVM-timeout');
     const winner = await Promise.race([
       cx.run('/bin/sh', ['-c', command], {
-        env: ['HOME=/root', 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'TERM=xterm-256color'],
+        // Match Dockerfile.disk's /root/.bash_profile: include
+        // /root/.cargo/bin (rustup-managed toolchain) and disable
+        // incremental builds (issue #17 — fresh fingerprint inodes
+        // trip the CheerpX 1.3.0 OverlayDevice 'a1' wedge).
+        env: [
+          'HOME=/root',
+          'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+          'TERM=xterm-256color',
+          'CARGO_INCREMENTAL=0',
+        ],
         cwd: '/workspace',
         uid: 0, gid: 0,
       }),
