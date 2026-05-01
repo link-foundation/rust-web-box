@@ -89,3 +89,7 @@ web/disk/rust-debian.ext2
 web/disk/rust-debian.ext2.meta
 web/disk/rust-debian.ext2.c*.txt
 web/product.json
+
+# E2E test deps (installed by `cd web/tests && npm install`).
+# We commit package.json + lockfile but not the modules themselves.
+web/tests/node_modules/
