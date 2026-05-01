@@ -279,30 +279,26 @@ export async function withWorkbench(url, body, {
     } catch {}
   });
 
-  // Inject a small bus listener that records every `vm.boot` payload to
-  // `__rustWebBoxBootHistory`. We use `addInitScript` so the recorder is
-  // active before any page script runs — otherwise we'd miss the early
-  // `loading-cheerpx` / `booting-linux` transitions.
+  // Inject a recorder for every `vm.boot` payload published on the
+  // workspace's BroadcastChannel. We hook `postMessage` (not
+  // `addEventListener`) because BroadcastChannel does NOT echo messages
+  // back to the sender — only sibling instances receive them, and the
+  // page only opens one channel during boot. `addInitScript` runs before
+  // any page script so we don't miss the early `loading-cheerpx` /
+  // `booting-linux` transitions.
   await page.addInitScript(() => {
     globalThis.__rustWebBoxBootHistory = [];
     const origBC = globalThis.BroadcastChannel;
     if (typeof origBC === 'function') {
-      const wrapped = function (name) {
-        const ch = new origBC(name);
-        if (name === 'rust-web-box') {
-          ch.addEventListener('message', (ev) => {
-            try {
-              const m = ev.data;
-              if (m && m.kind === 'event' && m.topic === 'vm.boot') {
-                globalThis.__rustWebBoxBootHistory.push(`${Date.now()} ${m.payload && m.payload.phase}`);
-              }
-            } catch {}
-          });
-        }
-        return ch;
+      const origPost = origBC.prototype.postMessage;
+      origBC.prototype.postMessage = function (data) {
+        try {
+          if (this.name === 'rust-web-box' && data && data.kind === 'event' && data.topic === 'vm.boot') {
+            globalThis.__rustWebBoxBootHistory.push(`${Date.now()} ${data.payload && data.payload.phase}`);
+          }
+        } catch {}
+        return origPost.call(this, data);
       };
-      wrapped.prototype = origBC.prototype;
-      globalThis.BroadcastChannel = wrapped;
     }
   });
 
