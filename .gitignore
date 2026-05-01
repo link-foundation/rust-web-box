@@ -57,6 +57,9 @@ logs/
 ci-logs/
 .playwright-mcp/
 
+# Case-study evidence logs are committed deliberately.
+!docs/case-studies/**/*.log
+
 # Vendored at build time — see web/build/build-workbench.mjs.
 # We commit the source, sw.js, glue, extensions, and the rendered
 # index.html, but not the multi-MB upstream bundles.
@@ -89,3 +92,7 @@ web/disk/rust-debian.ext2
 web/disk/rust-debian.ext2.meta
 web/disk/rust-debian.ext2.c*.txt
 web/product.json
+
+# E2E test deps (installed by `cd web/tests && npm install`).
+# We commit package.json + lockfile but not the modules themselves.
+web/tests/node_modules/

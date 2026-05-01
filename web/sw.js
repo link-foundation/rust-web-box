@@ -13,7 +13,7 @@
 
 // Bump on every breaking change to the bundled assets so old caches
 // get evicted on activate.
-const CACHE_VERSION = 'rust-web-box-v2-vscode1.91.1-cheerpx1.2.11';
+const CACHE_VERSION = 'rust-web-box-v3-vscode1.91.1-cheerpx1.3.0';
 
 // Static shell + glue. The VS Code Web bundle and CheerpX assets are
 // fetched lazily and cached on first hit (handled by the fetch listener),

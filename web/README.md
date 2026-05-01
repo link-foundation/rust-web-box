@@ -5,7 +5,7 @@ Static-site root for the in-browser Rust sandbox described in
 
 GitHub Pages publishes this directory after the build step at
 `.github/workflows/pages.yml` runs `web/build/build-workbench.mjs` to
-vendor the upstream `vscode-web` bundle, the CheerpX 1.2.11 runtime,
+vendor the upstream `vscode-web` bundle, the CheerpX 1.3.0 runtime,
 and our two web extensions.
 
 ## Layout

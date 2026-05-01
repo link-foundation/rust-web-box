@@ -1,0 +1,23 @@
+Total messages: 20 (Errors: 3, Warnings: 2)
+Returning 5 messages for level "warning"
+
+[WARNING] The web worker extension host is started in a same-origin iframe! @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:1885
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=3091dd6e-26f6-4407-aa74-15291e4351fa:0
+TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364003)
+TypeError: Cannot read properties of undefined (reading 'a1')
+    at y8 (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:190555)
+    at y_ (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:187728)
+    at Worker.<anonymous> (https://link-foundation.github.io/rust-web-box/cheerpx/cx_esm.js:1:364003)
+CheerpException: Program exited with code 71
+    at aq$ (blob:https://link-foundation.github.io/b35c95fa-1435-41e1-bf89-010fb035cf4d:1:65357)
+    at wasm://wasm/00745cc6:wasm-function[2556]:0x100a84
+    at wasm://wasm/00745cc6:wasm-function[2557]:0x100a8a
+    at wasm://wasm/00745cc6:wasm-function[2558]:0x100a91
+    at wasm://wasm/00745cc6:wasm-function[122]:0x6a79
+    at wasm://wasm/00745cc6:wasm-function[1934]:0xb7436
+    at wasm://wasm/00745cc6:wasm-function[1932]:0xb71e7
+    at wasm://wasm/00745cc6:wasm-function[2711]:0x1068cd
+    at MessagePort.Pe (blob:https://link-foundation.github.io/b35c95fa-1435-41e1-bf89-010fb035cf4d:1:60088)

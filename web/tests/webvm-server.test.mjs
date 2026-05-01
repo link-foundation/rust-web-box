@@ -193,6 +193,39 @@ test('webvm-server: primes /workspace through a /data script, not terminal input
   );
 });
 
+test('webvm-server: onPhase callback receives every emitted phase, including ready', async () => {
+  // Regression for issue #15: the e2e harness keys `vmPhase === 'ready'`
+  // on `globalThis.__rustWebBox.vmPhase`, but the page-side shim only
+  // observed phases coming from CheerpX's `onProgress` (which stops at
+  // `starting Linux`). The `'ready'` phase originates here, so we now
+  // thread an `onPhase` callback through `startWebVMServer`. Without it
+  // the harness times out at 180s waiting for a phase that exists on the
+  // bus but never reaches the shim.
+  const { cx } = makeFakeCx();
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+
+  const phases = [];
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    onPhase: (p) => phases.push(p),
+  });
+  await server.bootTask;
+
+  assert.deepEqual(
+    phases.filter((p) => p === 'syncing-workspace' || p === 'ready'),
+    ['syncing-workspace', 'ready'],
+    `onPhase did not receive both syncing-workspace and ready (got: ${JSON.stringify(phases)})`,
+  );
+  // And the bus still gets the same phases — onPhase is additive, not a
+  // replacement.
+  const busPhases = busServer.events
+    .filter((e) => e.topic === 'vm.boot')
+    .map((e) => e.payload?.phase);
+  assert.ok(busPhases.includes('ready'), `bus did not receive 'ready' (got: ${JSON.stringify(busPhases)})`);
+});
+
 test('webvm-server: mirrors saved files through /data without typing into the terminal', async () => {
   const { cx, state } = makeFakeCx();
   const workspace = makeFakeWorkspace();
@@ -211,6 +244,131 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   assert.equal(dataState.writes[2].filename, '/rust-web-box-workspace-sync.sh');
   assert.match(dataState.writes[2].contents, /cat > '\/workspace\/new-file\.txt'/);
   assert.match(dataState.writes[2].contents, /saved/);
+});
+
+test('webvm-server: workspace.prime bus method is a no-op when skipPrime is set', async () => {
+  // Regression for issue #15: VS Code's webvm-host extension calls
+  // `bus.request('workspace.prime')` whenever a terminal opens. Before
+  // this guard, that bus call ran the prime regardless of opts.skipPrime,
+  // bypassing the bootTask check and tripping the CheerpX 1.3.0
+  // OverlayDevice 'a1' wedge. The trace bisect (see
+  // experiments/cx-130-bisect-trace-bus-skip.mjs) showed the runtime
+  // wedge fired ~1s after the bus invocation, well before any user
+  // action.
+  const state = { writer: null, runCalls: [] };
+  const cx = {
+    setCustomConsole(fn) {
+      state.writer = fn;
+      return () => {};
+    },
+    setConsoleSize() {},
+    async run(cmd, args, opts) {
+      state.runCalls.push({ cmd, args, opts });
+      if (cmd === '/bin/bash') await new Promise(() => {});
+    },
+  };
+  const workspace = makeFakeWorkspace({
+    '/workspace/Cargo.toml': new TextEncoder().encode('[package]\nname = "x"\n'),
+  });
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: { skipPrime: true, skipShellLoop: true },
+  });
+  await server.bootTask;
+
+  // bootTask itself didn't call run at all (skipPrime + skipShellLoop).
+  const beforeBusCall = state.runCalls.length;
+  const beforeWrites = dataState.writes.length;
+
+  // Now simulate VS Code calling workspace.prime via the bus.
+  await server.methods['workspace.prime']({});
+
+  assert.equal(
+    state.runCalls.length,
+    beforeBusCall,
+    'workspace.prime bus method must not run any guest scripts when skipPrime=true',
+  );
+  assert.equal(
+    dataState.writes.length,
+    beforeWrites,
+    'workspace.prime bus method must not stage any /data scripts when skipPrime=true',
+  );
+});
+
+test('webvm-server: workspace.prime bus method runs the prime when skipPrime is not set', async () => {
+  // Inverse guard: when skipPrime is false (default), the bus method
+  // does prime — VS Code's terminal-open hook is the canonical entry
+  // point on a clean disk that needs the JS workspace mirrored in.
+  const { cx, state } = makeFakeCx();
+  const workspace = makeFakeWorkspace({
+    '/workspace/Cargo.toml': new TextEncoder().encode('[package]\nname = "x"\n'),
+  });
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
+  await server.bootTask;
+
+  const beforeWrites = dataState.writes.length;
+  // Bus method should be idempotent: bootTask already primed once, so a
+  // second call returns the cached promise without re-staging.
+  await server.methods['workspace.prime']({});
+  assert.equal(
+    dataState.writes.length,
+    beforeWrites,
+    'workspace.prime bus method should be idempotent after bootTask primed',
+  );
+});
+
+test('webvm-server: bootTask reaches "ready" even when workspace prime hangs', async () => {
+  // Regression for issue #15: CheerpX 1.3.0 has a flaky bug where
+  // `cx.run` hangs forever after a runtime crash (the JS-level promise
+  // never settles). Without a timeout in `primeGuestWorkspace`, the
+  // entire boot stalls at `vmPhase: 'syncing-workspace'` and the e2e
+  // harness times out at 180s. We bound the prime so vmPhase reaches
+  // 'ready' regardless, and the failure is recorded for diagnostics.
+  const state = { writer: null, runCalls: [] };
+  const cx = {
+    setCustomConsole(fn) {
+      state.writer = fn;
+      return () => {};
+    },
+    setConsoleSize() {},
+    async run(cmd, args, opts) {
+      state.runCalls.push({ cmd, args, opts });
+      // Hang forever on the prime script (simulates the 'a1' bug).
+      if (typeof args[0] === 'string' && args[0].includes('workspace-prime')) {
+        await new Promise(() => {});
+      }
+      // Hang on bash too (matches the real shell loop).
+      if (cmd === '/bin/bash') {
+        await new Promise(() => {});
+      }
+    },
+  };
+  const workspace = makeFakeWorkspace({
+    '/workspace/.vscode/settings.json': new TextEncoder().encode('{}\n'),
+  });
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    // Tight timeout so the test finishes quickly.
+    opts: { primeTimeoutMs: 50, shellPrepareTimeoutMs: 50 },
+  });
+  await server.bootTask;
+
+  const phases = busServer.events
+    .filter((e) => e.topic === 'vm.boot')
+    .map((e) => e.payload?.phase);
+  assert.ok(
+    phases.includes('ready'),
+    `bootTask must emit 'ready' even when prime hangs (got: ${JSON.stringify(phases)})`,
+  );
 });
 
 // Make sure makeChannelPair stays referenced; it's exported in case

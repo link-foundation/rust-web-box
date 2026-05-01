@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "log": [
+    [
+      1777612925989,
+      "importing 1.3.0"
+    ],
+    [
+      1777612925989,
+      "attaching GitHubDevice"
+    ],
+    [
+      1777612925997,
+      "attaching IDB overlay (1.3.0-test)"
+    ],
+    [
+      1777612926046,
+      "helper devices"
+    ],
+    [
+      1777612926046,
+      "Linux.create"
+    ],
+    [
+      1777612926526,
+      "Linux.create OK"
+    ],
+    [
+      1777612926526,
+      "cx.run sh -c \"echo HELLO; tree --version 2>&1; exit 0\""
+    ],
+    [
+      1777612927235,
+      "cx.run returned exitCode={\"status\":0}"
+    ]
+  ],
+  "output": "HELLO_FROM_RWB\ntree v2.1.1 © 1996 - 2023 by Steve Baker, Thomas Moore, Francesc Rocher, Florian Sesser, Kyosuke Tokoro\nLinux 4.15.0-54-cheerpx i386 Linux\n",
+  "exitCode": {
+    "status": 0
+  }
+}

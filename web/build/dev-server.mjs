@@ -78,6 +78,16 @@ async function serve(req, res) {
       res.writeHead(404).end('not found (outside base)');
       return;
     }
+    // GitHub Pages canonicalises `/rust-web-box` → `/rust-web-box/` so
+    // that the document base resolves relative URLs (e.g. `glue/boot.js`)
+    // under the prefix. We mirror that redirect here — without it, the
+    // browser asks for `/glue/boot.js` and 404s its way through the
+    // entire boot pipeline (issue #15 e2e regression).
+    if (urlPath === BASE_PREFIX) {
+      res.writeHead(302, { Location: `${BASE_PREFIX}/` });
+      res.end();
+      return;
+    }
     urlPath = urlPath.slice(BASE_PREFIX.length) || '/';
   }
   if (urlPath.endsWith('/')) urlPath += 'index.html';

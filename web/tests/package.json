@@ -1,0 +1,17 @@
+{
+  "name": "rust-web-box-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests that drive the rust-web-box workbench in a real browser. Used by web/tests/e2e/local-pages-e2e.test.mjs and live-pages-e2e.test.mjs (issue #15).",
+  "scripts": {
+    "install:browsers": "npx playwright install chromium",
+    "test:e2e": "node --test e2e/",
+    "test:e2e:local": "RUST_WEB_BOX_E2E=1 node --test e2e/local-pages-e2e.test.mjs",
+    "test:e2e:live": "RUST_WEB_BOX_E2E=1 node --test e2e/live-pages-e2e.test.mjs"
+  },
+  "dependencies": {
+    "browser-commander": "^0.8.0",
+    "playwright": "^1.59.1"
+  }
+}

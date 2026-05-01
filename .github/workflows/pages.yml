@@ -58,10 +58,16 @@ jobs:
           SKIP_CHEERPX: ${{ vars.SKIP_CHEERPX || '' }}
 
       - name: Stage warm disk chunks from release
-        if: github.event_name != 'pull_request'
+        # We stage the warm disk for *both* PRs and main pushes now — the
+        # local-e2e job below asserts on `cargo`/`tree`/the prebuilt
+        # `hello` binary, all of which only exist on the rust-alpine
+        # warm disk. PRs use STAGE_WARM_DISK_REQUIRED=0 so a missing
+        # release asset (e.g. on a brand-new fork) is a soft skip rather
+        # than a hard build failure.
         run: node web/build/stage-pages-disk.mjs
         env:
           GH_TOKEN: ${{ github.token }}
+          STAGE_WARM_DISK_REQUIRED: ${{ github.event_name == 'pull_request' && '0' || '1' }}
 
       - name: Smoke-check artifact contents
         run: |
@@ -79,15 +85,143 @@ jobs:
         with:
           path: web
 
+      # Stash the *vendored + staged* `web/` for the local-e2e job below.
+      # The Pages artifact is gzipped + signed for `actions/deploy-pages`;
+      # `actions/cache` would re-use builds across runs which we don't
+      # want here. A plain `upload-artifact` keeps the loop scoped to a
+      # single workflow run.
+      - name: Upload built web/ for local-e2e
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-built
+          path: web
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
+
+  local-e2e:
+    # Run the local e2e suite against the *built* artifact before we
+    # deploy. This catches regressions on PRs where the live-e2e job
+    # below cannot run (no Pages deploy on PRs).
+    name: Local e2e (built artifact)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore built web/
+        uses: actions/download-artifact@v4
+        with:
+          name: web-built
+          path: web
+
+      - name: Skip when warm disk is unavailable on this PR
+        id: warm
+        run: |
+          if [ -f web/disk/rust-alpine.ext2.meta ] \
+              && ls web/disk/rust-alpine.ext2.c000000.txt > /dev/null 2>&1; then
+            echo "staged=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "staged=0" >> "$GITHUB_OUTPUT"
+            echo "::notice::warm disk not staged on this PR; local e2e is a soft skip"
+          fi
+
+      - name: Install browser-commander + Playwright
+        if: steps.warm.outputs.staged == '1'
+        working-directory: web/tests
+        run: npm ci
+
+      # `npx playwright install --with-deps` shells out to `apt-get`, which
+      # has hit minute-long hangs against the Azure-hosted Ubuntu mirrors on
+      # the GitHub-hosted runners (actions/runner-images#11347,
+      # microsoft/playwright#20665, #34297). We split the install — apt deps
+      # under DEBIAN_FRONTEND=noninteractive, then the browser binary
+      # separately — so a stalled mirror surfaces as a fast failure on the
+      # right step rather than a silent multi-hour hang.
+      - name: Install Playwright system deps
+        if: steps.warm.outputs.staged == '1'
+        timeout-minutes: 5
+        working-directory: web/tests
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo -E npx playwright install-deps chromium
+
+      - name: Install Chromium browser for Playwright
+        if: steps.warm.outputs.staged == '1'
+        timeout-minutes: 5
+        working-directory: web/tests
+        run: npx playwright install chromium
+
+      - name: Run local e2e against built artifact
+        if: steps.warm.outputs.staged == '1'
+        working-directory: web/tests
+        env:
+          RUST_WEB_BOX_E2E: '1'
+          # CI containers can't run Chromium's seccomp/userns sandbox.
+          RUST_WEB_BOX_E2E_NO_SANDBOX: '1'
+          RUST_WEB_BOX_E2E_BOOT_MS: '180000'
+        run: node --test e2e/local-pages-e2e.test.mjs
+
   deploy:
     name: Deploy to GitHub Pages
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, local-e2e]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+  e2e:
+    # Real end-to-end smoke test against the *deployed* Pages URL.
+    # Issue #15: "We need real e2e tests, that are executed after
+    # GitHub Pages publish on https://link-foundation.github.io/rust-web-box
+    # directly, not only local e2e tests."
+    name: Post-deploy e2e (live Pages site)
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install browser-commander + Playwright
+        working-directory: web/tests
+        run: npm ci
+
+      # See note on the local-e2e job — split install + 5-minute timeout
+      # so a stalled apt mirror fails fast instead of consuming the job.
+      - name: Install Playwright system deps
+        timeout-minutes: 5
+        working-directory: web/tests
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo -E npx playwright install-deps chromium
+
+      - name: Install Chromium browser for Playwright
+        timeout-minutes: 5
+        working-directory: web/tests
+        run: npx playwright install chromium
+
+      - name: Run live e2e against ${{ needs.deploy.outputs.page_url }}
+        working-directory: web/tests
+        env:
+          RUST_WEB_BOX_E2E: '1'
+          RUST_WEB_BOX_LIVE_URL: ${{ needs.deploy.outputs.page_url }}
+          # Cold-cache, cold-IDB Pages boots take longer than local dev.
+          # 240s gives the warm-disk fetch + service-worker install + Linux
+          # boot enough headroom even with a slow runner.
+          RUST_WEB_BOX_E2E_BOOT_MS: '240000'
+        run: node --test e2e/live-pages-e2e.test.mjs

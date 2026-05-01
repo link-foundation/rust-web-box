@@ -1,0 +1,26 @@
+{
+  "hasShim": true,
+  "hasWorkspace": true,
+  "hasBusServer": true,
+  "hasVm": true,
+  "vmPhase": "starting Linux",
+  "crossOriginIsolated": true,
+  "sharedArrayBuffer": true,
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.0.0 Safari/537.36",
+  "diskUrl": "./disk/rust-alpine.ext2",
+  "persistKey": "rust-web-box-overlay-v1",
+  "dump": {
+    "timestamp": "2026-05-01T05:19:26.819Z",
+    "href": "https://link-foundation.github.io/rust-web-box/",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.0.0 Safari/537.36",
+    "crossOriginIsolated": true,
+    "sharedArrayBuffer": true,
+    "serviceWorker": true,
+    "vmPhase": "starting Linux",
+    "vmDiskUrl": "./disk/rust-alpine.ext2",
+    "vmPersistKey": "rust-web-box-overlay-v1",
+    "workspaceReady": true,
+    "busAlive": true,
+    "shimAlive": true
+  }
+}

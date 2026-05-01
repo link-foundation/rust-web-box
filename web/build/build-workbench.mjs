@@ -38,7 +38,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(WEB_ROOT, '..');
 const VSCODE_WEB_VERSION = '1.91.1';
-const CHEERPX_VERSION = '1.2.11';
+// Bumped from 1.2.11 to 1.3.0 — 1.2.11 crashed the CheerpX worker on the
+// first `cx.run()` with `TypeError: Cannot read properties of undefined
+// (reading 'a1')` followed by `CheerpException: Program exited with code 71`,
+// which left the in-browser terminal stuck on "VM stage:
+// syncing-workspace…" and made `cargo run` / `tree` impossible. Issue #15
+// reproduces this on the deployed Pages site; the fix is verified end-to-end
+// in `web/tests/live-pages-e2e.test.mjs`.
+const CHEERPX_VERSION = '1.3.0';
 
 // ---------------------------------------------------------------------------
 

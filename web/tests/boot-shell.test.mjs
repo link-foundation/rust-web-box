@@ -99,10 +99,10 @@ test('boot shell: service worker synthesises COOP/COEP headers (require-corp for
   assert.match(sw, /Cross-Origin-Embedder-Policy.*require-corp/);
 });
 
-test('boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.2.11', async () => {
+test('boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.3.0', async () => {
   const build = await read('build/build-workbench.mjs');
   assert.match(build, /VSCODE_WEB_VERSION = '1\.91\.1'/);
-  assert.match(build, /CHEERPX_VERSION = '1\.2\.11'/);
+  assert.match(build, /CHEERPX_VERSION = '1\.3\.0'/);
 });
 
 test('boot shell: workbench bootstrap provides process.env for browserified dependencies', async () => {
@@ -164,7 +164,9 @@ test('boot shell: webvm-server mirrors workspace through a quiet DataDevice scri
 test('boot shell: boot.js wires guest debug logs for ?debug routes', async () => {
   const boot = await read('glue/boot.js');
   assert.match(boot, /createDebug\('guest'/);
-  assert.match(boot, /opts:\s*\{\s*debug:\s*dbgGuest\s*\}/);
+  // `opts` may carry other keys (skipPrime, skipShellLoop) — only assert
+  // that `debug: dbgGuest` is present.
+  assert.match(boot, /opts:\s*\{[^}]*debug:\s*dbgGuest/);
 });
 
 test('boot shell: boot.js passes CheerpX DataDevice to the WebVM server', async () => {
