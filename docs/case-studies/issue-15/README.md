@@ -72,6 +72,8 @@ directory:
 | 2026-05-01 | `web/build/dev-server.mjs` learned to redirect `/rust-web-box` (no trailing slash) to `/rust-web-box/`, mirroring how GitHub Pages canonicalises sub-path URLs. Without this, the dev server returned 200 for the bare prefix and the browser then resolved `glue/boot.js` to `/glue/boot.js`. |
 | 2026-05-01 | `.github/workflows/pages.yml` extended with `local-e2e` (PRs + main) and `e2e` (post-deploy) jobs. The `build` job now stages the warm disk on PRs too, with `STAGE_WARM_DISK_REQUIRED=0` so a missing release asset on a fresh fork is a soft skip. |
 | 2026-05-01 | Local e2e suite passes in soft-skip mode without the warm disk; in `RUST_WEB_BOX_E2E=1` mode it produces an actionable error pointing to `web/build/stage-pages-disk.mjs`. |
+| 2026-05-01 | First CI run with the warm disk staged: `Local e2e (built artifact)` failed with `page.waitForFunction: Timeout 180000ms exceeded` after 213 s (run 25205846856). Logs surfaced only the timeout — no diagnostics. |
+| 2026-05-01 | Diagnosed: `globalThis.__rustWebBox.vmPhase` was wired to `cheerpx-bridge.bootLinux`'s `onProgress` only, which stops at `'starting Linux'`. The terminal `'ready'` phase originates inside `web/glue/webvm-server.js` and was emitted on the BroadcastChannel but never propagated to the page-level shim. The harness keys `vmPhase === 'ready'` on that shim, so the wait could never complete. Threaded an `onPhase` callback through `startWebVMServer` and routed both stages through a single `setPhase` helper in `boot.js`. Added regression test in `web/tests/webvm-server.test.mjs` and rich timeout-context capture (snapshot + console + network) in the harness so future stalls surface their cause directly in CI logs. |
 
 ## Requirements From The Issue
 
@@ -113,6 +115,18 @@ directory:
 4. **CI never proved that the deployed Pages URL actually worked after
    `actions/deploy-pages@v4`.** The deploy step succeeded as long as the
    tarball uploaded; nothing checked that the page actually booted.
+5. **`globalThis.__rustWebBox.vmPhase` could never reach `'ready'`.**
+   The page-level shim was only updated from CheerpX's `onProgress`
+   callback in `cheerpx-bridge.bootLinux`, which stops at the
+   `'starting Linux'` phase. The final `'ready'` transition originates
+   inside `web/glue/webvm-server.js` after workspace priming completes
+   and was emitted on the BroadcastChannel only — invisible to the
+   page-level shim. The e2e harness (correctly) keys `vmPhase ===
+   'ready'` on `globalThis.__rustWebBox.vmPhase`, so once the warm disk
+   was actually staged in CI, the boot-wait would deadlock at 180 s
+   waiting for a transition that the page never made. Symptom looked
+   like "CheerpX is slow"; root cause was a wiring gap between the bus
+   and the shim.
 
 ## Solution
 
@@ -156,6 +170,27 @@ directory:
    - `web/build/dev-server.mjs` redirects `/rust-web-box` → `/rust-web-box/`
      when a base prefix is set. Mirrors GitHub Pages so the local e2e
      test exercises the same URL shape as production.
+7. **Single source of truth for `vmPhase`.**
+   - `startWebVMServer` (`web/glue/webvm-server.js`) now accepts an
+     `onPhase` callback and forwards every emitted phase
+     (`'syncing-workspace'` → `'ready'`) through it as well as on the
+     bus.
+   - `boot.js` defines a single `setPhase` helper that mutates
+     `globalThis.__rustWebBox.vmPhase`, emits on the bus, and is wired
+     into both `bootLinux({ onProgress })` and `startWebVMServer({
+     onPhase })`. After the change `vmPhase === 'ready'` is observable
+     from the same shim the harness queries.
+   - Regression test added in `web/tests/webvm-server.test.mjs` so a
+     future refactor cannot silently disconnect the bus from the shim
+     again.
+8. **Actionable diagnostics on harness timeout.**
+   - `web/tests/helpers/cheerpx-page-harness.mjs` now records every
+     `vm.boot` payload (via a `BroadcastChannel` interceptor injected
+     with `addInitScript`), every `console.*` line, every `pageerror`,
+     and every failed network request. On stage-1 or stage-2 timeout
+     the thrown error is re-formatted to include the in-page snapshot
+     and these histories. CI failures now surface *why* the page
+     stalled, rather than just `Timeout Xms exceeded`.
 
 ## Alternatives Considered
 
