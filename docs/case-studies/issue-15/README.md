@@ -74,6 +74,10 @@ directory:
 | 2026-05-01 | Local e2e suite passes in soft-skip mode without the warm disk; in `RUST_WEB_BOX_E2E=1` mode it produces an actionable error pointing to `web/build/stage-pages-disk.mjs`. |
 | 2026-05-01 | First CI run with the warm disk staged: `Local e2e (built artifact)` failed with `page.waitForFunction: Timeout 180000ms exceeded` after 213 s (run 25205846856). Logs surfaced only the timeout — no diagnostics. |
 | 2026-05-01 | Diagnosed: `globalThis.__rustWebBox.vmPhase` was wired to `cheerpx-bridge.bootLinux`'s `onProgress` only, which stops at `'starting Linux'`. The terminal `'ready'` phase originates inside `web/glue/webvm-server.js` and was emitted on the BroadcastChannel but never propagated to the page-level shim. The harness keys `vmPhase === 'ready'` on that shim, so the wait could never complete. Threaded an `onPhase` callback through `startWebVMServer` and routed both stages through a single `setPhase` helper in `boot.js`. Added regression test in `web/tests/webvm-server.test.mjs` and rich timeout-context capture (snapshot + console + network) in the harness so future stalls surface their cause directly in CI logs. |
+| 2026-05-01 | Second class of failure: even with `vmPhase` propagation fixed, CI still timed out. Root cause: **CheerpX 1.3.0 has a residual flaky OverlayDevice bug** — writing a brand-new inode under `/workspace` occasionally fires `TypeError: …reading 'a1'` followed by `Program exited with code 71`, and *wedges* the runtime so every subsequent `cx.run` errors with `function signature mismatch`. The exception is logged via `pageerror` but the JS-level `cx.run` promise never settles. Without a timeout, the entire boot stalls at `vmPhase: 'syncing-workspace'`. |
+| 2026-05-01 | Bisected with isolated experiments. `experiments/cx-130-alpine-narrow5.mjs` is the retained minimal reproducer: it standalone-imports CheerpX 1.3.0, mounts the rust-alpine disk, and demonstrates that `mkdir -p /workspace/<new-dir>` and `printf > /workspace/<new-file>` can fire the bug whereas `printf > /workspace/<existing-file>` is reliable. Bug is non-deterministic but biased toward fresh inodes. |
+| 2026-05-01 | Final smoking gun: `experiments/cx-130-bisect-trace-bus-skip.mjs` wraps `bus.setMethods` to log every method call. Even with `__RUST_WEB_BOX_SKIP_PRIME=true` set, the trace shows VS Code's `webvm-host` extension calling `bus.request('workspace.prime', {})` ~3s after boot — that bus invocation ran the prime regardless of `opts.skipPrime`, bypassing the bootTask check. The 'a1' fault and `code 71` arrive ~1s later. |
+| 2026-05-01 | Four-layer fix: (1) pre-create `/workspace/.vscode/{settings,launch,tasks}.json` and `README.md` in `Dockerfile.disk` so the prime overwrites existing inodes; (2) add `skipPrime` parameter to `fullServerMethods` so the bus method respects the flag; (3) bound `primeGuestWorkspace` and `prepareInteractiveShell` with `Promise.race` + a 30s timeout so the boot reaches `vmPhase: 'ready'` even if the wedge fires; (4) e2e harness sets `__RUST_WEB_BOX_SKIP_PRIME` and `__RUST_WEB_BOX_SKIP_BASH` via `addInitScript` so the bisect-only escape hatch is on by default in tests. Three regression tests in `web/tests/webvm-server.test.mjs` cover the bus-method guard and the boot-task timeout. |
 
 ## Requirements From The Issue
 
@@ -127,6 +131,22 @@ directory:
    waiting for a transition that the page never made. Symptom looked
    like "CheerpX is slow"; root cause was a wiring gap between the bus
    and the shim.
+6. **CheerpX 1.3.0 has a residual flaky OverlayDevice bug.** Writing a
+   brand-new inode under `/workspace` occasionally fires `TypeError:
+   …reading 'a1'` followed by `Program exited with code 71`, and *wedges*
+   the runtime so every subsequent `cx.run` errors with `function
+   signature mismatch`. The exception is logged via `pageerror` but the
+   JS-level `cx.run` promise never settles. Repro is non-deterministic
+   but biased toward fresh inodes — pre-existing inodes are reliable.
+   Standalone reproducer: `experiments/cx-130-alpine-narrow5.mjs`.
+7. **VS Code's terminal-open hook bypassed `opts.skipPrime`.** The
+   `webvm-host` extension calls `bus.request('workspace.prime', {})`
+   whenever a terminal opens (extension.js:270). Before this PR, the
+   `workspace.prime` bus handler unconditionally invoked
+   `primeGuestWorkspace()`, so the bisect escape hatch was inert in
+   practice — VS Code re-triggered the prime ~3s into boot, which then
+   tripped the `'a1'` wedge. Smoking gun in
+   `experiments/cx-130-bisect-trace-bus-skip.mjs`.
 
 ## Solution
 
@@ -191,6 +211,37 @@ directory:
      the thrown error is re-formatted to include the in-page snapshot
      and these histories. CI failures now surface *why* the page
      stalled, rather than just `Timeout Xms exceeded`.
+9. **Work around CheerpX 1.3.0 OverlayDevice 'a1' wedge — four layers.**
+   - **Disk image** (`web/disk/Dockerfile.disk`): Pre-create
+     `/workspace/.vscode/{settings,launch,tasks}.json` and
+     `/workspace/README.md` so the boot-time prime overwrites EXISTING
+     inodes (reliable) instead of allocating new ones (flaky).
+     Pre-existing pre-bake of Cargo.toml + src/main.rs already covered
+     the most common paths.
+   - **Bus method guard** (`web/glue/webvm-server.js`): Add `skipPrime`
+     parameter to `fullServerMethods`. The `workspace.prime` bus handler
+     is now a no-op when set. This closes the VS Code bypass: the
+     `webvm-host` extension's `bus.request('workspace.prime')` call on
+     terminal-open no longer re-runs the prime when the harness or
+     `?skipPrime=1` URL param is set.
+   - **Bounded prime + shell-prepare** (`web/glue/webvm-server.js`):
+     `primeGuestWorkspace()` and `prepareInteractiveShell()` are wrapped
+     in `Promise.race` with a configurable timeout (default 30 s). The
+     boot reaches `vmPhase: 'ready'` even if the wedge fires; the
+     failure is recorded in `runtime.workspacePrimeError` for
+     diagnostics.
+   - **e2e harness skip flags** (`web/tests/helpers/cheerpx-page-harness.mjs`):
+     Sets `globalThis.__RUST_WEB_BOX_SKIP_PRIME = true` and
+     `__RUST_WEB_BOX_SKIP_BASH = true` via `addInitScript` so the flags
+     land before any page script runs. The harness runs against
+     whichever `disk-latest` is currently published (which already
+     contains all the seed paths the prime would touch), so skipping
+     the prime is the safe choice that keeps boot deterministic.
+   - **Three regression tests in `web/tests/webvm-server.test.mjs`**:
+     (a) `workspace.prime` bus method is a no-op when `skipPrime` is set;
+     (b) it runs the prime when `skipPrime` is not set (idempotent after
+     bootTask); (c) `bootTask` reaches `'ready'` even when the prime
+     hangs forever.
 
 ## Alternatives Considered
 
@@ -201,6 +252,9 @@ directory:
 | Run the e2e suite against the deployed URL only | Rejected. Without a `local-e2e` job, regressions ship to Pages and a rollback is the only fix. The PR-time check pays for itself. |
 | Make the local suite hard-fail when no warm disk is staged | Rejected for default mode. Forks and brand-new contributors should be able to run `node --test web/tests/` without first staging a 100MB+ disk. We hard-fail under `RUST_WEB_BOX_E2E=1` (CI's signal). |
 | Use `actions/cache` instead of `actions/upload-artifact` to share the build between jobs | Rejected. Cache is stable across runs, but a stale cache that survives a CheerpX bump would mask exactly the kind of regression this work is supposed to catch. A scoped, single-run artifact is the right tool. |
+| Pin CheerpX 1.3.0 and patch the OverlayDevice `'a1'` allocation locally | Rejected. The fault is in obfuscated CheerpX i386 emulator chunks; we cannot maintain a fork without breaking subsequent CheerpX updates. The four-layer workaround (pre-bake seed paths + skipPrime guard + bounded timeouts + harness skip flags) is fully recoverable when upstream lands a fix. |
+| Skip the prime entirely in production too | Rejected. The prime mirrors the JS workspace into the VM. Without it, `webvm:/workspace` files saved by the user are not visible to `cargo run` from the terminal until reload. Skipping is acceptable in tests (which run against a known-seeded disk) but production users still need the workflow. |
+| Ignore the wedge and tell users to reload on `'a1'` errors | Rejected. The wedge is racy — sometimes it fires, sometimes the prime succeeds. A "reload to fix" UX is hostile in a browser-only IDE. Bounded timeouts + populated disk image keep the runtime usable in the racy case without user action. |
 
 ## Upstream Issue Decision
 
