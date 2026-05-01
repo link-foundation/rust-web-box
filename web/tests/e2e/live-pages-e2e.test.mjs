@@ -52,8 +52,8 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
     return;
   }
 
-  await withWorkbench(LIVE_URL, async ({ page, errors }) => {
-    const vmPhase = await waitForLinux(page, { timeoutMs: BOOT_MS });
+  await withWorkbench(LIVE_URL, async ({ page, errors, diagnostics }) => {
+    const vmPhase = await waitForLinux(page, { timeoutMs: BOOT_MS, diagnostics: { ...diagnostics, errors } });
     assert.equal(vmPhase, 'ready', `live workbench did not reach vmPhase=ready (was: ${vmPhase})`);
 
     const tree = await runInVM(page, 'tree --version 2>&1');

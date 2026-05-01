@@ -87,10 +87,10 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
   const server = await startDevServer({ basePrefix: BASE_PREFIX });
   t.after(() => server.stop());
 
-  await withWorkbench(server.url, async ({ page, errors }) => {
+  await withWorkbench(server.url, async ({ page, errors, diagnostics }) => {
     // Wait for Linux boot. CheerpX 1.2.11 fell over here with
     // `Program exited with code 71`; 1.3.0 must reach `vmPhase: 'ready'`.
-    const vmPhase = await waitForLinux(page);
+    const vmPhase = await waitForLinux(page, { diagnostics: { ...diagnostics, errors } });
     assert.equal(vmPhase, 'ready', 'expected CheerpX to reach vmPhase=ready');
 
     // Stage A: pure CheerpX call — independent of the bus / VS Code

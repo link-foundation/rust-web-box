@@ -161,12 +161,76 @@ export async function startDevServer({ basePrefix = '' } = {}) {
 }
 
 /**
+ * Capture in-page state for failure diagnostics. Returns whatever we can
+ * reach safely — never throws. The fields we surface are exactly the
+ * things we wished we had the first time CheerpX cold-boot stalled in
+ * CI: the last-observed `vmPhase`, the booleans for vm/workspace/shim,
+ * the disk URL the bridge resolved to, and a bus-level boot history if
+ * the page is wired to record it (we add the recorder below).
+ */
+async function captureWorkbenchSnapshot(page) {
+  try {
+    return await page.evaluate(() => {
+      const safe = (v) => {
+        try { return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? v : Boolean(v); }
+        catch { return null; }
+      };
+      const rwb = globalThis.__rustWebBox || {};
+      return {
+        vmPhase: safe(rwb.vmPhase),
+        hasVm: Boolean(rwb.vm),
+        hasShim: Boolean(rwb.shim),
+        hasWorkspace: Boolean(rwb.workspace),
+        hasBusServer: Boolean(rwb.busServer),
+        diskUrl: safe(rwb.vm && rwb.vm.diskUrl),
+        diskKind: safe(rwb.vm && rwb.vm.diskKind),
+        bootHistory: Array.isArray(globalThis.__rustWebBoxBootHistory)
+          ? globalThis.__rustWebBoxBootHistory.slice(-50)
+          : null,
+        documentTitle: typeof document !== 'undefined' ? document.title : null,
+        readyState: typeof document !== 'undefined' ? document.readyState : null,
+      };
+    });
+  } catch (err) {
+    return { captureError: err?.message ?? String(err) };
+  }
+}
+
+/**
+ * Format the structured timeout context as multi-line text we can attach
+ * to a thrown error, so a single-line `Timeout 180000ms exceeded` in a
+ * CI log expands into actionable evidence.
+ */
+function formatTimeoutContext({ stage, snapshot, consoleHistory, errors, failedRequests }) {
+  const lines = [];
+  lines.push(`workbench timeout at stage: ${stage}`);
+  lines.push('--- in-page snapshot ---');
+  lines.push(JSON.stringify(snapshot, null, 2));
+  if (consoleHistory?.length) {
+    lines.push('--- last console messages ---');
+    for (const msg of consoleHistory.slice(-30)) lines.push(msg);
+  }
+  if (errors?.length) {
+    lines.push('--- captured console.error / pageerror ---');
+    for (const e of errors.slice(-20)) lines.push(e);
+  }
+  if (failedRequests?.length) {
+    lines.push('--- failed network requests ---');
+    for (const r of failedRequests.slice(-20)) lines.push(r);
+  }
+  return lines.join('\n');
+}
+
+/**
  * Drive a single browser session against `url`. Calls `body({ commander,
  * page, errors })` once the workbench has reached stage 1 (`__rustWebBox.shim`
  * present). `errors` is a live array of console-error strings the test can
  * assert on.
  *
- * The browser is always closed on exit, even when `body` throws.
+ * The browser is always closed on exit, even when `body` throws. On a
+ * stage-1 timeout we attach a snapshot + console + network log to the
+ * thrown error so CI logs surface the *cause* of the stall rather than
+ * just `Timeout Xms exceeded`.
  */
 export async function withWorkbench(url, body, {
   commander: commanderMod,
@@ -185,7 +249,11 @@ export async function withWorkbench(url, body, {
   const commander = makeBrowserCommander({ page, verbose: false });
 
   const errors = [];
+  const consoleHistory = [];
+  const failedRequests = [];
   page.on('console', (msg) => {
+    const line = `[${msg.type()}] ${msg.text()}`;
+    consoleHistory.push(line);
     if (msg.type() === 'error') {
       // CheerpX writes some "expected" warnings to console.error during
       // boot (CSP for service workers, missing source maps, etc.). We
@@ -195,6 +263,47 @@ export async function withWorkbench(url, body, {
   });
   page.on('pageerror', (err) => {
     errors.push(`pageerror: ${err.message}`);
+    consoleHistory.push(`[pageerror] ${err.message}`);
+  });
+  page.on('requestfailed', (req) => {
+    try {
+      failedRequests.push(`${req.method?.() ?? 'GET'} ${req.url?.() ?? '?'}: ${req.failure?.()?.errorText ?? 'failed'}`);
+    } catch {}
+  });
+  page.on('response', (res) => {
+    try {
+      const status = res.status?.();
+      if (typeof status === 'number' && status >= 400) {
+        failedRequests.push(`HTTP ${status} ${res.url?.()}`);
+      }
+    } catch {}
+  });
+
+  // Inject a small bus listener that records every `vm.boot` payload to
+  // `__rustWebBoxBootHistory`. We use `addInitScript` so the recorder is
+  // active before any page script runs — otherwise we'd miss the early
+  // `loading-cheerpx` / `booting-linux` transitions.
+  await page.addInitScript(() => {
+    globalThis.__rustWebBoxBootHistory = [];
+    const origBC = globalThis.BroadcastChannel;
+    if (typeof origBC === 'function') {
+      const wrapped = function (name) {
+        const ch = new origBC(name);
+        if (name === 'rust-web-box') {
+          ch.addEventListener('message', (ev) => {
+            try {
+              const m = ev.data;
+              if (m && m.kind === 'event' && m.topic === 'vm.boot') {
+                globalThis.__rustWebBoxBootHistory.push(`${Date.now()} ${m.payload && m.payload.phase}`);
+              }
+            } catch {}
+          });
+        }
+        return ch;
+      };
+      wrapped.prototype = origBC.prototype;
+      globalThis.BroadcastChannel = wrapped;
+    }
   });
 
   try {
@@ -209,13 +318,26 @@ export async function withWorkbench(url, body, {
     // second. Passing `{ timeout }` as the second arg silently falls
     // through to the default 30s timeout — which is too short for a
     // cold CheerpX boot in CI. Always pass `undefined` as `arg`.
-    await page.waitForFunction(
-      () => Boolean(globalThis.__rustWebBox && globalThis.__rustWebBox.shim),
-      undefined,
-      { timeout: bootTimeoutMs },
-    );
+    try {
+      await page.waitForFunction(
+        () => Boolean(globalThis.__rustWebBox && globalThis.__rustWebBox.shim),
+        undefined,
+        { timeout: bootTimeoutMs },
+      );
+    } catch (err) {
+      const snapshot = await captureWorkbenchSnapshot(page);
+      const detail = formatTimeoutContext({
+        stage: 'stage-1 (workspace shim)',
+        snapshot,
+        consoleHistory,
+        errors,
+        failedRequests,
+      });
+      err.message = `${err.message}\n${detail}`;
+      throw err;
+    }
 
-    return await body({ commander, page, errors });
+    return await body({ commander, page, errors, diagnostics: { consoleHistory, failedRequests } });
   } finally {
     try { await commander.destroy(); } catch {}
     try { await browser.close(); } catch {}
@@ -225,20 +347,39 @@ export async function withWorkbench(url, body, {
 /**
  * Wait until CheerpX has booted Linux (stage 2). Returns the `vmPhase`
  * string (e.g. `'ready'`).
+ *
+ * On timeout the thrown error is enriched with the same in-page snapshot
+ * + console + network log captured by `withWorkbench`, when those are
+ * passed in via `diagnostics`. Tests should forward the `diagnostics`
+ * argument they receive from the body callback so the failure surface is
+ * uniform across both stages.
  */
-export async function waitForLinux(page, { timeoutMs = DEFAULT_BOOT_TIMEOUT_MS } = {}) {
+export async function waitForLinux(page, { timeoutMs = DEFAULT_BOOT_TIMEOUT_MS, diagnostics } = {}) {
   // See note in `withWorkbench` — `waitForFunction` takes (fn, arg,
   // options). Pass `undefined` as `arg` so the options object lands on
   // the third positional, otherwise the default 30s timeout silently
   // applies and CheerpX cold boots in CI fail before they finish.
-  return page.waitForFunction(
-    () => {
-      const rwb = globalThis.__rustWebBox;
-      return rwb && rwb.vm && rwb.vmPhase === 'ready' ? rwb.vmPhase : false;
-    },
-    undefined,
-    { timeout: timeoutMs },
-  ).then((handle) => handle.jsonValue());
+  try {
+    return await page.waitForFunction(
+      () => {
+        const rwb = globalThis.__rustWebBox;
+        return rwb && rwb.vm && rwb.vmPhase === 'ready' ? rwb.vmPhase : false;
+      },
+      undefined,
+      { timeout: timeoutMs },
+    ).then((handle) => handle.jsonValue());
+  } catch (err) {
+    const snapshot = await captureWorkbenchSnapshot(page);
+    const detail = formatTimeoutContext({
+      stage: 'stage-2 (CheerpX vmPhase=ready)',
+      snapshot,
+      consoleHistory: diagnostics?.consoleHistory,
+      errors: diagnostics?.errors,
+      failedRequests: diagnostics?.failedRequests,
+    });
+    err.message = `${err.message}\n${detail}`;
+    throw err;
+  }
 }
 
 /**
