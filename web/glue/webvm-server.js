@@ -297,11 +297,21 @@ export function fullServerMethods({
  * server. We do NOT register a second message listener (that would
  * double-respond to every request).
  */
-export function startWebVMServer({ cx, busServer, status, workspace, dataDevice, opts = {} } = {}) {
+export function startWebVMServer({ cx, busServer, status, workspace, dataDevice, onPhase, opts = {} } = {}) {
   if (!cx) throw new TypeError('startWebVMServer requires a CheerpX handle');
   if (!busServer) throw new TypeError('startWebVMServer requires a busServer');
   if (!workspace) throw new TypeError('startWebVMServer requires a workspace');
   if (!dataDevice) throw new TypeError('startWebVMServer requires a CheerpX DataDevice');
+
+  // Mirror every bus-emitted phase to the optional `onPhase` callback so
+  // the page-level shim (and the e2e harness's `vmPhase === 'ready'`
+  // check) can observe the *full* boot lifecycle. Without this, only
+  // bootLinux's progress hook reaches `__rustWebBox.vmPhase`, and the
+  // final `'ready'` transition — which lives here — is invisible.
+  const emitPhase = (phase) => {
+    busServer.emit('vm.boot', { phase });
+    try { onPhase?.(phase); } catch {}
+  };
 
   // One console attached to the page; many bus subscribers can listen.
   const console_ = attachConsole(cx, {
@@ -402,7 +412,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   }
 
   const bootTask = (async () => {
-    busServer.emit('vm.boot', { phase: 'syncing-workspace' });
+    emitPhase('syncing-workspace');
     await prepareInteractiveShell();
     try {
       await primeGuestWorkspace();
@@ -417,7 +427,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     });
     runtime.ready = true;
     runtime.stage = 'ready';
-    busServer.emit('vm.boot', { phase: 'ready' });
+    emitPhase('ready');
   })();
 
   return {

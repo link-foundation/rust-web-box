@@ -193,6 +193,39 @@ test('webvm-server: primes /workspace through a /data script, not terminal input
   );
 });
 
+test('webvm-server: onPhase callback receives every emitted phase, including ready', async () => {
+  // Regression for issue #15: the e2e harness keys `vmPhase === 'ready'`
+  // on `globalThis.__rustWebBox.vmPhase`, but the page-side shim only
+  // observed phases coming from CheerpX's `onProgress` (which stops at
+  // `starting Linux`). The `'ready'` phase originates here, so we now
+  // thread an `onPhase` callback through `startWebVMServer`. Without it
+  // the harness times out at 180s waiting for a phase that exists on the
+  // bus but never reaches the shim.
+  const { cx } = makeFakeCx();
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+
+  const phases = [];
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    onPhase: (p) => phases.push(p),
+  });
+  await server.bootTask;
+
+  assert.deepEqual(
+    phases.filter((p) => p === 'syncing-workspace' || p === 'ready'),
+    ['syncing-workspace', 'ready'],
+    `onPhase did not receive both syncing-workspace and ready (got: ${JSON.stringify(phases)})`,
+  );
+  // And the bus still gets the same phases — onPhase is additive, not a
+  // replacement.
+  const busPhases = busServer.events
+    .filter((e) => e.topic === 'vm.boot')
+    .map((e) => e.payload?.phase);
+  assert.ok(busPhases.includes('ready'), `bus did not receive 'ready' (got: ${JSON.stringify(busPhases)})`);
+});
+
 test('webvm-server: mirrors saved files through /data without typing into the terminal', async () => {
   const { cx, state } = makeFakeCx();
   const workspace = makeFakeWorkspace();

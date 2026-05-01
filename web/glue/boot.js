@@ -148,7 +148,20 @@ async function bringUpWorkspace() {
 }
 
 async function bringUpVM({ workspace, channel, busServer }) {
-  busServer.emit('vm.boot', { phase: 'loading-cheerpx' });
+  // Single source of truth for the page-level vmPhase shim. Every
+  // phase transition — whether it comes from the CheerpX bridge during
+  // bootLinux, or from webvm-server.js after CheerpX is up — must funnel
+  // through here. The e2e harness keys `vmPhase === 'ready'` on this
+  // value and CheerpX's own `onProgress` only emits up to `starting
+  // Linux`; the final `ready` transition originates inside
+  // startWebVMServer.
+  const setPhase = (phase) => {
+    globalThis.__rustWebBox.vmPhase = phase;
+    dbgBoot('vm phase', phase);
+    try { busServer.emit('vm.boot', { phase }); } catch {}
+  };
+
+  setPhase('loading-cheerpx');
   dbgBoot('loading CheerpX');
   let CheerpX;
   try {
@@ -158,17 +171,13 @@ async function bringUpVM({ workspace, channel, busServer }) {
     return null;
   }
 
-  busServer.emit('vm.boot', { phase: 'booting-linux' });
+  setPhase('booting-linux');
   dbgBoot('CheerpX loaded; booting Linux');
   let vm;
   try {
     vm = await bootLinux({
       CheerpX,
-      onProgress: (phase) => {
-        globalThis.__rustWebBox.vmPhase = phase;
-        dbgBoot('vm phase', phase);
-        try { busServer.emit('vm.boot', { phase }); } catch {}
-      },
+      onProgress: setPhase,
     });
   } catch (err) {
     setToast(`Linux VM failed to boot: ${err?.message ?? err}`, 'error');
@@ -176,13 +185,17 @@ async function bringUpVM({ workspace, channel, busServer }) {
   }
   dbgBoot('VM booted with disk', vm.diskUrl);
 
-  // Stage 2: hot-swap to the full server (workspace + terminal).
+  // Stage 2: hot-swap to the full server (workspace + terminal). The
+  // server emits `syncing-workspace` → `ready` from inside its bootTask;
+  // forward those into our single-source-of-truth `setPhase` so the
+  // page-level shim observes the entire lifecycle.
   startWebVMServer({
     cx: vm.cx,
     dataDevice: vm.dataDevice,
     busServer,
     workspace,
     status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
+    onPhase: setPhase,
     opts: { debug: dbgGuest },
   });
 
