@@ -35,6 +35,7 @@
 //   `proc.stdout` { pid, chunk }
 //   `proc.exit`   { pid, exitCode }
 //   `vm.boot`     { phase }
+//   `fs.change`   { kind, path } or { kind: 'rename', from, to }
 
 export const CHANNEL_NAME = 'rust-web-box/webvm-bus';
 

@@ -43,6 +43,31 @@ function vendoredCheerpx() {
   return existsSync(path.join(WEB_ROOT, 'cheerpx', 'cx.esm.js'));
 }
 
+async function requestWorkbenchBus(page, method, params) {
+  return await page.evaluate(async ({ method, params }) => {
+    const channel = new BroadcastChannel('rust-web-box/webvm-bus');
+    const id = Math.floor(Math.random() * 1_000_000_000);
+    try {
+      return await new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error(`bus request timed out: ${method}`)),
+          60_000,
+        );
+        channel.addEventListener('message', (ev) => {
+          const msg = ev.data;
+          if (!msg || msg.kind !== 'response' || msg.id !== id) return;
+          clearTimeout(timer);
+          if (msg.error) reject(new Error(msg.error.message));
+          else resolve(msg.result);
+        });
+        channel.postMessage({ id, kind: 'request', method, params });
+      });
+    } finally {
+      channel.close();
+    }
+  }, { method, params });
+}
+
 /**
  * Soft-fails / hard-fails uniformly for prerequisites the local suite
  * needs but cannot bootstrap on its own (browser, vendored runtime,
@@ -128,6 +153,25 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     assert.equal(cargoRun.status?.status ?? cargoRun.status, 0, `cargo run exit: ${JSON.stringify(cargoRun.status)}\noutput:\n${cargoRun.output}`);
     assert.match(cargoRun.output, /Hello from rust-web-box!/, `cargo run output:\n${cargoRun.output}`);
     assert.match(cargoRun.output, /Finished/, `cargo run did not print Finished:\n${cargoRun.output}`);
+
+    // Stage E: save through the same FileSystemProvider bus that VS Code
+    // uses, then read from inside the guest. This is the narrow e2e
+    // guard for issue #21's "Ctrl+S must affect the next VM command"
+    // report without forcing a fresh cargo build in the browser.
+    const editedSource = [
+      'fn main() {',
+      '    println!("saved through webvm fs bus");',
+      '}',
+      '',
+    ].join('\n');
+    await requestWorkbenchBus(page, 'fs.writeFile', {
+      path: '/workspace/src/main.rs',
+      data: Array.from(new TextEncoder().encode(editedSource)),
+      options: { create: false, overwrite: true },
+    });
+    const catEdited = await runInVM(page, 'cat /workspace/src/main.rs');
+    assert.equal(catEdited.status?.status ?? catEdited.status, 0);
+    assert.match(catEdited.output, /saved through webvm fs bus/);
 
     // No CheerpException must have leaked into console.error during the
     // run. (CheerpX 1.2.11 logged it asynchronously, after `cx.run`

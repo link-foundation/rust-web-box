@@ -92,11 +92,16 @@ function pathFromUri(uri) {
 
 function makeFileSystemProvider(vscode, bus) {
   const onDidChangeEmitter = new vscode.EventEmitter();
+  bus.on('fs.change', (change) => {
+    const events = fileEventsFromWorkspaceChange(vscode, change);
+    if (events.length > 0) onDidChangeEmitter.fire(events);
+  });
   return {
     onDidChangeFile: onDidChangeEmitter.event,
     watch() {
-      // Polling watcher; the page-side workspace store fires onChange
-      // events but we don't propagate them across the bus yet.
+      // The page-side workspace store emits `fs.change` over the bus.
+      // VS Code only needs a Disposable from watch(); filtering is done
+      // by the FileSystemProvider event consumer.
       return new vscode.Disposable(() => {});
     },
     async stat(uri) {
@@ -147,6 +152,24 @@ function makeFileSystemProvider(vscode, bus) {
       ]);
     },
   };
+}
+
+function fileEventsFromWorkspaceChange(vscode, change) {
+  if (!change || typeof change !== 'object') return [];
+  if (change.kind === 'rename') {
+    return [
+      { type: vscode.FileChangeType.Deleted, uri: toUri(vscode, change.from) },
+      { type: vscode.FileChangeType.Created, uri: toUri(vscode, change.to) },
+    ];
+  }
+  const map = {
+    create: vscode.FileChangeType.Created,
+    change: vscode.FileChangeType.Changed,
+    delete: vscode.FileChangeType.Deleted,
+  };
+  const type = map[change.kind];
+  if (!type || !change.path) return [];
+  return [{ type, uri: toUri(vscode, change.path) }];
 }
 
 // --- Pseudoterminal ----------------------------------------------------

@@ -82,3 +82,9 @@ test('workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue #5
     );
   }
 });
+
+test('workspace-fs: default settings keep manual save dirty indicators visible', () => {
+  const raw = DEFAULT_SEED['/workspace/.vscode/settings.json'];
+  const settings = JSON.parse(raw.replace(/\/\/.*$/gm, ''));
+  assert.equal(settings['files.autoSave'], 'off');
+});

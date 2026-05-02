@@ -61,6 +61,39 @@ RUN printf '%s\n' \
       'export PATH=/root/.cargo/bin:$PATH' \
       'export CARGO_INCREMENTAL=0' \
       'cd /workspace 2>/dev/null || cd /root' \
+      '# rust-web-box: mirror small terminal-side workspace edits back to VS Code.' \
+      'export RWB_SYNC_MAX_FILE_BYTES="${RWB_SYNC_MAX_FILE_BYTES:-262144}"' \
+      '__rwb_sync_from_guest() {' \
+      '  [ "${RWB_SYNC_DISABLE:-0}" = "1" ] && return 0' \
+      '  [ -d /workspace ] || return 0' \
+      '  {' \
+      '    printf '"'"'RWB_SYNC_V1\n'"'"'' \
+      '    find /workspace -path /workspace/target -prune -o -path /workspace/.git -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do' \
+      '      [ "$path" = /workspace ] && continue' \
+      '      if [ -d "$path" ]; then' \
+      '        printf '"'"'D\t%s\n'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')"' \
+      '      elif [ -f "$path" ]; then' \
+      '        size=$(wc -c < "$path" 2>/dev/null | tr -d '"'"' '"'"')' \
+      '        if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then' \
+      '          printf '"'"'F\t%s\t'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')"' \
+      '          base64 < "$path" | tr -d '"'"'\n'"'"'' \
+      '          printf '"'"'\n'"'"'' \
+      '        else' \
+      '          printf '"'"'S\t%s\n'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')"' \
+      '        fi' \
+      '      fi' \
+      '    done' \
+      '  } | {' \
+      '    printf '"'"'\033]777;rust-web-box-sync;'"'"'' \
+      '    base64 | tr -d '"'"'\n'"'"'' \
+      '    printf '"'"'\007'"'"'' \
+      '  }' \
+      '}' \
+      'if [ -n "${PROMPT_COMMAND:-}" ]; then' \
+      '  PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}"' \
+      'else' \
+      '  PROMPT_COMMAND="__rwb_sync_from_guest"' \
+      'fi' \
       > /root/.bash_profile && \
     cp /root/.bash_profile /root/.profile
 
@@ -115,7 +148,7 @@ RUN mkdir -p /workspace/src && \
 RUN mkdir -p /workspace/.vscode && \
     printf '%s\n' \
       '{' \
-      '  "files.autoSave": "afterDelay",' \
+      '  "files.autoSave": "off",' \
       '  "editor.formatOnSave": false,' \
       '  "rust-analyzer.checkOnSave": false' \
       '}' \

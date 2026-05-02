@@ -157,6 +157,13 @@ test('boot shell: webvm-host auto-opens src/main.rs on activation', async () => 
   assert.match(ext, /vscode\.window\.showTextDocument/);
 });
 
+test('boot shell: webvm-host forwards page-side fs.change events to VS Code', async () => {
+  const ext = await read('extensions/webvm-host/extension.js');
+  assert.match(ext, /bus\.on\('fs\.change'/);
+  assert.match(ext, /fileEventsFromWorkspaceChange/);
+  assert.match(ext, /onDidChangeEmitter\.fire\(events\)/);
+});
+
 test('boot shell: workspace-fs seeds a root Cargo project', async () => {
   const wfs = await read('glue/workspace-fs.js');
   assert.match(wfs, /\/workspace\/Cargo\.toml/);
@@ -172,6 +179,7 @@ test('boot shell: webvm-server mirrors workspace through a quiet DataDevice scri
   assert.match(srv, /heredocForFile/);
   assert.match(srv, /primeGuestWorkspace/);
   assert.match(srv, /buildShellProfileScript/);
+  assert.match(srv, /createWorkspaceSyncFrameParser/);
   assert.match(srv, /dataDevice\.writeFile/);
   assert.doesNotMatch(srv, /ls -la \/workspace/);
   assert.doesNotMatch(srv, /stty -echo/);
@@ -204,6 +212,7 @@ test('boot shell: boot.js stages workspace-only server before VM is up', async (
   const boot = await read('glue/boot.js');
   assert.match(boot, /workspaceOnlyMethods/);
   assert.match(boot, /openWorkspaceFS/);
+  assert.match(boot, /fs\.change/);
   assert.match(boot, /bringUpWorkspace/);
   assert.match(boot, /bringUpVM/);
 });
@@ -241,6 +250,8 @@ test('boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world', a
   assert.match(d, /apk add[\s\S]+?\btree\b/);
   assert.match(d, /\/workspace\/Cargo\.toml/);
   assert.match(d, /\/workspace\/src\/main\.rs/);
+  assert.match(d, /__rwb_sync_from_guest/);
+  assert.match(d, /files\.autoSave": "off"/);
   assert.doesNotMatch(d, /workspace\/hello/);
   assert.doesNotMatch(d, /\|\|\s*true/);
 

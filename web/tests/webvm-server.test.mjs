@@ -56,6 +56,47 @@ function makeFakeWorkspace(snapshot = {}) {
   };
 }
 
+function makeStatefulWorkspace(files = {}) {
+  const fileMap = new Map(Object.entries(files));
+  return {
+    async snapshot() {
+      return Object.fromEntries(fileMap.entries());
+    },
+    async readFile(path) {
+      const bytes = fileMap.get(path);
+      if (!bytes) {
+        const err = new Error(`ENOENT: ${path}`);
+        err.code = 'FileNotFound';
+        throw err;
+      }
+      return bytes;
+    },
+    async writeFile(path, bytes) {
+      fileMap.set(path, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+    },
+    async stat(path) {
+      if (fileMap.has(path)) return { type: 1, size: fileMap.get(path).byteLength, mtime: 0 };
+      if (path === '/workspace') return { type: 2, size: 0, mtime: 0 };
+      const err = new Error(`ENOENT: ${path}`);
+      err.code = 'FileNotFound';
+      throw err;
+    },
+    async readDirectory() {
+      return [];
+    },
+    async delete(path) {
+      fileMap.delete(path);
+    },
+    async rename(from, to) {
+      const bytes = fileMap.get(from);
+      if (!bytes) throw new Error(`ENOENT: ${from}`);
+      fileMap.set(to, bytes);
+      fileMap.delete(from);
+    },
+    async createDirectory() {},
+  };
+}
+
 function makeFakeDataDevice() {
   const state = { writes: [] };
   return {
@@ -244,6 +285,90 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   assert.equal(dataState.writes[2].filename, '/rust-web-box-workspace-sync.sh');
   assert.match(dataState.writes[2].contents, /cat > '\/workspace\/new-file\.txt'/);
   assert.match(dataState.writes[2].contents, /saved/);
+});
+
+test('webvm-server: failed guest save rejects and leaves JS workspace unchanged', async () => {
+  // Regression for issue #21: VS Code saves used to update the JS-side
+  // workspace first, then swallow guest mirror errors. The editor tab
+  // looked saved while the next `cargo run` still saw the old VM file.
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+  const state = { writer: null, runCalls: [] };
+  const cx = {
+    setCustomConsole(fn) {
+      state.writer = fn;
+      return () => {};
+    },
+    setConsoleSize() {},
+    async run(cmd, args, opts) {
+      state.runCalls.push({ cmd, args, opts });
+      if (typeof args[0] === 'string' && args[0].includes('workspace-sync')) {
+        throw new Error('guest write failed');
+      }
+    },
+  };
+  const workspace = makeStatefulWorkspace({
+    '/workspace/src/main.rs': enc.encode('old\n'),
+  });
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: { skipPrime: true, skipShellLoop: true },
+  });
+  await server.bootTask;
+
+  await assert.rejects(
+    () => server.methods['fs.writeFile']({
+      path: '/workspace/src/main.rs',
+      data: enc.encode('new\n'),
+      options: { create: false, overwrite: true },
+    }),
+    /guest write failed/,
+  );
+  assert.equal(
+    dec.decode(await workspace.readFile('/workspace/src/main.rs')),
+    'old\n',
+  );
+});
+
+test('webvm-server: non-recursive empty directory delete uses guest rmdir', async () => {
+  const { cx } = makeFakeCx();
+  let deleted = false;
+  const workspace = {
+    snapshot: async () => ({}),
+    readFile: async () => new Uint8Array(),
+    writeFile: async () => {},
+    async stat(path) {
+      if (path === '/workspace/empty') return { type: 2, size: 0, mtime: 0 };
+      if (path === '/workspace') return { type: 2, size: 0, mtime: 0 };
+      const err = new Error(`ENOENT: ${path}`);
+      err.code = 'FileNotFound';
+      throw err;
+    },
+    readDirectory: async () => [],
+    delete: async () => { deleted = true; },
+    rename: async () => {},
+    createDirectory: async () => {},
+  };
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: { skipPrime: true, skipShellLoop: true },
+  });
+  await server.bootTask;
+  await server.methods['fs.delete']({
+    path: '/workspace/empty',
+    recursive: false,
+  });
+
+  const script = dataState.writes.at(-1).contents;
+  assert.match(script, /rmdir '\/workspace\/empty'/);
+  assert.equal(/rm -f/.test(script), false);
+  assert.equal(deleted, true);
 });
 
 test('webvm-server: workspace.prime bus method is a no-op when skipPrime is set', async () => {
