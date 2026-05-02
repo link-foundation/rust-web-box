@@ -17,6 +17,13 @@
 //!   3. Environment variable: `RUST_ROOT`
 //!   4. Auto-detection: Check ./Cargo.toml first, then ./rust/Cargo.toml
 
+// `rust-paths.rs` is consumed by other scripts via `#[path] mod rust_paths;`
+// imports. Each caller compiles this file as part of its own crate and only
+// uses a subset of the toolbox below. With `RUSTFLAGS=-Dwarnings` set in CI,
+// the resulting `dead_code` warnings would fail the build — see
+// docs/case-studies/issue-23/README.md §3.1.
+#![allow(dead_code)]
+
 use regex::Regex;
 use std::env;
 use std::fs;

@@ -27,7 +27,7 @@ jobs:
       actions: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up QEMU (for i386 builds)
         uses: docker/setup-qemu-action@v3
@@ -101,7 +101,7 @@ jobs:
           '
 
       - name: Upload as workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rust-alpine-ext2
           path: web/disk/rust-alpine.ext2
