@@ -33,6 +33,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { writeMissingSourceMapStubs } from './source-map-stubs.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.resolve(__dirname, '..');
@@ -161,8 +162,8 @@ async function vendorCheerpX() {
   // CheerpX 1.2.x ships its runtime as a constellation of assets that
   // the engine `import()`s at runtime relative to its own URL. We
   // mirror the full set so the page never has to fall back to the CDN
-  // mid-boot — this keeps GitHub Pages self-sufficient and aligned with
-  // the issue's "fully anonymous, zero-signup, zero-backend" goal.
+  // mid-boot; this keeps GitHub Pages self-sufficient and aligned with
+  // the issue's zero-signup, zero-backend goal.
   //
   // The list was derived by `grep -oE '"[a-zA-Z_/.-]+\.(js|wasm|json)"' cx.js`
   // and verified against the LT CDN; assets that 204 here ship inline
@@ -271,6 +272,10 @@ async function writeProductJson() {
     applicationName: 'rust-web-box',
     enableTelemetry: false,
     additionalBuiltinExtensions: buildExtensionPointers(),
+    configurationDefaults: {
+      'workbench.startupEditor': 'none',
+      'extensions.ignoreRecommendations': true,
+    },
     folderUri: { scheme: 'webvm', authority: '', path: '/workspace' },
     defaultLayout: {
       panel: { visible: true },
@@ -302,6 +307,10 @@ async function renderIndex() {
       enableTelemetry: false,
     },
     additionalBuiltinExtensions: ourExts,
+    configurationDefaults: {
+      'workbench.startupEditor': 'none',
+      'extensions.ignoreRecommendations': true,
+    },
     folderUri: { scheme: 'webvm', authority: '', path: '/workspace' },
     defaultLayout: {
       panel: { visible: true },
@@ -353,6 +362,15 @@ async function main() {
 
   await writeProductJson();
   await renderIndex();
+  await writeMissingSourceMapStubs({
+    roots: [
+      path.join(WEB_ROOT, 'vscode-web'),
+      path.join(WEB_ROOT, 'cheerpx'),
+      path.join(WEB_ROOT, 'glue'),
+      path.join(WEB_ROOT, 'extensions'),
+    ],
+    logger: console,
+  });
   console.log('[build] done');
 }
 

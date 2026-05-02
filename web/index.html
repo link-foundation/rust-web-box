@@ -12,6 +12,7 @@
       first SharedArrayBuffer transfer to its worker. Issue #7.
     -->
     <script src="./glue/coi-bootstrap.js"></script>
+    <script src="./glue/console-filter.js"></script>
 
     <!-- Mobile tweaks -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,7 +31,7 @@
     <!-- Workbench Configuration; substituted at build time. -->
     <meta
       id="vscode-workbench-web-configuration"
-      data-settings="{&quot;productConfiguration&quot;:{&quot;nameShort&quot;:&quot;rust-web-box&quot;,&quot;nameLong&quot;:&quot;rust-web-box&quot;,&quot;applicationName&quot;:&quot;rust-web-box&quot;,&quot;enableTelemetry&quot;:false},&quot;additionalBuiltinExtensions&quot;:[{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;{BASE_PATH}/extensions/webvm-host&quot;},{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;{BASE_PATH}/extensions/rust-analyzer-web&quot;}],&quot;folderUri&quot;:{&quot;scheme&quot;:&quot;webvm&quot;,&quot;authority&quot;:&quot;&quot;,&quot;path&quot;:&quot;/workspace&quot;},&quot;defaultLayout&quot;:{&quot;panel&quot;:{&quot;visible&quot;:true},&quot;views&quot;:[{&quot;id&quot;:&quot;workbench.view.explorer&quot;,&quot;visible&quot;:true}]}}"
+      data-settings="{&quot;productConfiguration&quot;:{&quot;nameShort&quot;:&quot;rust-web-box&quot;,&quot;nameLong&quot;:&quot;rust-web-box&quot;,&quot;applicationName&quot;:&quot;rust-web-box&quot;,&quot;enableTelemetry&quot;:false},&quot;additionalBuiltinExtensions&quot;:[{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;{BASE_PATH}/extensions/webvm-host&quot;},{&quot;scheme&quot;:&quot;{ORIGIN_SCHEME}&quot;,&quot;authority&quot;:&quot;{ORIGIN_HOST}&quot;,&quot;path&quot;:&quot;{BASE_PATH}/extensions/rust-analyzer-web&quot;}],&quot;configurationDefaults&quot;:{&quot;workbench.startupEditor&quot;:&quot;none&quot;,&quot;extensions.ignoreRecommendations&quot;:true},&quot;folderUri&quot;:{&quot;scheme&quot;:&quot;webvm&quot;,&quot;authority&quot;:&quot;&quot;,&quot;path&quot;:&quot;/workspace&quot;},&quot;defaultLayout&quot;:{&quot;panel&quot;:{&quot;visible&quot;:true},&quot;views&quot;:[{&quot;id&quot;:&quot;workbench.view.explorer&quot;,&quot;visible&quot;:true}]}}"
     />
     <meta id="vscode-workbench-auth-session" data-settings="" />
 
@@ -137,6 +138,7 @@
               cfg.productConfiguration || {},
               {
                 additionalBuiltinExtensions: cfg.additionalBuiltinExtensions,
+                configurationDefaults: cfg.configurationDefaults,
                 folderUri: cfg.folderUri,
                 workspaceUri: cfg.workspaceUri,
                 defaultLayout: cfg.defaultLayout,

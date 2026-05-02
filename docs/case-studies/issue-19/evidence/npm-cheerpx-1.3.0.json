@@ -1,0 +1,7 @@
+{
+  "version": "1.3.0",
+  "description": "Run X86 binary applications and libraries in the browser",
+  "homepage": "https://cheerpx.io/docs",
+  "repository.url": "git+https://github.com/leaningtech/cheerpx-meta.git",
+  "license": "SEE LICENSE IN LICENSE.txt"
+}

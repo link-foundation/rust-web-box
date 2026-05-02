@@ -1,0 +1,7 @@
+{
+  "version": "1.91.1",
+  "description": "Visual Studio Code for browser",
+  "repository.url": "git+https://github.com/Felx-B/vscode-web.git",
+  "license": "MIT",
+  "dist.tarball": "https://registry.npmjs.org/vscode-web/-/vscode-web-1.91.1.tgz"
+}

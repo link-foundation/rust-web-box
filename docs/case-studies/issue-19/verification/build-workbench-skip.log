@@ -1,0 +1,8 @@
+repo root: /tmp/gh-issue-solver-1777706064291
+web root: /tmp/gh-issue-solver-1777706064291/web
+[vscode-web] SKIP_VSCODE_WEB=1, skipping
+[cheerpx] SKIP_CHEERPX=1, skipping
+[product] wrote /tmp/gh-issue-solver-1777706064291/web/product.json
+[index] wrote /tmp/gh-issue-solver-1777706064291/web/index.html
+[sourcemap] no missing local source maps found
+[build] done

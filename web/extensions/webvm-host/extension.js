@@ -177,23 +177,14 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
     async open(initialDimensions) {
       opened = true;
       writeEmitter.fire(
-        `${BOLD}rust-web-box${RESET} — anonymous in-browser Rust sandbox\r\n`,
+        `${BOLD}rust-web-box${RESET} — in-browser Rust sandbox\r\n`,
       );
       writeEmitter.fire(
         `${DIM}Powered by CheerpX (leaningtech/webvm) and VS Code Web.${RESET}\r\n\r\n`,
       );
-      status('Booting Linux VM…');
+      writeEmitter.fire(`${DIM}[rust-web-box]${RESET} Booting Linux VM… `);
 
       let booted = false;
-      let lastPhase = '';
-      const phaseDispose = bus.on('vm.boot', (p) => {
-        if (booted) return;
-        const phase = p?.phase;
-        if (!phase || phase === lastPhase) return;
-        lastPhase = phase;
-        if (phase === 'workspace-ready' || phase === 'ready') return;
-        status(`VM stage: ${phase}…`);
-      });
       const tick = setInterval(() => {
         if (booted) return;
         writeEmitter.fire(`${DIM}.${RESET}`);
@@ -211,7 +202,6 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         ]);
         booted = true;
         clearInterval(tick);
-        phaseDispose?.();
         writeEmitter.fire('\r\n');
         status(`Linux VM ready ${GREEN}✓${RESET}`);
         if (result?.diskUrl) {
@@ -227,7 +217,6 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         writeEmitter.fire('\r\n');
       } catch (err) {
         clearInterval(tick);
-        phaseDispose?.();
         writeEmitter.fire(
           `\r\n[rust-web-box] failed to reach the VM: ${err?.message ?? err}\r\n`,
         );

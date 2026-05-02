@@ -1,0 +1,7 @@
+{
+  "version": "4.4.3",
+  "description": "Lightweight debugging utility for Node.js and the browser",
+  "homepage": "https://github.com/debug-js/debug#readme",
+  "repository.url": "git://github.com/debug-js/debug.git",
+  "license": "MIT"
+}

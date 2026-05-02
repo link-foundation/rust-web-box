@@ -1,0 +1,3 @@
+Total messages: 1 (Errors: 0, Warnings: 1)
+
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ http://localhost:8091/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=1a09ca05-5542-4bea-97ee-fd69dbdc1b4a:0
