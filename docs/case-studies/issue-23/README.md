@@ -196,12 +196,14 @@ check all other false positives, false negatives, and potential issues
 and bugs". They are documented here for completeness; some are fixed in
 this PR, the rest are tracked as follow-ups.
 
-* **`release.yml` `concurrency.cancel-in-progress: true`**. On `main`
-  this is appropriate (a fresh push obsoletes the in-progress build);
-  on PRs it is also fine. The pipeline template has converged on
-  `cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}` so that
-  long-running release jobs on `main` are not killed by an unrelated
-  re-trigger. Fixed in this PR to match the template.
+* **`release.yml` `concurrency.cancel-in-progress: true`** is wrong on
+  `main`: the `auto-release` job pushes a tag, calls crates.io, and
+  creates a GitHub Release in sequence. Cancelling that mid-flight can
+  leave the repo half-released (e.g. tag created but the crate never
+  published). On PRs cancelling is fine — a newer push trivially
+  obsoletes the older one. The pipeline template has converged on
+  `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`.
+  Fixed in this PR to match the template.
 * **`actions/checkout`, `actions/setup-node`, `actions/upload-artifact`
   on `pages.yml` and `disk-image.yml`** are pinned at `@v4`, which
   GitHub annotated as "Node.js 20 deprecated, will be forced to Node 24
