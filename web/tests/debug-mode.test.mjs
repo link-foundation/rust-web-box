@@ -32,10 +32,10 @@ test('parseDebugSpec: ?debug=1 enables all namespaces', () => {
   assert.deepEqual(parseDebugSpec({ search: '?debug=*' }), { all: true });
 });
 
-test('parseDebugSpec: ?debug=cheerpx,bus parses to a namespace set', () => {
+test('parseDebugSpec: ?debug=cheerpx,bus parses to a package namespace set', () => {
   const spec = parseDebugSpec({ search: '?debug=cheerpx,bus' });
-  assert.ok(spec.namespaces.has('cheerpx'));
-  assert.ok(spec.namespaces.has('bus'));
+  assert.ok(spec.namespaces.has('rust-web-box:cheerpx'));
+  assert.ok(spec.namespaces.has('rust-web-box:bus'));
   assert.equal(spec.namespaces.size, 2);
 });
 
@@ -48,8 +48,14 @@ test('parseDebugSpec: URL parameter wins over localStorage', () => {
   const storage = fakeStorage({ rustWebBoxDebug: '1' });
   // URL says "boot only"; localStorage would have said "all". URL wins.
   const spec = parseDebugSpec({ search: '?debug=boot', storage });
-  assert.ok(spec.namespaces.has('boot'));
+  assert.ok(spec.namespaces.has('rust-web-box:boot'));
   assert.equal(spec.namespaces.size, 1);
+});
+
+test('parseDebugSpec: accepts debug-style wildcards and exclusions', () => {
+  const spec = parseDebugSpec({ search: '?debug=rust-web-box:*,-rust-web-box:guest' });
+  assert.equal(spec.patterns.size, 1);
+  assert.equal(spec.skips.size, 1);
 });
 
 test('createDebug: returns a no-op (zero cost) when debug is off', () => {
@@ -58,6 +64,16 @@ test('createDebug: returns a no-op (zero cost) when debug is off', () => {
   assert.equal(dbg.enabled, false);
   dbg('this should not print');
   dbg('extra', { args: 1 });
+});
+
+test('createDebug: does not evaluate lazy arguments when disabled', () => {
+  let evaluated = false;
+  const dbg = createDebug('boot', { search: '', sink: () => assert.fail('unexpected log') });
+  dbg(() => {
+    evaluated = true;
+    return 'expensive value';
+  });
+  assert.equal(evaluated, false);
 });
 
 test('createDebug: logs through sink when ?debug=1', () => {
@@ -72,6 +88,18 @@ test('createDebug: logs through sink when ?debug=1', () => {
   assert.deepEqual(calls[0][2], { phase: 'loading' });
 });
 
+test('createDebug: evaluates lazy arguments only when enabled', () => {
+  const calls = [];
+  let evaluated = false;
+  const dbg = createDebug('boot', { search: '?debug=rust-web-box:*', sink: (...args) => calls.push(args) });
+  dbg(() => {
+    evaluated = true;
+    return { phase: 'loading' };
+  });
+  assert.equal(evaluated, true);
+  assert.deepEqual(calls[0], ['[rust-web-box][boot]', { phase: 'loading' }]);
+});
+
 test('createDebug: filters by namespace when spec is a list', () => {
   const calls = [];
   const sink = (...args) => calls.push(args[0]);
@@ -82,6 +110,24 @@ test('createDebug: filters by namespace when spec is a list', () => {
   onDbg('included');
   offDbg('excluded');
   assert.deepEqual(calls, ['[rust-web-box][boot]']);
+});
+
+test('createDebug: excludes namespaces with debug-style negation', () => {
+  const calls = [];
+  const boot = createDebug('boot', {
+    search: '?debug=rust-web-box:*,-rust-web-box:boot',
+    sink: (...args) => calls.push(args),
+  });
+  const bus = createDebug('bus', {
+    search: '?debug=rust-web-box:*,-rust-web-box:boot',
+    sink: (...args) => calls.push(args),
+  });
+  assert.equal(boot.enabled, false);
+  assert.equal(bus.enabled, true);
+  boot('excluded');
+  bus('included');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], '[rust-web-box][bus]');
 });
 
 test('createDebug: tolerates a localStorage shim that throws (private mode)', () => {

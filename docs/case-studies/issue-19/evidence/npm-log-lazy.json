@@ -1,0 +1,7 @@
+{
+  "version": "1.0.4",
+  "description": "A lazy logging library with bitwise level control",
+  "homepage": "https://github.com/link-foundation/log-lazy#readme",
+  "repository.url": "git+https://github.com/link-foundation/log-lazy.git",
+  "license": "Unlicense"
+}

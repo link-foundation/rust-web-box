@@ -12,6 +12,7 @@
       first SharedArrayBuffer transfer to its worker. Issue #7.
     -->
     <script src="./glue/coi-bootstrap.js"></script>
+    <script src="./glue/console-filter.js"></script>
 
     <!-- Mobile tweaks -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -137,6 +138,7 @@
               cfg.productConfiguration || {},
               {
                 additionalBuiltinExtensions: cfg.additionalBuiltinExtensions,
+                configurationDefaults: cfg.configurationDefaults,
                 folderUri: cfg.folderUri,
                 workspaceUri: cfg.workspaceUri,
                 defaultLayout: cfg.defaultLayout,

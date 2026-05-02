@@ -31,11 +31,22 @@ test('boot shell: index.html references workbench config meta', async () => {
   assert.match(html, /vscode-workbench-web-configuration/);
 });
 
+test('boot shell: console filter runs before VS Code loader', async () => {
+  const html = await read('index.html');
+  assert.match(html, /glue\/console-filter\.js/);
+  const filter = html.indexOf('glue/console-filter.js');
+  const loader = html.indexOf('vscode-web/out/vs/loader.js');
+  assert.ok(filter > 0, 'expected console-filter.js in index.html');
+  assert.ok(loader > filter, 'console filter must run before VS Code loader');
+});
+
 test('boot shell: workbench config preinstalls our two extensions', async () => {
   const html = await read('index.html');
   assert.match(html, /\/extensions\/webvm-host/);
   assert.match(html, /\/extensions\/rust-analyzer-web/);
   assert.match(html, /folderUri.*webvm.*\/workspace/);
+  assert.match(html, /workbench\.startupEditor/);
+  assert.match(html, /extensions\.ignoreRecommendations/);
 });
 
 test('boot shell: index.html points to vendored vscode-web bundle', async () => {
@@ -51,6 +62,7 @@ test('boot shell: glue modules exist', async () => {
   for (const rel of [
     'glue/boot.js',
     'glue/boot.css',
+    'glue/console-filter.js',
     'glue/network-shim.js',
     'glue/cheerpx-bridge.js',
     'glue/webvm-bus.js',
@@ -126,6 +138,9 @@ test('boot shell: rendered index keeps the browser process.env shim', async () =
 test('boot shell: webvm-host extension shows a "Booting Linux VM" banner', async () => {
   const ext = await read('extensions/webvm-host/extension.js');
   assert.match(ext, /Booting Linux VM/);
+  assert.match(ext, /in-browser Rust sandbox/);
+  assert.doesNotMatch(ext, /anonymous in-browser Rust sandbox/);
+  assert.doesNotMatch(ext, /VM stage:/);
 });
 
 test('boot shell: webvm-host auto-opens a terminal on activation', async () => {
@@ -147,6 +162,7 @@ test('boot shell: workspace-fs seeds a root Cargo project', async () => {
   assert.match(wfs, /\/workspace\/Cargo\.toml/);
   assert.match(wfs, /\/workspace\/src\/main\.rs/);
   assert.match(wfs, /"command": "cargo run"/);
+  assert.doesNotMatch(wfs, /"command": "cd \/workspace\/hello && cargo run"/);
   assert.match(wfs, /LEGACY_SEED_FILES/);
   assert.match(wfs, /replaceIfUnchanged\(\s*'\/workspace\/\.vscode\/tasks\.json'/);
 });

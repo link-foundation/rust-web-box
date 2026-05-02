@@ -103,22 +103,6 @@ const SEED_FILES = {
       '}',
       '',
     ].join('\n'),
-  '/workspace/.vscode/tasks.json':
-    [
-      '{',
-      '  "version": "2.0.0",',
-      '  "tasks": [',
-      '    {',
-      '      "label": "cargo run",',
-      '      "type": "shell",',
-      '      "command": "cd /workspace/hello && cargo run",',
-      '      "problemMatcher": ["$rustc"],',
-      '      "group": { "kind": "build", "isDefault": true }',
-      '    }',
-      '  ]',
-      '}',
-      '',
-    ].join('\n'),
 };
 
 const LEGACY_SEED_FILES = {

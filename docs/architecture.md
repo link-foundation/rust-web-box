@@ -76,11 +76,10 @@ When the workbench mounts and the `webvm-host` extension activates, it
 auto-opens a terminal pane that displays:
 
 ```
-rust-web-box — anonymous in-browser Rust sandbox
+rust-web-box — in-browser Rust sandbox
 Powered by CheerpX (leaningtech/webvm) and VS Code Web.
 
-[rust-web-box] Booting Linux VM…
-…………
+[rust-web-box] Booting Linux VM… …………
 [rust-web-box] Linux VM ready ✓
 [rust-web-box] disk: ./disk/rust-alpine.ext2
 [rust-web-box] Workspace mirrored to /workspace — try `cargo run`.
@@ -147,7 +146,7 @@ inline in `web/extensions/rust-analyzer-web/extension.js`.
 
 | #   | Criterion                                                              | Status |
 | --- | ---------------------------------------------------------------------- | ------ |
-| 1   | Open the site anonymously                                              | ✅ |
+| 1   | Open the site without sign-in                                          | ✅ |
 | 2   | Full VS Code Web shell, indistinguishable from `vscode.dev`            | ✅ AMD-loader bootstrap from `vscode-web` npm, no custom chrome |
 | 3   | Built-in terminal opens working `bash` inside WebVM                    | ✅ auto-opens with loading status, surfaces VM-ready, drops to bash |
 | 4   | First load <2 min on 50 Mbps                                           | 🟡 depends on disk image size; SW caches subsequent loads |

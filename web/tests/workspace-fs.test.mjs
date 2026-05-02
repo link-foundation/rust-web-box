@@ -46,6 +46,13 @@ test('workspace-fs: seed contains a buildable Cargo project at /workspace root',
   assert.equal(DEFAULT_SEED['/workspace/hello/Cargo.toml'], undefined);
 });
 
+test('workspace-fs: default cargo task runs from /workspace root', () => {
+  const raw = DEFAULT_SEED['/workspace/.vscode/tasks.json'];
+  const tasks = JSON.parse(raw);
+  assert.equal(tasks.tasks[0].command, 'cargo run');
+  assert.doesNotMatch(raw, /\/workspace\/hello/);
+});
+
 test('workspace-fs: file/dir type constants are stable', () => {
   assert.equal(FILE_TYPE_FILE, 1);
   assert.equal(FILE_TYPE_DIRECTORY, 2);
