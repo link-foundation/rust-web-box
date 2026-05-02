@@ -29,9 +29,15 @@ on:
         required: false
         type: string
 
+# Cancel superseded runs on PRs (newer push obsoletes the older one) but
+# never cancel a release pipeline running on `main` — the auto-release job
+# pushes a tag, calls crates.io, and creates a GitHub Release; a mid-flight
+# cancellation can leave the repo half-released.
+# See docs/case-studies/issue-23/README.md §3.4 and the upstream
+# rust-ai-driven-development-pipeline-template release.yml.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -291,6 +297,15 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Pipeline context (issue #23)
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+          echo "sha=${{ github.sha }}"
+          echo "run_id=${{ github.run_id }}"
+          echo "run_attempt=${{ github.run_attempt }}"
+          echo "RUSTFLAGS=$RUSTFLAGS"
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -301,6 +316,12 @@ jobs:
 
       - name: Install rust-script
         run: cargo install rust-script
+
+      - name: Versions
+        run: |
+          rustc --version
+          cargo --version
+          rust-script --version || true
 
       - name: Configure git
         run: rust-script scripts/git-config.rs
@@ -458,14 +479,28 @@ jobs:
             3. The automated release workflow will publish to crates.io and create a GitHub release
 
   # === DEPLOY DOCUMENTATION ===
-  # Deploy Rust API documentation to GitHub Pages after a successful release
+  # Build Rust API documentation and push to the `gh-pages` branch.
+  # NOTE: This repo's user-facing Pages site (the WebVM workbench) is served
+  # from the `pages.yml` workflow via `actions/deploy-pages` (build_type =
+  # workflow), so this branch-based deploy is currently a no-op for the
+  # public Pages URL. We keep the build green and the artifact branch
+  # up-to-date so that flipping the Pages source to `gh-pages` later (e.g.
+  # for an API docs subdomain) is a one-click change. See
+  # docs/case-studies/issue-23/README.md §3.3 for the architectural
+  # follow-up.
+  #
+  # Mirrors the upstream rust-ai-driven-development-pipeline-template: gate
+  # on `build` succeeding instead of `auto-release` / `manual-release`, so
+  # the docs branch updates even when the release path is a no-op (no
+  # changelog fragments) or fails after build.
   deploy-docs:
     name: Deploy Rust Documentation
-    needs: [auto-release, manual-release]
+    needs: [build]
     if: |
-      always() && !cancelled() && (
-        needs.auto-release.result == 'success' ||
-        needs.manual-release.result == 'success'
+      !cancelled() &&
+      needs.build.result == 'success' && (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.release_mode == 'instant')
       )
     runs-on: ubuntu-latest
     permissions:
