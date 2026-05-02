@@ -31,6 +31,12 @@
 
 import { attachConsole } from './cheerpx-bridge.js';
 import { createLfToCrlfNormaliser } from './terminal-stream.js';
+import {
+  applyWorkspaceSyncSnapshot,
+  buildGuestSyncProfileBlock,
+  createWorkspaceSyncFrameParser,
+  decodeWorkspaceSyncPayload,
+} from './workspace-sync.js';
 
 const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });
 const TEXT_ENCODER = new TextEncoder();
@@ -127,9 +133,11 @@ function buildShellProfileScript() {
     'export SHELL=/bin/bash',
     'export LANG=C.UTF-8',
     'export CARGO_HOME=/root/.cargo',
+    'export CARGO_INCREMENTAL=0',
     'export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
     'export PS1="root@rust-web-box:\\w# "',
     'cd /workspace 2>/dev/null || cd /root',
+    buildGuestSyncProfileBlock().trimEnd(),
     'RWB_PROFILE',
   ].join('\n') + '\n';
 }
@@ -138,7 +146,10 @@ function scriptForWrite(path, bytes) {
   return `${heredocForFile(path, bytes)}\n`;
 }
 
-function scriptForDelete(path, recursive) {
+function scriptForDelete(path, { recursive = false, type } = {}) {
+  if (type === 2 && !recursive) {
+    return `rmdir '${shellQuote(path)}'\n`;
+  }
   return `rm -${recursive ? 'r' : ''}f '${shellQuote(path)}'\n`;
 }
 
@@ -231,12 +242,52 @@ export function fullServerMethods({
   async function syncGuest(script, name) {
     try {
       await runGuestScript(script, { name });
-      runtime.workspacePrimeError = null;
+      runtime.workspaceSyncError = null;
     } catch (err) {
-      runtime.workspacePrimeError = err?.message ?? String(err);
+      runtime.workspaceSyncError = err?.message ?? String(err);
       // eslint-disable-next-line no-console
       console.warn('[rust-web-box] guest workspace sync failed:', err);
+      throw err;
     }
+  }
+
+  async function assertWritable(path, { create = true, overwrite = true } = {}) {
+    let exists = false;
+    try {
+      await workspace.stat(path);
+      exists = true;
+    } catch (err) {
+      if (err?.code !== 'FileNotFound') throw err;
+    }
+    if (exists && !overwrite) {
+      const err = new Error(`EEXIST: ${path}`);
+      err.code = 'FileExists';
+      throw err;
+    }
+    if (!exists && !create) {
+      const err = new Error(`ENOENT: ${path}`);
+      err.code = 'FileNotFound';
+      throw err;
+    }
+  }
+
+  async function assertDeletable(path, { recursive = false } = {}) {
+    let stat;
+    try {
+      stat = await workspace.stat(path);
+    } catch (err) {
+      if (err?.code === 'FileNotFound') return false;
+      throw err;
+    }
+    if (stat.type === 2 && !recursive) {
+      const children = await workspace.readDirectory(path);
+      if (children.length > 0) {
+        const err = new Error(`ENOTEMPTY: ${path}`);
+        err.code = 'NoPermissions';
+        throw err;
+      }
+    }
+    return stat;
   }
 
   return {
@@ -245,28 +296,35 @@ export function fullServerMethods({
       stage: runtime.stage,
       workspacePrimed: runtime.primed,
       workspacePrimeError: runtime.workspacePrimeError,
+      workspaceSyncError: runtime.workspaceSyncError,
+      guestSyncError: runtime.guestSyncError,
+      lastGuestSyncAt: runtime.lastGuestSyncAt,
       shellPrepareError: runtime.shellPrepareError,
       ...status,
     }),
     'fs.readFile': async ({ path }) => await workspace.readFile(path),
     'fs.writeFile': async ({ path, data, options }) => {
       const buf = data instanceof Uint8Array ? data : new Uint8Array(data ?? []);
-      await workspace.writeFile(path, buf, options);
+      await assertWritable(path, options);
       await syncGuest(scriptForWrite(path, buf), 'workspace-sync');
+      await workspace.writeFile(path, buf, options);
     },
     'fs.stat': async ({ path }) => await workspace.stat(path),
     'fs.readDir': async ({ path }) => await workspace.readDirectory(path),
     'fs.delete': async ({ path, recursive }) => {
+      const stat = await assertDeletable(path, { recursive });
+      if (!stat) return;
+      await syncGuest(scriptForDelete(path, { recursive, type: stat.type }), 'workspace-sync');
       await workspace.delete(path, { recursive });
-      await syncGuest(scriptForDelete(path, recursive), 'workspace-sync');
     },
     'fs.rename': async ({ from, to }) => {
-      await workspace.rename(from, to);
+      await workspace.stat(from);
       await syncGuest(scriptForRename(from, to), 'workspace-sync');
+      await workspace.rename(from, to);
     },
     'fs.createDirectory': async ({ path }) => {
-      await workspace.createDirectory(path);
       await syncGuest(scriptForCreateDirectory(path), 'workspace-sync');
+      await workspace.createDirectory(path);
     },
     'proc.spawn': async () => spawn(),
     'proc.write': async ({ bytes }) => {
@@ -325,6 +383,36 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     cols: opts.cols ?? 120,
     rows: opts.rows ?? 30,
   });
+  const debug = opts.debug ?? (() => {});
+  const logger = opts.logger ?? console;
+  const runGuestScript = createGuestScriptRunner({ cx, dataDevice, logger, debug });
+  const runtime = {
+    ready: false,
+    primed: false,
+    stage: 'syncing-workspace',
+    workspacePrimeError: null,
+    workspaceSyncError: null,
+    guestSyncError: null,
+    lastGuestSyncAt: null,
+    shellPrepareError: null,
+  };
+  const guestSyncState = { knownPaths: new Set() };
+  let guestSyncTail = Promise.resolve();
+  function handleGuestSyncFrame(encodedPayload) {
+    guestSyncTail = guestSyncTail.catch(() => {}).then(async () => {
+      const snapshot = decodeWorkspaceSyncPayload(encodedPayload);
+      await applyWorkspaceSyncSnapshot(workspace, snapshot, guestSyncState);
+      runtime.guestSyncError = null;
+      runtime.lastGuestSyncAt = Date.now();
+    }).catch((err) => {
+      runtime.guestSyncError = err?.message ?? String(err);
+      logger?.warn?.('[rust-web-box] guest-to-workspace sync failed:', err);
+    });
+  }
+  const syncFrameParser = createWorkspaceSyncFrameParser({
+    onFrame: handleGuestSyncFrame,
+    logger,
+  });
   // Streaming decoder so multi-byte UTF-8 split across CheerpX writes
   // doesn't decode to U+FFFD. Stateful CRLF normaliser so xterm.js
   // (under VS Code's Pseudoterminal) renders bash output without the
@@ -334,19 +422,10 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   console_.onData((bytes) => {
     const text = stdoutDecoder.decode(bytes, { stream: true });
     if (!text) return;
-    busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(text) });
+    const visible = syncFrameParser.filter(text);
+    if (!visible) return;
+    busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(visible) });
   });
-
-  const debug = opts.debug ?? (() => {});
-  const logger = opts.logger ?? console;
-  const runGuestScript = createGuestScriptRunner({ cx, dataDevice, logger, debug });
-  const runtime = {
-    ready: false,
-    primed: false,
-    stage: 'syncing-workspace',
-    workspacePrimeError: null,
-    shellPrepareError: null,
-  };
 
   // Per-terminal subscriber tracking. Every "spawn" returns the same
   // virtual pid but bumps a per-subscriber counter so kill() only

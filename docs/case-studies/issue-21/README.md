@@ -1,240 +1,73 @@
-# Case Study: Issue #21 - Integrate Best Practices to Prevent Repeating CI/CD Issues
+# Case Study: Issue #21 - WebVM and VS Code Two-Way Workspace Sync
 
 ## Summary
 
-This case study analyzes a series of CI/CD failures in the `browser-commander` repository (issues #27, #29, #31, #33) and identifies best practices that should be integrated into the `rust-ai-driven-development-pipeline-template` to prevent similar issues from occurring in derived repositories.
+Issue #21 reported that editing `src/main.rs` in the VS Code web editor and pressing Ctrl+S did not affect the next `cargo run` inside WebVM. The screenshot also showed a UX mismatch: VS Code did not display the expected dirty indicator before save, and the editor/file tree state did not behave like a local VS Code workspace.
 
-## Timeline of Events
+The fix makes the JS-side workspace, VS Code FileSystemProvider, and guest `/workspace` fail together instead of drifting apart. Editor saves now mirror into the guest before VS Code is told the save completed, terminal-side edits are mirrored back into the IndexedDB workspace through a hidden prompt-time sync frame, and workspace change events are forwarded to VS Code watchers.
 
-| Date | Issue/PR | Problem | Resolution |
-|------|----------|---------|------------|
-| 2026-01-16 17:09 | Issue #27 | Rust release jobs skipped on workflow_dispatch | Added `always() && !cancelled()` to job conditions |
-| 2026-01-17 09:45 | Issue #29 | False positive version check (git tags vs crates.io) | Changed to check crates.io API instead of git tags |
-| 2026-01-18 01:16 | Issue #31 | Missing `cargo publish` step in workflow | Added `publish-crate.mjs` script and workflow step |
-| 2026-01-18 17:53 | Issue #33 | Secret name mismatch (CARGO_REGISTRY_TOKEN vs CARGO_TOKEN) | Map org secret to standard env var |
+## Issue Data
 
-### Detailed Sequence
+- Issue: https://github.com/link-foundation/rust-web-box/issues/21
+- PR: https://github.com/link-foundation/rust-web-box/pull/22
+- Opened: 2026-05-02 10:10:52 UTC
+- Reporter: `konard`
+- Screenshot: `issue-screenshot.png`
+- Downloaded issue payloads: `issue-21.json`, `issue-21-comments.json`, `pr-22.json`
+- Related PR search export: `related-prs-workspace-webvm.json`
+- Online research notes: `online-research.md`
 
-#### Issue #27: Release Jobs Skipped (2026-01-16)
+## Requirements
 
-**Root Cause:** When `detect-changes` job is skipped (on `workflow_dispatch`), all dependent jobs are also skipped by default unless they use `always()` in their condition.
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| VS Code saves affect the next WebVM command immediately | Implemented | `web/tests/webvm-server.test.mjs`, e2e Stage E in `web/tests/e2e/local-pages-e2e.test.mjs` |
+| Terminal-side file edits reflect back into VS Code Explorer/editor | Implemented | `web/glue/workspace-sync.js`, `web/extensions/webvm-host/extension.js`, `web/tests/workspace-sync.test.mjs` |
+| File and directory operations stay consistent both ways | Implemented | save/delete/rename/createDirectory sync paths in `web/glue/webvm-server.js` |
+| Unsaved editor changes show normal dirty state before Ctrl+S | Implemented | `.vscode/settings.json` now sets `"files.autoSave": "off"` and migrates unchanged old defaults |
+| Add e2e coverage | Implemented | Added bus-save-to-guest verification stage to local Pages e2e |
+| Download logs/data and produce a case study | Implemented | This folder contains issue payloads, screenshot, focused before/after logs, and verification logs |
+| Search online for relevant facts/components | Implemented | See `online-research.md` |
 
-**Chain Reaction:**
-1. On `workflow_dispatch`, `detect-changes` is skipped (by design)
-2. Without `always()`, `lint` job is automatically skipped when its dependency is skipped
-3. `build` depends on `lint`, so it's also skipped
-4. `manual-release` depends on `build`, so it's also skipped
+## Root Causes
 
-**Fix:** Add `always() && !cancelled()` to all dependent job conditions:
-```yaml
-if: |
-  always() && !cancelled() && (
-    github.event_name == 'push' ||
-    github.event_name == 'workflow_dispatch' ||
-    ...
-  )
-```
+1. `fs.writeFile` updated the JS workspace and then tried to mirror into the guest. If the CheerpX guest sync failed, the error was swallowed, so VS Code could clear the dirty state while `/workspace` still contained old bytes.
+2. There was no guest-to-host sync path. Bash edits under `/workspace` stayed inside the VM and never updated the IndexedDB-backed workspace served to VS Code.
+3. The page-side workspace store had `onChange`, but `boot.js` did not forward those changes as bus events and the web extension did not subscribe to them.
+4. The seeded workspace setting `"files.autoSave": "afterDelay"` made the web editor auto-save after a delay, suppressing the explicit dirty-marker behavior expected from desktop VS Code.
 
-#### Issue #29: False Positive Version Check (2026-01-17)
+## Solution
 
-**Root Cause:** The workflow checked if a git tag exists to determine if a version was "already released":
-```bash
-if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
-    echo "... already released"
-fi
-```
+- `web/glue/webvm-server.js` now mirrors VS Code write/delete/rename/createDirectory operations into the guest before mutating the JS workspace, and it rejects the FileSystemProvider operation when guest sync fails.
+- `web/glue/workspace-sync.js` adds a hidden OSC frame protocol emitted from bash `PROMPT_COMMAND`. The page strips these frames from terminal output, decodes the `/workspace` snapshot, and applies creates, updates, and deletions to the IndexedDB workspace.
+- `boot.js` emits `fs.change` events from workspace changes, and `webvm-host/extension.js` translates them into VS Code `onDidChangeFile` events so Explorer/editor state refreshes.
+- Default and disk-baked `.vscode/settings.json` now use manual save. Existing workspaces are migrated only when the old settings file is still unchanged.
+- Large guest files are marked as skipped instead of deleted; `/workspace/target` and `/workspace/.git` are pruned to avoid streaming generated artifacts through the terminal.
 
-This caused false positives because git tags can exist without the package being published to crates.io.
+## Alternatives Considered
 
-**Evidence:**
-- `browser-commander` had 10 GitHub releases (v0.1.1 through v0.5.4)
-- But **NONE** of them existed on crates.io
-- The workflow incorrectly marked versions as "already released"
+- Directly mounting the JS workspace as a CheerpX guest filesystem would be simpler, but the current CheerpX API surface in this project provides DataDevice staging and console I/O, not a general page-implemented POSIX filesystem.
+- Polling `/workspace` with repeated `cx.run` calls would be noisier and more likely to collide with the existing OverlayDevice instability documented in earlier case studies.
+- Leaving VS Code and WebVM as separate stores would preserve the original bug and fails the issue's "fully functional" requirement.
 
-**Fix:** Check crates.io API directly:
-```bash
-CRATES_IO_RESPONSE=$(curl -s "https://crates.io/api/v1/crates/${CRATE_NAME}/${CURRENT_VERSION}")
-if echo "$CRATES_IO_RESPONSE" | grep -q '"version"'; then
-    VERSION_ON_CRATES_IO=true
-fi
-```
+## Verification
 
-#### Issue #31: Missing Cargo Publish Step (2026-01-18 01:16)
+- `focused-before.log`: reproducing tests failed before the fix.
+- `focused-after.log`: initial focused fix verification.
+- `verification/focused-after-hardening.log`: 56 focused tests passed after protocol hardening.
+- `verification/node-web-tests.log`: 176 web tests passed.
+- `verification/local-pages-e2e.log`: local e2e file includes the new Stage E, but this runner skipped because `browser-commander`/Playwright is not installed.
+- `verification/cargo-fmt-check.log`: `cargo fmt --check` passed.
+- `verification/cargo-clippy.log`: `cargo clippy --all-targets --all-features` passed.
+- `verification/cargo-test.log`: `cargo test` passed.
+- `verification/check-file-size.log`: `rust-script scripts/check-file-size.rs` passed.
+- `verification/check-changelog-fragment.log`: `rust-script scripts/check-changelog-fragment.rs` passed.
+- `verification/check-version-modification.log`: `rust-script scripts/check-version-modification.rs` passed with PR-like env vars.
+- `verification/bash-sync-hook-syntax.log`: generated bash sync hook passed `bash -n`.
+- `verification/git-diff-check.log`: `git diff --check` passed.
 
-**Root Cause:** The workflow correctly detected that versions weren't published to crates.io, but lacked the actual `cargo publish` step.
+## Remaining Constraints
 
-The workflow only:
-1. Built the release binary (`cargo build --release`)
-2. Created a GitHub release
-
-**Missing step:** Actual `cargo publish` to publish to crates.io.
-
-**Fix:** Add `publish-crate.mjs` script and workflow step:
-```yaml
-- name: Publish to Crates.io
-  if: steps.check.outputs.should_release == 'true'
-  env:
-    CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-  run: node scripts/publish-crate.mjs
-```
-
-#### Issue #33: Secret Name Mismatch (2026-01-18 17:53)
-
-**Root Cause:** The workflow referenced `secrets.CARGO_REGISTRY_TOKEN` but the organization secret was named `CARGO_TOKEN`.
-
-**CI Log Evidence:**
-```
-CARGO_REGISTRY_TOKEN:
-##[warning]Neither CARGO_REGISTRY_TOKEN nor CARGO_TOKEN is set
-error: please provide a non-empty token
-```
-
-**Fix:** Map the organization secret to the expected environment variable:
-```yaml
-env:
-  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-```
-
-## Root Causes Summary
-
-### 1. GitHub Actions Job Dependency Behavior
-
-**Problem:** When a job is skipped, all dependent jobs are also skipped unless they use `always()`.
-
-**Best Practice:** Always use `always() && !cancelled()` in job conditions when depending on jobs that may be skipped:
-```yaml
-if: always() && !cancelled() && needs.build.result == 'success'
-```
-
-### 2. Version Check Logic
-
-**Problem:** Checking git tags is not sufficient to determine if a version is published.
-
-**Best Practice:** Check the actual package registry (crates.io for Rust, npm for JS, PyPI for Python):
-```javascript
-// Example: Check crates.io API
-const response = await fetch(`https://crates.io/api/v1/crates/${crateName}/${version}`);
-const isPublished = response.ok && (await response.json()).version;
-```
-
-### 3. Missing Publication Steps
-
-**Problem:** Building and creating GitHub releases doesn't mean the package is published to the registry.
-
-**Best Practice:** Always include the publication step:
-- Rust: `cargo publish`
-- JavaScript: `npm publish`
-- Python: `twine upload`
-
-### 4. Environment Variable Naming Conventions
-
-**Problem:** Different naming conventions between organization secrets and what tools expect.
-
-**Best Practice:** Document and standardize secret names. Use mapping when necessary:
-```yaml
-env:
-  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN || secrets.CARGO_TOKEN }}
-```
-
-## Template vs Browser-Commander Comparison
-
-### Files Present in Template but Missing in Browser-Commander
-
-| Template File | Purpose | Browser-Commander Status |
-|---------------|---------|-------------------------|
-| `scripts/check-release-needed.mjs` | Checks crates.io for version status | Present (in rust/scripts/) |
-| `scripts/git-config.mjs` | Configures git for automated commits | Missing (uses inline script) |
-| `scripts/check-changelog-fragment.mjs` | Validates changelog fragments | Missing (uses inline script) |
-| `scripts/check-version-modification.mjs` | Prevents manual version changes | Missing |
-| `scripts/create-changelog-fragment.mjs` | Creates changelog fragment from workflow | Missing |
-| `.pre-commit-config.yaml` | Pre-commit hooks | Missing |
-| `CONTRIBUTING.md` | Contributing guidelines | Missing |
-| `changelog.d/README.md` | Changelog fragment documentation | Present |
-
-### Workflow Differences
-
-| Feature | Template | Browser-Commander |
-|---------|----------|-------------------|
-| Secret handling | `CARGO_REGISTRY_TOKEN \|\| CARGO_TOKEN` | `CARGO_TOKEN` mapped to `CARGO_REGISTRY_TOKEN` |
-| Version check | External script with crates.io check | Inline script with crates.io check |
-| Git config | External script | Inline commands |
-| Changelog check | External script | Inline script |
-| Version modification check | Present | Missing |
-| Release modes | instant + changelog-pr | Single mode |
-
-## Recommendations for Template Improvements
-
-### 1. Robust Secret Handling (Priority: High)
-
-Add fallback support for multiple secret naming conventions:
-```yaml
-env:
-  CARGO_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN || secrets.CARGO_TOKEN }}
-```
-
-This is already implemented in the template.
-
-### 2. Comprehensive Documentation (Priority: High)
-
-Add a "CI/CD Troubleshooting Guide" in the template that covers:
-- Common failure modes (jobs skipped, secret issues, version check failures)
-- How to verify crates.io publication status
-- How to manually trigger releases
-- Secret setup requirements
-
-### 3. Multi-Language Repository Support (Priority: Medium)
-
-The `rust-paths.mjs` module in browser-commander provides excellent support for both:
-- Single-language repos (Cargo.toml at root)
-- Multi-language repos (rust/Cargo.toml)
-
-This should be incorporated into the template.
-
-### 4. Enhanced Error Reporting (Priority: Medium)
-
-The `publish-crate.mjs` script should:
-- Fail explicitly when authentication fails
-- Provide clear error messages about which secret is expected
-- Log the masked token presence for debugging
-
-### 5. Job Result Verification (Priority: High)
-
-All release jobs should verify that upstream jobs succeeded:
-```yaml
-if: |
-  always() && !cancelled() &&
-  needs.lint.result == 'success' &&
-  needs.test.result == 'success' &&
-  needs.build.result == 'success'
-```
-
-## Files in This Case Study
-
-- `README.md` - This analysis document
-- `browser-commander-issue-27.md` - Case study from issue #27 (jobs skipped)
-- `browser-commander-issue-29.md` - Case study from issue #29 (false positive version check)
-- `browser-commander-issue-31.md` - Case study from issue #31 (missing publish step)
-- `browser-commander-issue-33.md` - Case study from issue #33 (secret name mismatch)
-- `browser-commander-rust.yml` - Browser-commander's Rust CI/CD workflow (reference)
-
-## References
-
-- Issue #21: https://github.com/link-foundation/rust-ai-driven-development-pipeline-template/issues/21
-- Browser-Commander PRs: #28, #30, #32, #34
-- GitHub Actions Runner Issue #491: https://github.com/actions/runner/issues/491
-- Cargo Registry Documentation: https://doc.rust-lang.org/cargo/reference/registries.html
-- Template Repository: https://github.com/link-foundation/rust-ai-driven-development-pipeline-template
-
-## Lessons Learned
-
-1. **Test the complete pipeline end-to-end** - Don't just test individual steps; verify that packages actually appear on the registry.
-
-2. **Document secret naming conventions** - Clearly document which secrets are needed and their exact names.
-
-3. **Use defensive coding in workflows** - Always handle the case where dependencies are skipped using `always() && !cancelled()`.
-
-4. **Check the source of truth** - For package publication, check the actual registry (crates.io), not proxies like git tags.
-
-5. **Provide clear error messages** - When authentication fails, make it obvious which secret is missing or misconfigured.
-
-6. **Keep templates synchronized** - Regularly audit derived repositories against the template to catch missing features or fixes.
+- Guest-to-host sync runs when the interactive shell reaches the next prompt. Edits made by a long-running command are visible after that command returns.
+- The prompt snapshot intentionally skips `/workspace/target`, `/workspace/.git`, and file contents over 256 KiB. Skipped large files remain known to the sync state so they are not treated as deletions.
+- No upstream GitHub issue was filed because the reproduced defect was in this repository's glue logic rather than a confirmed third-party library bug.

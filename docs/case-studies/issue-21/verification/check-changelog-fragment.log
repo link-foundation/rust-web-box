@@ -1,0 +1,47 @@
+Checking for changelog fragment in PR diff...
+
+Comparing against origin/main...HEAD
+Changed files:
+  changelog.d/20260502_103528_issue_21_workspace_sync.md
+  docs/case-studies/issue-21/README.md
+  docs/case-studies/issue-21/browser-commander-issue-27.md
+  docs/case-studies/issue-21/browser-commander-issue-29.md
+  docs/case-studies/issue-21/browser-commander-issue-31.md
+  docs/case-studies/issue-21/browser-commander-issue-33.md
+  docs/case-studies/issue-21/browser-commander-rust.yml
+  docs/case-studies/issue-21/focused-after.log
+  docs/case-studies/issue-21/focused-before.log
+  docs/case-studies/issue-21/issue-21-comments.json
+  docs/case-studies/issue-21/issue-21.json
+  docs/case-studies/issue-21/issue-screenshot.png
+  docs/case-studies/issue-21/online-research.md
+  docs/case-studies/issue-21/pr-22.json
+  docs/case-studies/issue-21/related-prs-workspace-webvm.json
+  docs/case-studies/issue-21/verification/bash-sync-hook-syntax.log
+  docs/case-studies/issue-21/verification/cargo-clippy.log
+  docs/case-studies/issue-21/verification/cargo-fmt-check.log
+  docs/case-studies/issue-21/verification/cargo-test.log
+  docs/case-studies/issue-21/verification/check-file-size.log
+  docs/case-studies/issue-21/verification/focused-after-hardening.log
+  docs/case-studies/issue-21/verification/git-diff-check.log
+  docs/case-studies/issue-21/verification/local-pages-e2e.log
+  docs/case-studies/issue-21/verification/node-web-tests.log
+  web/disk/Dockerfile.disk
+  web/extensions/webvm-host/extension.js
+  web/glue/boot.js
+  web/glue/webvm-bus.js
+  web/glue/webvm-server.js
+  web/glue/workspace-fs.js
+  web/glue/workspace-sync.js
+  web/tests/boot-shell.test.mjs
+  web/tests/e2e/local-pages-e2e.test.mjs
+  web/tests/webvm-server.test.mjs
+  web/tests/workspace-fs.test.mjs
+  web/tests/workspace-sync.test.mjs
+
+Source files changed: 0
+
+Changelog fragments added: 1
+  changelog.d/20260502_103528_issue_21_workspace_sync.md
+
+Changelog check passed (source files changed: 0, fragments added: 1)

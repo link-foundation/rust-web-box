@@ -1,0 +1,303 @@
+TAP version 13
+# Subtest: boot shell: index.html mounts directly into <body> with no custom UI overlay
+ok 1 - boot shell: index.html mounts directly into <body> with no custom UI overlay
+  ---
+  duration_ms: 7.511326
+  ...
+# Subtest: boot shell: index.html references workbench config meta
+ok 2 - boot shell: index.html references workbench config meta
+  ---
+  duration_ms: 0.733936
+  ...
+# Subtest: boot shell: console filter runs before VS Code loader
+ok 3 - boot shell: console filter runs before VS Code loader
+  ---
+  duration_ms: 0.777692
+  ...
+# Subtest: boot shell: workbench config preinstalls our two extensions
+ok 4 - boot shell: workbench config preinstalls our two extensions
+  ---
+  duration_ms: 0.544484
+  ...
+# Subtest: boot shell: index.html points to vendored vscode-web bundle
+ok 5 - boot shell: index.html points to vendored vscode-web bundle
+  ---
+  duration_ms: 0.537953
+  ...
+# Subtest: boot shell: glue modules exist
+ok 6 - boot shell: glue modules exist
+  ---
+  duration_ms: 1.430727
+  ...
+# Subtest: boot shell: extensions are present with package.json + extension.js
+ok 7 - boot shell: extensions are present with package.json + extension.js
+  ---
+  duration_ms: 0.775879
+  ...
+# Subtest: boot shell: webvm-host package.json declares web extensionKind
+ok 8 - boot shell: webvm-host package.json declares web extensionKind
+  ---
+  duration_ms: 2.60543
+  ...
+# Subtest: boot shell: rust-analyzer-web package.json declares rust language
+ok 9 - boot shell: rust-analyzer-web package.json declares rust language
+  ---
+  duration_ms: 0.803689
+  ...
+# Subtest: boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+ok 10 - boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
+  ---
+  duration_ms: 0.899995
+  ...
+# Subtest: boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.3.0
+ok 11 - boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.3.0
+  ---
+  duration_ms: 0.856679
+  ...
+# Subtest: boot shell: workbench bootstrap provides process.env for browserified dependencies
+ok 12 - boot shell: workbench bootstrap provides process.env for browserified dependencies
+  ---
+  duration_ms: 0.874816
+  ...
+# Subtest: boot shell: rendered index keeps the browser process.env shim
+ok 13 - boot shell: rendered index keeps the browser process.env shim
+  ---
+  duration_ms: 3.168751
+  ...
+# Subtest: boot shell: webvm-host extension shows a "Booting Linux VM" banner
+ok 14 - boot shell: webvm-host extension shows a "Booting Linux VM" banner
+  ---
+  duration_ms: 0.981255
+  ...
+# Subtest: boot shell: webvm-host auto-opens a terminal on activation
+ok 15 - boot shell: webvm-host auto-opens a terminal on activation
+  ---
+  duration_ms: 0.544893
+  ...
+# Subtest: boot shell: webvm-host auto-opens src/main.rs on activation
+ok 16 - boot shell: webvm-host auto-opens src/main.rs on activation
+  ---
+  duration_ms: 0.706165
+  ...
+# Subtest: boot shell: webvm-host forwards page-side fs.change events to VS Code
+ok 17 - boot shell: webvm-host forwards page-side fs.change events to VS Code
+  ---
+  duration_ms: 0.748949
+  ...
+# Subtest: boot shell: workspace-fs seeds a root Cargo project
+ok 18 - boot shell: workspace-fs seeds a root Cargo project
+  ---
+  duration_ms: 0.894556
+  ...
+# Subtest: boot shell: webvm-server mirrors workspace through a quiet DataDevice script
+ok 19 - boot shell: webvm-server mirrors workspace through a quiet DataDevice script
+  ---
+  duration_ms: 0.756169
+  ...
+# Subtest: boot shell: boot.js wires guest debug logs for ?debug routes
+ok 20 - boot shell: boot.js wires guest debug logs for ?debug routes
+  ---
+  duration_ms: 0.661177
+  ...
+# Subtest: boot shell: boot.js passes CheerpX DataDevice to the WebVM server
+ok 21 - boot shell: boot.js passes CheerpX DataDevice to the WebVM server
+  ---
+  duration_ms: 0.773405
+  ...
+# Subtest: boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+ok 22 - boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
+  ---
+  duration_ms: 3.315411
+  ...
+# Subtest: boot shell: boot.js stages workspace-only server before VM is up
+ok 23 - boot shell: boot.js stages workspace-only server before VM is up
+  ---
+  duration_ms: 0.533056
+  ...
+# Subtest: boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+ok 24 - boot shell: disk manifest carries an Alpine warm image entry staged for Pages
+  ---
+  duration_ms: 0.639174
+  ...
+# Subtest: boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+ok 25 - boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
+  ---
+  duration_ms: 1.775871
+  ...
+# Subtest: boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world
+ok 26 - boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world
+  ---
+  duration_ms: 0.862187
+  ...
+# Subtest: boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run output
+ok 27 - boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run output
+  ---
+  duration_ms: 0.594658
+  ...
+# Subtest: boot shell: pages workflow deploys to GitHub Pages on main
+ok 28 - boot shell: pages workflow deploys to GitHub Pages on main
+  ---
+  duration_ms: 0.601077
+  ...
+# Subtest: boot shell: warm disk staging fails closed by default
+ok 29 - boot shell: warm disk staging fails closed by default
+  ---
+  duration_ms: 0.540417
+  ...
+# Subtest: boot shell: disk-image workflow exists and triggers on workflow_dispatch
+ok 30 - boot shell: disk-image workflow exists and triggers on workflow_dispatch
+  ---
+  duration_ms: 0.508149
+  ...
+# Subtest: boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+ok 31 - boot shell: disk-image workflow auto-publishes to disk-latest on push to main
+  ---
+  duration_ms: 0.472486
+  ...
+# Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
+ok 32 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
+  ---
+  duration_ms: 7.339359
+  ...
+# Subtest: webvm-server: existing CRLF passed through, bare CR untouched
+ok 33 - webvm-server: existing CRLF passed through, bare CR untouched
+  ---
+  duration_ms: 5.009089
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# [rust-web-box] guest workspace sync failed: Error: guest write failed
+#     at Object.run (file:///tmp/gh-issue-solver-1777716683759/web/tests/webvm-server.test.mjs:306:15)
+#     at file:///tmp/gh-issue-solver-1777716683759/web/glue/webvm-server.js:197:19
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# Subtest: webvm-server: vt channel filtered (only stdout broadcast)
+ok 34 - webvm-server: vt channel filtered (only stdout broadcast)
+  ---
+  duration_ms: 5.15716
+  ...
+# Subtest: webvm-server: primes /workspace through a /data script, not terminal input
+ok 35 - webvm-server: primes /workspace through a /data script, not terminal input
+  ---
+  duration_ms: 1.655191
+  ...
+# Subtest: webvm-server: onPhase callback receives every emitted phase, including ready
+ok 36 - webvm-server: onPhase callback receives every emitted phase, including ready
+  ---
+  duration_ms: 0.622759
+  ...
+# Subtest: webvm-server: mirrors saved files through /data without typing into the terminal
+ok 37 - webvm-server: mirrors saved files through /data without typing into the terminal
+  ---
+  duration_ms: 0.668979
+  ...
+# Subtest: webvm-server: failed guest save rejects and leaves JS workspace unchanged
+ok 38 - webvm-server: failed guest save rejects and leaves JS workspace unchanged
+  ---
+  duration_ms: 2.44473
+  ...
+# Subtest: webvm-server: non-recursive empty directory delete uses guest rmdir
+ok 39 - webvm-server: non-recursive empty directory delete uses guest rmdir
+  ---
+  duration_ms: 0.482952
+  ...
+# Subtest: webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+ok 40 - webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+  ---
+  duration_ms: 0.46196
+  ...
+# Subtest: webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+ok 41 - webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+  ---
+  duration_ms: 1.405298
+  ...
+# [rust-web-box] workspace prime failed: Error: workspace prime timed out after 50ms (suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)
+#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1777716683759/web/glue/webvm-server.js:479:28)
+#     at listOnTimeout (node:internal/timers:581:17)
+#     at process.processTimers (node:internal/timers:519:7)
+# Subtest: webvm-server: bootTask reaches "ready" even when workspace prime hangs
+ok 42 - webvm-server: bootTask reaches "ready" even when workspace prime hangs
+  ---
+  duration_ms: 51.086711
+  ...
+# Subtest: webvm-server: makeChannelPair sanity
+ok 43 - webvm-server: makeChannelPair sanity
+  ---
+  duration_ms: 0.485706
+  ...
+# Subtest: workspace-fs: normalize() canonicalises paths
+ok 44 - workspace-fs: normalize() canonicalises paths
+  ---
+  duration_ms: 0.971861
+  ...
+# Subtest: workspace-fs: seed includes src/main.rs at /workspace level
+ok 45 - workspace-fs: seed includes src/main.rs at /workspace level
+  ---
+  duration_ms: 1.052951
+  ...
+# Subtest: workspace-fs: seed contains a buildable Cargo project at /workspace root
+ok 46 - workspace-fs: seed contains a buildable Cargo project at /workspace root
+  ---
+  duration_ms: 0.107241
+  ...
+# Subtest: workspace-fs: default cargo task runs from /workspace root
+ok 47 - workspace-fs: default cargo task runs from /workspace root
+  ---
+  duration_ms: 0.170264
+  ...
+# Subtest: workspace-fs: file/dir type constants are stable
+ok 48 - workspace-fs: file/dir type constants are stable
+  ---
+  duration_ms: 0.118897
+  ...
+# Subtest: workspace-fs: seed paths all begin with /workspace
+ok 49 - workspace-fs: seed paths all begin with /workspace
+  ---
+  duration_ms: 0.100931
+  ...
+# Subtest: workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+ok 50 - workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+  ---
+  duration_ms: 0.318306
+  ...
+# Subtest: workspace-fs: default settings keep manual save dirty indicators visible
+ok 51 - workspace-fs: default settings keep manual save dirty indicators visible
+  ---
+  duration_ms: 0.090505
+  ...
+# Subtest: workspace-sync: parser strips OSC frames and handles split chunks
+ok 52 - workspace-sync: parser strips OSC frames and handles split chunks
+  ---
+  duration_ms: 1.477686
+  ...
+# Subtest: workspace-sync: decodes snapshot payloads
+ok 53 - workspace-sync: decodes snapshot payloads
+  ---
+  duration_ms: 0.389523
+  ...
+# Subtest: workspace-sync: applies creates, updates, and deletes from guest snapshots
+ok 54 - workspace-sync: applies creates, updates, and deletes from guest snapshots
+  ---
+  duration_ms: 1.906646
+  ...
+# Subtest: workspace-sync: keeps oversized guest files marked as skipped
+ok 55 - workspace-sync: keeps oversized guest files marked as skipped
+  ---
+  duration_ms: 0.275702
+  ...
+# Subtest: workspace-sync: bash profile hook emits hidden sync frames after prompts
+ok 56 - workspace-sync: bash profile hook emits hidden sync frames after prompts
+  ---
+  duration_ms: 0.226769
+  ...
+1..56
+# tests 56
+# suites 0
+# pass 56
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 30080.625489

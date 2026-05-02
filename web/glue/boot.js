@@ -138,6 +138,9 @@ async function bringUpWorkspace() {
     channel,
     methods: workspaceOnlyMethods({ workspace }),
   });
+  workspace.onChange((change) => {
+    try { busServer.emit('fs.change', change); } catch {}
+  });
   // Tell any extensions that started up first that the bus is alive.
   busServer.emit('vm.boot', { phase: 'workspace-ready' });
 

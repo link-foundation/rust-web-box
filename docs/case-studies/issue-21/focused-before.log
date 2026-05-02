@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
+ok 1 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
+  ---
+  duration_ms: 8.405987
+  ...
+# Subtest: webvm-server: existing CRLF passed through, bare CR untouched
+ok 2 - webvm-server: existing CRLF passed through, bare CR untouched
+  ---
+  duration_ms: 5.627546
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# [rust-web-box] guest workspace sync failed: Error: guest write failed
+#     at Object.run (file:///tmp/gh-issue-solver-1777716683759/web/tests/webvm-server.test.mjs:306:15)
+#     at file:///tmp/gh-issue-solver-1777716683759/web/glue/webvm-server.js:186:19
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# Subtest: webvm-server: vt channel filtered (only stdout broadcast)
+ok 3 - webvm-server: vt channel filtered (only stdout broadcast)
+  ---
+  duration_ms: 6.194693
+  ...
+# Subtest: webvm-server: primes /workspace through a /data script, not terminal input
+ok 4 - webvm-server: primes /workspace through a /data script, not terminal input
+  ---
+  duration_ms: 1.86116
+  ...
+# Subtest: webvm-server: onPhase callback receives every emitted phase, including ready
+ok 5 - webvm-server: onPhase callback receives every emitted phase, including ready
+  ---
+  duration_ms: 0.840576
+  ...
+# Subtest: webvm-server: mirrors saved files through /data without typing into the terminal
+ok 6 - webvm-server: mirrors saved files through /data without typing into the terminal
+  ---
+  duration_ms: 0.768287
+  ...
+# Subtest: webvm-server: failed guest save rejects and leaves JS workspace unchanged
+not ok 7 - webvm-server: failed guest save rejects and leaves JS workspace unchanged
+  ---
+  duration_ms: 3.457936
+  location: '/tmp/gh-issue-solver-1777716683759/web/tests/webvm-server.test.mjs:290:1'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777716683759/web/tests/webvm-server.test.mjs:322:3)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+ok 8 - webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+  ---
+  duration_ms: 0.516992
+  ...
+# Subtest: webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+ok 9 - webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+  ---
+  duration_ms: 0.568278
+  ...
+# [rust-web-box] workspace prime failed: Error: workspace prime timed out after 50ms (suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)
+#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1777716683759/web/glue/webvm-server.js:400:28)
+#     at listOnTimeout (node:internal/timers:581:17)
+#     at process.processTimers (node:internal/timers:519:7)
+# Subtest: webvm-server: bootTask reaches "ready" even when workspace prime hangs
+ok 10 - webvm-server: bootTask reaches "ready" even when workspace prime hangs
+  ---
+  duration_ms: 51.51805
+  ...
+# Subtest: webvm-server: makeChannelPair sanity
+ok 11 - webvm-server: makeChannelPair sanity
+  ---
+  duration_ms: 0.694096
+  ...
+# Subtest: workspace-fs: normalize() canonicalises paths
+ok 12 - workspace-fs: normalize() canonicalises paths
+  ---
+  duration_ms: 1.13767
+  ...
+# Subtest: workspace-fs: seed includes src/main.rs at /workspace level
+ok 13 - workspace-fs: seed includes src/main.rs at /workspace level
+  ---
+  duration_ms: 1.319612
+  ...
+# Subtest: workspace-fs: seed contains a buildable Cargo project at /workspace root
+ok 14 - workspace-fs: seed contains a buildable Cargo project at /workspace root
+  ---
+  duration_ms: 0.128021
+  ...
+# Subtest: workspace-fs: default cargo task runs from /workspace root
+ok 15 - workspace-fs: default cargo task runs from /workspace root
+  ---
+  duration_ms: 0.286328
+  ...
+# Subtest: workspace-fs: file/dir type constants are stable
+ok 16 - workspace-fs: file/dir type constants are stable
+  ---
+  duration_ms: 0.124736
+  ...
+# Subtest: workspace-fs: seed paths all begin with /workspace
+ok 17 - workspace-fs: seed paths all begin with /workspace
+  ---
+  duration_ms: 0.102513
+  ...
+# Subtest: workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+ok 18 - workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+  ---
+  duration_ms: 0.409171
+  ...
+# Subtest: workspace-fs: default settings keep manual save dirty indicators visible
+not ok 19 - workspace-fs: default settings keep manual save dirty indicators visible
+  ---
+  duration_ms: 1.288385
+  location: '/tmp/gh-issue-solver-1777716683759/web/tests/workspace-fs.test.mjs:86:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+
+    + 'afterDelay'
+    - 'off'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'off'
+  actual: 'afterDelay'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1777716683759/web/tests/workspace-fs.test.mjs:89:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 17
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 30096.033934

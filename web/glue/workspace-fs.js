@@ -9,9 +9,9 @@
 // FileSystemProvider in the webvm-host extension reads/writes here
 // directly. When the VM finishes booting we mirror these files into
 // `/workspace/` inside the guest so `cargo run` sees the same content.
-// User edits in the editor are propagated both ways: editor -> JS store
-// -> IDB (immediate) -> VM (best-effort, on next boot or via the
-// `webvm.syncWorkspace` bus method).
+// User edits in the editor are propagated both ways: editor -> guest VM
+// -> JS store -> IDB on save, while prompt-time guest snapshots mirror
+// terminal-side edits back into the same store.
 //
 // The store is intentionally tiny — text files and small blobs only.
 // It is NOT a general-purpose POSIX FS; it is the workspace surface
@@ -73,7 +73,7 @@ const SEED_FILES = {
       '{',
       '  // Workspace settings for rust-web-box.',
       '  // Edit freely — changes persist in your browser\'s IndexedDB.',
-      '  "files.autoSave": "afterDelay",',
+      '  "files.autoSave": "off",',
       '  "editor.formatOnSave": false,',
       '  "rust-analyzer.checkOnSave": false',
       '}',
@@ -158,6 +158,20 @@ const LEGACY_SEED_FILES = {
       '* Open `hello_world.rs` for a one-file demo.',
       '* Open `hello/src/main.rs` and run `cargo run` from the terminal',
       '  (or click the **Cargo Run** status-bar button).',
+      '',
+    ].join('\n'),
+};
+
+const PREVIOUS_SEED_FILES = {
+  '/workspace/.vscode/settings.json':
+    [
+      '{',
+      '  // Workspace settings for rust-web-box.',
+      '  // Edit freely — changes persist in your browser\'s IndexedDB.',
+      '  "files.autoSave": "afterDelay",',
+      '  "editor.formatOnSave": false,',
+      '  "rust-analyzer.checkOnSave": false',
+      '}',
       '',
     ].join('\n'),
 };
@@ -324,6 +338,16 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
     await deleteDirIfEmpty('/workspace/hello');
   }
 
+  async function migrateDefaultSettings() {
+    if (seed['/workspace/.vscode/settings.json']) {
+      await replaceIfUnchanged(
+        '/workspace/.vscode/settings.json',
+        PREVIOUS_SEED_FILES['/workspace/.vscode/settings.json'],
+        seed['/workspace/.vscode/settings.json'],
+      );
+    }
+  }
+
   // Seed new stores, and migrate old default workspaces without
   // overwriting user-created root project files.
   const existing = await listAll();
@@ -334,6 +358,7 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
     }
   } else {
     await migrateLegacyWorkspace();
+    await migrateDefaultSettings();
   }
 
   async function ensureDirChain(path) {
