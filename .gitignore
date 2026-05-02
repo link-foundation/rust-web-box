@@ -58,6 +58,10 @@ ci-logs/
 .playwright-mcp/
 
 # Case-study evidence logs are committed deliberately.
+# (Negate both the parent `logs/` directory and the .log glob; `*.log`
+# alone is not enough because `logs/` above ignores the whole directory
+# and git won't recurse into it to apply the inner negation.)
+!docs/case-studies/**/logs/
 !docs/case-studies/**/*.log
 
 # Vendored at build time — see web/build/build-workbench.mjs.
