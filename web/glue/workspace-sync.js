@@ -19,6 +19,15 @@ const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });
 export function buildGuestSyncProfileBlock({
   maxFileBytes = DEFAULT_SYNC_MAX_FILE_BYTES,
 } = {}) {
+  // Issue #27: PR #26 removed `-path /workspace/target -prune` so that the
+  // Explorer would list the build directory. The unintended effect was
+  // catastrophic: every prompt re-scanned ~10K target/ files (find + wc +
+  // base64) and dragged a multi-MB OSC frame through the terminal, which
+  // (a) produced visible terminal jank and made `cargo run` feel like it
+  // wasn't reacting, and (b) introduced a sync race that overwrote
+  // editor saves. The fix here keeps the directory visible by emitting a
+  // SINGLE 'S' marker for /workspace/target itself, while pruning its
+  // contents from the per-prompt scan.
   return [
     '# rust-web-box: mirror small terminal-side workspace edits back to VS Code.',
     `export RWB_SYNC_MAX_FILE_BYTES="\${RWB_SYNC_MAX_FILE_BYTES:-${maxFileBytes}}"`,
@@ -27,26 +36,24 @@ export function buildGuestSyncProfileBlock({
     '  [ -d /workspace ] || return 0',
     '  {',
     "    printf 'RWB_SYNC_V1\\n'",
-    '    find /workspace -path /workspace/.git -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do',
+    // Surface /workspace/target as a directory so VS Code's Explorer
+    // shows it without forcing the prompt-time scan to descend into it.
+    '    if [ -d /workspace/target ]; then',
+    '      printf \'D\\t%s\\n\' "$(printf \'%s\' /workspace/target | base64 | tr -d \'\\n\')"',
+    '    fi',
+    '    find /workspace -path /workspace/.git -prune -o -path /workspace/target -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do',
     '      [ "$path" = /workspace ] && continue',
     '      if [ -d "$path" ]; then',
     '        printf \'D\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
     '      elif [ -f "$path" ]; then',
     '        size=$(wc -c < "$path" 2>/dev/null | tr -d \' \')',
-    '        case "$path" in',
-    '          /workspace/target/*)',
-    '            printf \'S\\t%s\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')" "${size:-0}"',
-    '            ;;',
-    '          *)',
-    '            if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then',
-    '              printf \'F\\t%s\\t\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
-    '              base64 < "$path" | tr -d \'\\n\'',
-    "              printf '\\n'",
-    '            else',
-    '              printf \'S\\t%s\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')" "${size:-0}"',
-    '            fi',
-    '            ;;',
-    '        esac',
+    '        if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then',
+    '          printf \'F\\t%s\\t\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
+    '          base64 < "$path" | tr -d \'\\n\'',
+    "          printf '\\n'",
+    '        else',
+    '          printf \'S\\t%s\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')" "${size:-0}"',
+    '        fi',
     '      fi',
     '    done',
     '  } | {',
@@ -56,7 +63,10 @@ export function buildGuestSyncProfileBlock({
     '  }',
     '}',
     'if [ -n "${PROMPT_COMMAND:-}" ]; then',
-    '  PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}"',
+    '  case "${PROMPT_COMMAND}" in',
+    '    *__rwb_sync_from_guest*) ;;',
+    '    *) PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}" ;;',
+    '  esac',
     'else',
     '  PROMPT_COMMAND="__rwb_sync_from_guest"',
     'fi',
@@ -163,8 +173,14 @@ export async function applyWorkspaceSyncSnapshot(workspace, snapshot, state = {}
     await ensureMetadataFile(workspace, file);
   }
 
+  // Issue #27: target/ contents are intentionally pruned from the
+  // prompt-time scan, so they appear "missing" relative to knownPaths
+  // every cycle. Skipping them here prevents the deletion sweep from
+  // wiping cached metadata stubs (and, critically, from being a noisy
+  // no-op for thousands of paths).
   const deleted = [...knownPaths]
     .filter((path) => !currentPaths.has(path))
+    .filter((path) => !isUnderTarget(path))
     .sort((a, b) => b.length - a.length);
   for (const path of deleted) {
     await deleteIfPresent(workspace, path);
@@ -241,6 +257,10 @@ async function ensureMetadataFile(workspace, file) {
 
 function isTargetPath(path) {
   return path.startsWith(`${WORKSPACE_ROOT}/target/`);
+}
+
+function isUnderTarget(path) {
+  return path === `${WORKSPACE_ROOT}/target` || isTargetPath(path);
 }
 
 async function deleteIfPresent(workspace, path) {

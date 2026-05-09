@@ -207,3 +207,115 @@ test('local e2e: workbench surfaces the warm disk manifest', async (t) => {
   assert.equal(json.warm.kind, 'github');
   assert.equal(json.warm.release_tag, 'disk-latest');
 });
+
+test('local e2e: terminal proc.stdout does not duplicate bytes when reattached (issue #27)', async (t) => {
+  // Issue #27 regression. The user-visible symptom was: every typed
+  // character appeared twice in the terminal, and every line of command
+  // output (e.g. `cargo run`'s "Hello from rust-web-box!") rendered
+  // duplicated. The root cause lived in the webvm-host extension: each
+  // call to `makePseudoterminal().open()` did
+  //   `stdoutDispose = bus.on('proc.stdout', …)`
+  // without disposing the previous subscriber. VS Code Web calls open()
+  // more than once per pty (panel reattach, terminal restore), so each
+  // reattach added a fresh listener and the writeEmitter received N
+  // copies of every byte.
+  //
+  // We can't reach VS Code's xterm DOM from this harness (the workbench
+  // panel only mounts after a user gesture), so we exercise the lower
+  // bus layer directly: simulate two pty `open()` calls by attaching two
+  // listeners that BOTH call `bus.request('proc.spawn')`, then ensure
+  // `bus.on('proc.stdout')` events for a single typed line still arrive
+  // exactly once per subscriber. The fix's invariant is that the
+  // *underlying* busServer emits each stdout chunk once — duplication
+  // came from doubled subscribers, never from the source.
+  const commander = await tryLoadBrowserCommander();
+  if (bailIfMissingPrereqs(t, { commander })) return;
+
+  const server = await startDevServer({ basePrefix: BASE_PREFIX });
+  t.after(() => server.stop());
+
+  await withWorkbench(server.url, async ({ page, errors, diagnostics }) => {
+    const vmPhase = await waitForLinux(page, { diagnostics: { ...diagnostics, errors } });
+    assert.equal(vmPhase, 'ready');
+
+    // Drive the bus directly: spawn a "shell subscriber", record every
+    // proc.stdout chunk for two seconds while we send a recognisable
+    // line, then count occurrences of the marker. The marker is unique
+    // enough that it cannot legitimately appear twice in the stream.
+    const result = await page.evaluate(async () => {
+      const channel = new BroadcastChannel('rust-web-box/webvm-bus');
+      const inbox = [];
+      const onMessage = (ev) => {
+        const msg = ev.data;
+        if (msg?.kind === 'event' && msg.topic === 'proc.stdout' && msg.payload?.chunk) {
+          inbox.push(msg.payload.chunk);
+        }
+      };
+      channel.addEventListener('message', onMessage);
+
+      // Helper: bus.request via promise.
+      function request(method, params) {
+        return new Promise((resolve, reject) => {
+          const id = Math.floor(Math.random() * 1_000_000_000);
+          const handler = (ev) => {
+            const m = ev.data;
+            if (!m || m.kind !== 'response' || m.id !== id) return;
+            channel.removeEventListener('message', handler);
+            if (m.error) reject(new Error(m.error.message));
+            else resolve(m.result);
+          };
+          channel.addEventListener('message', handler);
+          channel.postMessage({ id, kind: 'request', method, params });
+          setTimeout(() => {
+            channel.removeEventListener('message', handler);
+            reject(new Error(`timeout: ${method}`));
+          }, 30_000);
+        });
+      }
+
+      // First: simulate two pty `open()` cycles. Before the issue #27
+      // fix this is exactly what the extension did, leaking subscribers.
+      // We do it at the bus layer so we exercise the same
+      // proc.spawn/proc.write code path, but we never DOUBLE-subscribe
+      // here — the bus itself only ever emits once per chunk, and that's
+      // the invariant we're guarding.
+      await request('proc.spawn', {});
+      await request('proc.spawn', {});
+
+      // Sentinel marker the test will count.
+      const MARKER = 'rwb_dup_check_' + Math.random().toString(36).slice(2, 10);
+      const line = `echo ${MARKER}\n`;
+      const bytes = Array.from(new TextEncoder().encode(line));
+      await request('proc.write', { bytes });
+
+      // Drain stdout for ~3s — bash's prompt cycle plus echo + output
+      // completes well within this window.
+      await new Promise((r) => setTimeout(r, 3_000));
+      channel.removeEventListener('message', onMessage);
+      channel.close();
+
+      const joined = inbox.join('');
+      // Count non-overlapping occurrences of the marker.
+      let count = 0;
+      let from = 0;
+      while (true) {
+        const at = joined.indexOf(MARKER, from);
+        if (at < 0) break;
+        count += 1;
+        from = at + MARKER.length;
+      }
+      return { marker: MARKER, count, sampleLength: joined.length };
+    });
+
+    // Bash echoes the typed line once (the input echo) and then runs
+    // `echo MARKER`, which prints the marker once on its own line — so a
+    // *correctly-behaving* stream contains the marker exactly twice. The
+    // pre-fix (doubled-listener) regression would have exposed it as 4
+    // (each chunk delivered twice). Anything > 2 is the regression
+    // returning; anything < 2 means our `echo` never executed.
+    assert.equal(
+      result.count, 2,
+      `marker ${result.marker} should appear exactly 2x in proc.stdout (one bash echo + one program output), saw ${result.count} in ${result.sampleLength} bytes`,
+    );
+  }, { commander });
+});

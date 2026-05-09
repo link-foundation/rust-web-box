@@ -183,6 +183,21 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
   let dimsPending = null;
   let opened = false;
 
+  // Issue #27: dispose any pre-existing bus subscriptions before attaching
+  // new ones. VS Code Web can call `open()` more than once on the same
+  // Pseudoterminal instance (e.g., panel reattach, terminal restore). The
+  // original code reassigned `stdoutDispose = bus.on(...)` without
+  // unsubscribing the previous listener, which doubled (or tripled) every
+  // byte broadcast on `proc.stdout`. The visible symptom: each typed
+  // character appeared twice, and command output rendered as duplicate
+  // lines.
+  function detachBusListeners() {
+    try { stdoutDispose?.(); } catch {}
+    try { exitDispose?.(); } catch {}
+    stdoutDispose = null;
+    exitDispose = null;
+  }
+
   function ansi(s) { return `\x1b[${s}`; }
   const RESET = ansi('0m');
   const DIM = ansi('2m');
@@ -198,6 +213,9 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
     onDidClose: closeEmitter.event,
 
     async open(initialDimensions) {
+      // If VS Code re-opens this pty (panel reattach, view restore), drop
+      // any stale subscribers before re-binding — see detachBusListeners.
+      detachBusListeners();
       opened = true;
       writeEmitter.fire(
         `${BOLD}rust-web-box${RESET} — in-browser Rust sandbox\r\n`,
@@ -247,9 +265,24 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         return;
       }
 
-      // Subscribe to the persistent bash stream.
+      // Subscribe to the persistent bash stream. The opt-in trace below
+      // catches "duplicate output" regressions (issue #27) by logging
+      // every chunk this pty actually fires; if a single bash byte
+      // produces two log lines, we know the pty has two listeners
+      // attached. Toggle via `__RWB_DEBUG_TERMINAL_STREAM = true`.
       stdoutDispose = bus.on('proc.stdout', (payload) => {
-        if (payload?.chunk) writeEmitter.fire(payload.chunk);
+        if (!payload?.chunk) return;
+        if (
+          typeof globalThis !== 'undefined' &&
+          globalThis.__RWB_DEBUG_TERMINAL_STREAM
+        ) {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[rwb:pty:bash] chunk bytes=${payload.chunk.length}`,
+            JSON.stringify(payload.chunk.slice(0, 80)),
+          );
+        }
+        writeEmitter.fire(payload.chunk);
       });
       exitDispose = bus.on('proc.exit', () => {
         writeEmitter.fire(`\r\n${DIM}[bash exited — respawning…]${RESET}\r\n`);
@@ -283,8 +316,7 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
     },
 
     close() {
-      stdoutDispose?.();
-      exitDispose?.();
+      detachBusListeners();
       if (sub != null) bus.request('proc.kill', { sub }).catch(() => {});
       sub = null;
       opened = false;
@@ -318,10 +350,21 @@ function makeCargoPty(vscode, bus, { vmReadyPromise }, command, args = [], cwd =
   let sub = null;
   let stdoutDispose = null;
   let exitDispose = null;
+
+  // See makePseudoterminal: VS Code can re-open the same pty, and bare
+  // reassignment of `bus.on(...)` disposers leaks subscribers — issue #27.
+  function detachBusListeners() {
+    try { stdoutDispose?.(); } catch {}
+    try { exitDispose?.(); } catch {}
+    stdoutDispose = null;
+    exitDispose = null;
+  }
+
   return {
     onDidWrite: writeEmitter.event,
     onDidClose: closeEmitter.event,
     async open() {
+      detachBusListeners();
       writeEmitter.fire(`> cargo ${command} ${args.join(' ')} (cwd ${cwd})\r\n`);
       try {
         await vmReadyPromise;
@@ -353,8 +396,7 @@ function makeCargoPty(vscode, bus, { vmReadyPromise }, command, args = [], cwd =
         .catch(() => {});
     },
     close() {
-      stdoutDispose?.();
-      exitDispose?.();
+      detachBusListeners();
       if (sub != null) bus.request('proc.kill', { sub }).catch(() => {});
     },
     handleInput(data) {
@@ -548,9 +590,18 @@ function activate(context) {
 
   // Auto-open a terminal so the user lands in a working bash without
   // any extra clicks. Issue criterion 3: "Built-in Terminal opens a
-  // working `bash` inside WebVM."
+  // working `bash` inside WebVM." Issue #27: guard against duplicate
+  // creation if any other code path (extension reactivation, restored
+  // terminal layout) already populated the panel.
   setTimeout(() => {
     try {
+      const existing = vscode.window.terminals?.find(
+        (t) => t?.name === 'WebVM bash',
+      );
+      if (existing) {
+        existing.show();
+        return;
+      }
       const term = vscode.window.createTerminal({
         name: 'WebVM bash',
         pty: makePseudoterminal(vscode, bus, { vmReadyPromise }),
