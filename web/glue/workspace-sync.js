@@ -27,19 +27,26 @@ export function buildGuestSyncProfileBlock({
     '  [ -d /workspace ] || return 0',
     '  {',
     "    printf 'RWB_SYNC_V1\\n'",
-    '    find /workspace -path /workspace/target -prune -o -path /workspace/.git -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do',
+    '    find /workspace -path /workspace/.git -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do',
     '      [ "$path" = /workspace ] && continue',
     '      if [ -d "$path" ]; then',
     '        printf \'D\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
     '      elif [ -f "$path" ]; then',
     '        size=$(wc -c < "$path" 2>/dev/null | tr -d \' \')',
-    '        if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then',
-    '          printf \'F\\t%s\\t\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
-    '          base64 < "$path" | tr -d \'\\n\'',
-    "          printf '\\n'",
-    '        else',
-    '          printf \'S\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
-    '        fi',
+    '        case "$path" in',
+    '          /workspace/target/*)',
+    '            printf \'S\\t%s\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')" "${size:-0}"',
+    '            ;;',
+    '          *)',
+    '            if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then',
+    '              printf \'F\\t%s\\t\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
+    '              base64 < "$path" | tr -d \'\\n\'',
+    "              printf '\\n'",
+    '            else',
+    '              printf \'S\\t%s\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')" "${size:-0}"',
+    '            fi',
+    '            ;;',
+    '        esac',
     '      fi',
     '    done',
     '  } | {',
@@ -107,6 +114,7 @@ export function decodeWorkspaceSyncPayload(encodedPayload) {
   }
   const dirs = [];
   const files = [];
+  const skippedFiles = [];
   const paths = new Set();
 
   for (const line of lines) {
@@ -121,11 +129,12 @@ export function decodeWorkspaceSyncPayload(encodedPayload) {
       files.push({ path, bytes: decodeBase64Bytes(encodedContent ?? '') });
       paths.add(path);
     } else if (kind === 'S') {
+      skippedFiles.push({ path, size: decodeSize(encodedContent) });
       paths.add(path);
     }
   }
 
-  return { dirs, files, paths };
+  return { dirs, files, skippedFiles, paths };
 }
 
 export async function applyWorkspaceSyncSnapshot(workspace, snapshot, state = {}) {
@@ -134,6 +143,7 @@ export async function applyWorkspaceSyncSnapshot(workspace, snapshot, state = {}
   const currentPaths = snapshot.paths ?? new Set([
     ...(snapshot.dirs ?? []),
     ...(snapshot.files ?? []).map((f) => f.path),
+    ...(snapshot.skippedFiles ?? []).map((f) => f.path),
   ]);
 
   for (const dir of [...(snapshot.dirs ?? [])].sort((a, b) => a.length - b.length)) {
@@ -147,6 +157,10 @@ export async function applyWorkspaceSyncSnapshot(workspace, snapshot, state = {}
         overwrite: true,
       });
     }
+  }
+
+  for (const file of snapshot.skippedFiles ?? []) {
+    await ensureMetadataFile(workspace, file);
   }
 
   const deleted = [...knownPaths]
@@ -189,6 +203,11 @@ function decodeBase64Bytes(input = '') {
   throw new Error('base64 decoder unavailable');
 }
 
+function decodeSize(input) {
+  const size = Number.parseInt(input ?? '0', 10);
+  return Number.isFinite(size) && size >= 0 ? size : 0;
+}
+
 async function ensureDirectory(workspace, path) {
   try {
     await workspace.stat(path);
@@ -204,6 +223,24 @@ async function sameFile(workspace, path, bytes) {
   } catch {
     return false;
   }
+}
+
+async function ensureMetadataFile(workspace, file) {
+  if (typeof workspace.writeMetadataFile !== 'function') return;
+  try {
+    await workspace.stat(file.path);
+    if (isTargetPath(file.path)) {
+      await workspace.writeMetadataFile(file.path, { size: file.size ?? 0 });
+    }
+    return;
+  } catch (err) {
+    if (err?.code !== 'FileNotFound') throw err;
+  }
+  await workspace.writeMetadataFile(file.path, { size: file.size ?? 0 });
+}
+
+function isTargetPath(path) {
+  return path.startsWith(`${WORKSPACE_ROOT}/target/`);
 }
 
 async function deleteIfPresent(workspace, path) {
