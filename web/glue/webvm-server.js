@@ -154,12 +154,28 @@ function cargoFreshnessMtimeScript(path) {
   if (!isCargoInputPath(path)) return '';
   const quotedPath = shellQuote(path);
   return [
-    // Cargo's freshness checks can miss a browser save that lands in
-    // the same one-second mtime bucket as the pre-baked target artifacts.
+    // The warm disk can contain target artifacts whose mtimes are ahead
+    // of CheerpX's current clock. Make the edited Cargo input newer than
+    // the target tree so Cargo rebuilds instead of reusing the prebaked
+    // binary after a browser save.
     'if [ -d /workspace/target ]; then',
-    '  sleep 1',
-    `  touch -m '${quotedPath}' 2>/dev/null || true`,
+    '  rwb_max_mtime="$(date +%s 2>/dev/null || echo 0)"',
+    '  rwb_target_mtime="$(find /workspace/target -type f -exec stat -c %Y {} \\; 2>/dev/null | sort -nr | head -n 1 || true)"',
+    '  case "$rwb_target_mtime" in',
+    '    ""|*[!0-9]*) ;;',
+    '    *) [ "$rwb_target_mtime" -gt "$rwb_max_mtime" ] && rwb_max_mtime="$rwb_target_mtime" ;;',
+    '  esac',
+    '  rwb_next_mtime=$((rwb_max_mtime + 2))',
+    `  touch -d "@$rwb_next_mtime" '${quotedPath}' 2>/dev/null || touch -m '${quotedPath}' 2>/dev/null || true`,
+    `  rwb_saved_mtime="$(stat -c %Y '${quotedPath}' 2>/dev/null || echo 0)"`,
+    '  case "$rwb_saved_mtime" in',
+    '    ""|*[!0-9]*) rwb_saved_mtime=0 ;;',
+    '  esac',
+    '  if [ "$rwb_saved_mtime" -le "$rwb_max_mtime" ]; then',
+    '    rm -rf /workspace/target/debug/.fingerprint /workspace/target/release/.fingerprint 2>/dev/null || true',
+    '  fi',
     'fi',
+    'unset rwb_max_mtime rwb_target_mtime rwb_next_mtime rwb_saved_mtime',
   ].join('\n');
 }
 

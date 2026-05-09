@@ -380,8 +380,9 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   assert.equal(dataState.writes[2].filename, '/rust-web-box-workspace-sync.sh');
   assert.match(dataState.writes[2].contents, /cat > '\/workspace\/src\/main\.rs'/);
   assert.match(dataState.writes[2].contents, /saved/);
-  assert.match(dataState.writes[2].contents, /sleep 1/);
-  assert.match(dataState.writes[2].contents, /touch -m '\/workspace\/src\/main\.rs'/);
+  assert.match(dataState.writes[2].contents, /rwb_target_mtime=/);
+  assert.match(dataState.writes[2].contents, /touch -d "@\$rwb_next_mtime" '\/workspace\/src\/main\.rs'/);
+  assert.match(dataState.writes[2].contents, /rm -rf \/workspace\/target\/debug\/\.fingerprint \/workspace\/target\/release\/\.fingerprint/);
 });
 
 test('webvm-server: failed guest save rejects and leaves JS workspace unchanged', async () => {
