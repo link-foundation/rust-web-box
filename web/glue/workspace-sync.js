@@ -14,6 +14,7 @@ export const WORKSPACE_SYNC_OSC_END = '\x07';
 export const DEFAULT_SYNC_MAX_FILE_BYTES = 262_144;
 
 const WORKSPACE_ROOT = '/workspace';
+const WORKSPACE_TARGET_ROOT = `${WORKSPACE_ROOT}/target`;
 const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });
 
 export function buildGuestSyncProfileBlock({
@@ -26,8 +27,8 @@ export function buildGuestSyncProfileBlock({
   // (a) produced visible terminal jank and made `cargo run` feel like it
   // wasn't reacting, and (b) introduced a sync race that overwrote
   // editor saves. The fix here keeps the directory visible by emitting a
-  // SINGLE 'S' marker for /workspace/target itself, while pruning its
-  // contents from the per-prompt scan.
+  // single directory marker for /workspace/target itself, while pruning
+  // its contents from the per-prompt scan.
   return [
     '# rust-web-box: mirror small terminal-side workspace edits back to VS Code.',
     `export RWB_SYNC_MAX_FILE_BYTES="\${RWB_SYNC_MAX_FILE_BYTES:-${maxFileBytes}}"`,
@@ -70,6 +71,36 @@ export function buildGuestSyncProfileBlock({
     'else',
     '  PROMPT_COMMAND="__rwb_sync_from_guest"',
     'fi',
+  ].join('\n') + '\n';
+}
+
+export function buildGuestTargetSnapshotScript(path = WORKSPACE_TARGET_ROOT) {
+  const root = normalizeTargetPath(path);
+  return [
+    'set -eu',
+    `root='${shellQuote(root)}'`,
+    '__rwb_emit_sync_path() {',
+    '  path="$1"',
+    '  if [ -d "$path" ]; then',
+    '    printf \'D\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')"',
+    '  elif [ -f "$path" ]; then',
+    '    size=$(wc -c < "$path" 2>/dev/null | tr -d \' \')',
+    '    printf \'S\\t%s\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')" "${size:-0}"',
+    '  fi',
+    '}',
+    '{',
+    "  printf 'RWB_SYNC_V1\\n'",
+    '  printf \'P\\t%s\\n\' "$(printf \'%s\' "$root" | base64 | tr -d \'\\n\')"',
+    '  if [ -e "$root" ]; then',
+    '    find "$root" -print 2>/dev/null | sort | while IFS= read -r path; do',
+    '      __rwb_emit_sync_path "$path"',
+    '    done',
+    '  fi',
+    '} | {',
+    "  printf '\\033]777;rust-web-box-sync;'",
+    "  base64 | tr -d '\\n'",
+    "  printf '\\007'",
+    '}',
   ].join('\n') + '\n';
 }
 
@@ -126,13 +157,16 @@ export function decodeWorkspaceSyncPayload(encodedPayload) {
   const files = [];
   const skippedFiles = [];
   const paths = new Set();
+  let scope = null;
 
   for (const line of lines) {
     if (!line) continue;
     const [kind, encodedPath, encodedContent] = line.split('\t');
     const path = decodeBase64Text(encodedPath);
     if (!isWorkspacePath(path)) continue;
-    if (kind === 'D') {
+    if (kind === 'P') {
+      scope = path;
+    } else if (kind === 'D') {
       dirs.push(path);
       paths.add(path);
     } else if (kind === 'F') {
@@ -144,12 +178,13 @@ export function decodeWorkspaceSyncPayload(encodedPayload) {
     }
   }
 
-  return { dirs, files, skippedFiles, paths };
+  return { dirs, files, skippedFiles, paths, scope };
 }
 
 export async function applyWorkspaceSyncSnapshot(workspace, snapshot, state = {}) {
   if (!workspace) throw new TypeError('applyWorkspaceSyncSnapshot requires a workspace');
   const knownPaths = state.knownPaths ?? new Set();
+  const scope = isWorkspacePath(snapshot.scope) ? snapshot.scope : null;
   const currentPaths = snapshot.paths ?? new Set([
     ...(snapshot.dirs ?? []),
     ...(snapshot.files ?? []).map((f) => f.path),
@@ -173,20 +208,19 @@ export async function applyWorkspaceSyncSnapshot(workspace, snapshot, state = {}
     await ensureMetadataFile(workspace, file);
   }
 
-  // Issue #27: target/ contents are intentionally pruned from the
-  // prompt-time scan, so they appear "missing" relative to knownPaths
-  // every cycle. Skipping them here prevents the deletion sweep from
-  // wiping cached metadata stubs (and, critically, from being a noisy
-  // no-op for thousands of paths).
+  // Issue #27: prompt-time scans intentionally prune target/*, so target
+  // descendants appear "missing" on every prompt. Issue #29 adds scoped
+  // on-demand target refreshes; those snapshots are complete for their
+  // scope and are allowed to delete stale target metadata.
   const deleted = [...knownPaths]
     .filter((path) => !currentPaths.has(path))
-    .filter((path) => !isUnderTarget(path))
+    .filter((path) => scope ? isSameOrUnder(path, scope) : !isTargetPath(path))
     .sort((a, b) => b.length - a.length);
   for (const path of deleted) {
     await deleteIfPresent(workspace, path);
   }
 
-  state.knownPaths = new Set(currentPaths);
+  state.knownPaths = mergeKnownPaths(knownPaths, currentPaths, scope);
   return state;
 }
 
@@ -199,7 +233,8 @@ function longestPrefixSuffix(text, prefix) {
 }
 
 function isWorkspacePath(path) {
-  return path === WORKSPACE_ROOT || path.startsWith(`${WORKSPACE_ROOT}/`);
+  return typeof path === 'string' &&
+    (path === WORKSPACE_ROOT || path.startsWith(`${WORKSPACE_ROOT}/`));
 }
 
 function decodeBase64Text(input) {
@@ -256,11 +291,48 @@ async function ensureMetadataFile(workspace, file) {
 }
 
 function isTargetPath(path) {
-  return path.startsWith(`${WORKSPACE_ROOT}/target/`);
+  return typeof path === 'string' && path.startsWith(`${WORKSPACE_TARGET_ROOT}/`);
 }
 
 function isUnderTarget(path) {
-  return path === `${WORKSPACE_ROOT}/target` || isTargetPath(path);
+  return path === WORKSPACE_TARGET_ROOT || isTargetPath(path);
+}
+
+function isSameOrUnder(path, root) {
+  return path === root || path.startsWith(`${root}/`);
+}
+
+function mergeKnownPaths(knownPaths, currentPaths, scope) {
+  const next = new Set();
+  if (scope) {
+    for (const path of knownPaths) {
+      if (!isSameOrUnder(path, scope)) next.add(path);
+    }
+  } else if (currentPaths.has(WORKSPACE_TARGET_ROOT)) {
+    for (const path of knownPaths) {
+      if (isTargetPath(path)) next.add(path);
+    }
+  }
+  for (const path of currentPaths) next.add(path);
+  return next;
+}
+
+function normalizeTargetPath(path) {
+  let normalized = normalizeWorkspacePath(path);
+  if (!isUnderTarget(normalized)) normalized = WORKSPACE_TARGET_ROOT;
+  return normalized;
+}
+
+function normalizeWorkspacePath(path) {
+  if (!path) return WORKSPACE_ROOT;
+  let s = String(path);
+  if (!s.startsWith('/')) s = '/' + s;
+  while (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1);
+  return s.replace(/\/{2,}/g, '/');
+}
+
+function shellQuote(s) {
+  return String(s).replace(/'/g, "'\\''");
 }
 
 async function deleteIfPresent(workspace, path) {

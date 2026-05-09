@@ -37,6 +37,31 @@ const LIVE_URL = process.env.RUST_WEB_BOX_LIVE_URL;
 // than the local dev server. We let CI override.
 const BOOT_MS = parseInt(process.env.RUST_WEB_BOX_E2E_BOOT_MS || '180000', 10);
 
+async function requestWorkbenchBus(page, method, params) {
+  return await page.evaluate(async ({ method, params }) => {
+    const channel = new BroadcastChannel('rust-web-box/webvm-bus');
+    const id = Math.floor(Math.random() * 1_000_000_000);
+    try {
+      return await new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error(`bus request timed out: ${method}`)),
+          60_000,
+        );
+        channel.addEventListener('message', (ev) => {
+          const msg = ev.data;
+          if (!msg || msg.kind !== 'response' || msg.id !== id) return;
+          clearTimeout(timer);
+          if (msg.error) reject(new Error(msg.error.message));
+          else resolve(msg.result);
+        });
+        channel.postMessage({ id, kind: 'request', method, params });
+      });
+    } finally {
+      channel.close();
+    }
+  }, { method, params });
+}
+
 test('live e2e: the deployed Pages site boots and runs `tree --version`', async (t) => {
   if (!LIVE_URL) {
     if (E2E_REQUIRED) {
@@ -80,6 +105,32 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
     assert.equal(cargoRun.status?.status ?? cargoRun.status, 0, `cargo run exit: ${JSON.stringify(cargoRun.status)}\noutput:\n${cargoRun.output}`);
     assert.match(cargoRun.output, /Hello from rust-web-box!/, `cargo run output:\n${cargoRun.output}`);
     assert.match(cargoRun.output, /Finished/, `cargo run did not print Finished:\n${cargoRun.output}`);
+
+    const targetRoot = await requestWorkbenchBus(page, 'fs.readDir', {
+      path: '/workspace/target',
+    });
+    assert.ok(targetRoot.some(([name]) => name === 'debug'), JSON.stringify(targetRoot));
+    assert.ok(targetRoot.some(([name]) => name === 'release'), JSON.stringify(targetRoot));
+    const targetDebug = await requestWorkbenchBus(page, 'fs.readDir', {
+      path: '/workspace/target/debug',
+    });
+    assert.ok(targetDebug.length > 0, 'expected target/debug metadata after on-demand refresh');
+
+    const editedSource = [
+      'fn main() {',
+      '    println!("saved through live webvm fs bus");',
+      '}',
+      '',
+    ].join('\n');
+    await requestWorkbenchBus(page, 'fs.writeFile', {
+      path: '/workspace/src/main.rs',
+      data: Array.from(new TextEncoder().encode(editedSource)),
+      options: { create: false, overwrite: true },
+    });
+    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run --release 2>&1', { timeoutMs: 120_000 });
+    assert.equal(rerunEdited.timedOut, false, `edited cargo run timed out: ${rerunEdited.output}`);
+    assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);
+    assert.match(rerunEdited.output, /saved through live webvm fs bus/, `edited cargo run output:\n${rerunEdited.output}`);
 
     const fatal = errors.filter((e) => /CheerpException|Program exited with code 71/.test(e));
     assert.deepEqual(fatal, [], `unexpected fatal CheerpX errors on live site:\n${fatal.join('\n')}`);

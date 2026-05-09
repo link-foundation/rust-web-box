@@ -68,3 +68,40 @@ test('extension pty: auto-terminal creation guards against duplicates', async ()
   assert.match(src, /name === 'WebVM bash'/);
 });
 
+test('extension pty: terminal Enter saves dirty editors before forwarding input', async () => {
+  // Issue #29: when the user edits src/main.rs and immediately types
+  // `cargo run` in the WebVM terminal, the pty must push dirty VS Code
+  // documents through the FileSystemProvider before sending the newline
+  // that lets bash execute the command.
+  const src = await readExtension();
+  const startIdx = src.indexOf('function makePseudoterminal');
+  const endIdx = src.indexOf('// --- Cargo tasks', startIdx);
+  assert.ok(startIdx >= 0 && endIdx > startIdx, 'makePseudoterminal block not found');
+  const fn = src.slice(startIdx, endIdx);
+  const helperStart = fn.indexOf('function saveBeforeCommandInput');
+  const helperEnd = fn.indexOf('async open', helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'saveBeforeCommandInput block not found');
+  const helper = fn.slice(helperStart, helperEnd);
+  const saveIdx = helper.indexOf('saveDirtyWorkspaceFiles(vscode');
+  const sendIdx = helper.indexOf('sendInput(data)');
+  assert.ok(saveIdx >= 0, 'terminal pty must call saveDirtyWorkspaceFiles');
+  assert.ok(sendIdx >= 0, 'terminal pty must still forward proc.write');
+  assert.ok(
+    saveIdx < sendIdx,
+    'dirty files must be saved before terminal input is forwarded to bash',
+  );
+  assert.match(fn, /inputSubmitsCommand\(data\)/);
+});
+
+test('extension pty: cargo tasks save dirty editors before running cargo', async () => {
+  const src = await readExtension();
+  const startIdx = src.indexOf('function makeCargoPty');
+  const endIdx = src.indexOf('function makeCargoTasks', startIdx);
+  assert.ok(startIdx >= 0 && endIdx > startIdx, 'makeCargoPty block not found');
+  const fn = src.slice(startIdx, endIdx);
+  const saveIdx = fn.indexOf('saveDirtyWorkspaceFiles(vscode');
+  const writeIdx = fn.indexOf('const line = `cd ${cwd} && cargo ${command}');
+  assert.ok(saveIdx >= 0, 'cargo pty must call saveDirtyWorkspaceFiles');
+  assert.ok(writeIdx >= 0, 'cargo pty command write not found');
+  assert.ok(saveIdx < writeIdx, 'dirty files must be saved before cargo command is written');
+});

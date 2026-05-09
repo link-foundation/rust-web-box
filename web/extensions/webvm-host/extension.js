@@ -80,6 +80,21 @@ function createBusClient(channel, { timeoutMs = 30000 } = {}) {
 
 const textEncoder = new TextEncoder();
 
+async function saveDirtyWorkspaceFiles(vscode, notify) {
+  try {
+    const saved = await vscode.workspace.saveAll(false);
+    if (!saved) {
+      notify?.('Some editor changes could not be saved before running the terminal command.');
+    }
+  } catch (err) {
+    notify?.(`Could not save editor changes before running the terminal command: ${err?.message ?? err}`);
+  }
+}
+
+function inputSubmitsCommand(data) {
+  return /[\r\n]/.test(String(data ?? ''));
+}
+
 function toUri(vscode, path) {
   return vscode.Uri.parse(`webvm:${path.startsWith('/') ? path : '/' + path}`);
 }
@@ -182,6 +197,7 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
   let exitDispose = null;
   let dimsPending = null;
   let opened = false;
+  let inputTail = Promise.resolve();
 
   // Issue #27: dispose any pre-existing bus subscriptions before attaching
   // new ones. VS Code Web can call `open()` more than once on the same
@@ -206,6 +222,21 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
 
   function status(msg) {
     writeEmitter.fire(`${DIM}[rust-web-box]${RESET} ${msg}\r\n`);
+  }
+
+  function sendInput(data) {
+    return bus
+      .request('proc.write', {
+        bytes: Array.from(textEncoder.encode(data)),
+      })
+      .catch(() => {});
+  }
+
+  function saveBeforeCommandInput(data) {
+    inputTail = inputTail.catch(() => {}).then(async () => {
+      await saveDirtyWorkspaceFiles(vscode, (msg) => status(msg));
+      await sendInput(data);
+    });
   }
 
   return {
@@ -324,11 +355,11 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
 
     handleInput(data) {
       if (!opened || sub == null) return;
-      bus
-        .request('proc.write', {
-          bytes: Array.from(textEncoder.encode(data)),
-        })
-        .catch(() => {});
+      if (inputSubmitsCommand(data)) {
+        saveBeforeCommandInput(data);
+        return;
+      }
+      sendInput(data);
     },
 
     setDimensions(dim) {
@@ -373,6 +404,9 @@ function makeCargoPty(vscode, bus, { vmReadyPromise }, command, args = [], cwd =
         closeEmitter.fire(1);
         return;
       }
+      await saveDirtyWorkspaceFiles(vscode, (msg) => {
+        writeEmitter.fire(`[rust-web-box] ${msg}\r\n`);
+      });
       stdoutDispose = bus.on('proc.stdout', (p) => {
         if (p?.chunk) writeEmitter.fire(p.chunk);
       });

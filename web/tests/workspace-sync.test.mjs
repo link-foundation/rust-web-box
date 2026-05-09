@@ -5,6 +5,7 @@ import {
   WORKSPACE_SYNC_OSC_END,
   WORKSPACE_SYNC_OSC_PREFIX,
   applyWorkspaceSyncSnapshot,
+  buildGuestTargetSnapshotScript,
   buildGuestSyncProfileBlock,
   createWorkspaceSyncFrameParser,
   decodeWorkspaceSyncPayload,
@@ -80,12 +81,14 @@ test('workspace-sync: parser strips OSC frames and handles split chunks', () => 
 
 test('workspace-sync: decodes snapshot payloads', () => {
   const snapshot = decodeWorkspaceSyncPayload(payload([
+    `P\t${b64('/workspace/target')}`,
     `D\t${b64('/workspace/src')}`,
     `F\t${b64('/workspace/src/main.rs')}\t${b64('hello\n')}`,
     `S\t${b64('/workspace/target/debug/hello')}\t12345`,
     `F\t${b64('/tmp/outside')}\t${b64('ignored\n')}`,
   ]));
 
+  assert.equal(snapshot.scope, '/workspace/target');
   assert.deepEqual(snapshot.dirs, ['/workspace/src']);
   assert.deepEqual(snapshot.files.map((f) => [f.path, dec.decode(f.bytes)]), [
     ['/workspace/src/main.rs', 'hello\n'],
@@ -257,4 +260,87 @@ test('workspace-sync: target paths are not deleted from JS workspace by sweep', 
   await applyWorkspaceSyncSnapshot(workspace, snapshot, state);
   assert.ok(workspace.entries.get('/workspace/target/debug/hello'));
   assert.ok(workspace.entries.get('/workspace/target/debug'));
+});
+
+test('workspace-sync: scoped target snapshots prune only target metadata', async () => {
+  const workspace = makeWorkspace({
+    '/workspace/src/main.rs': 'still here\n',
+  });
+  workspace.entries.set('/workspace/target', { type: 2 });
+  workspace.entries.set('/workspace/target/debug', { type: 2 });
+  workspace.entries.set('/workspace/target/debug/old', {
+    type: 1,
+    metadataOnly: true,
+    size: 11,
+  });
+  const state = {
+    knownPaths: new Set([
+      '/workspace/src',
+      '/workspace/src/main.rs',
+      '/workspace/target',
+      '/workspace/target/debug',
+      '/workspace/target/debug/old',
+    ]),
+  };
+  const snapshot = decodeWorkspaceSyncPayload(payload([
+    `P\t${b64('/workspace/target')}`,
+    `D\t${b64('/workspace/target')}`,
+    `D\t${b64('/workspace/target/release')}`,
+    `S\t${b64('/workspace/target/release/hello')}\t8128`,
+  ]));
+
+  await applyWorkspaceSyncSnapshot(workspace, snapshot, state);
+
+  assert.equal(dec.decode(await workspace.readFile('/workspace/src/main.rs')), 'still here\n');
+  assert.equal(workspace.entries.has('/workspace/target/debug/old'), false);
+  assert.deepEqual(workspace.entries.get('/workspace/target/release'), { type: 2 });
+  assert.deepEqual(workspace.entries.get('/workspace/target/release/hello'), {
+    type: 1,
+    metadataOnly: true,
+    size: 8128,
+  });
+  assert.deepEqual([...state.knownPaths].sort(), [
+    '/workspace/src',
+    '/workspace/src/main.rs',
+    '/workspace/target',
+    '/workspace/target/release',
+    '/workspace/target/release/hello',
+  ]);
+});
+
+test('workspace-sync: scoped target snapshot removes target when guest target is gone', async () => {
+  const workspace = makeWorkspace();
+  workspace.entries.set('/workspace/target', { type: 2 });
+  workspace.entries.set('/workspace/target/debug', { type: 2 });
+  workspace.entries.set('/workspace/target/debug/hello', {
+    type: 1,
+    metadataOnly: true,
+    size: 1234,
+  });
+  const state = {
+    knownPaths: new Set([
+      '/workspace/target',
+      '/workspace/target/debug',
+      '/workspace/target/debug/hello',
+    ]),
+  };
+  const snapshot = decodeWorkspaceSyncPayload(payload([
+    `P\t${b64('/workspace/target')}`,
+  ]));
+
+  await applyWorkspaceSyncSnapshot(workspace, snapshot, state);
+
+  assert.equal(workspace.entries.has('/workspace/target'), false);
+  assert.equal(workspace.entries.has('/workspace/target/debug'), false);
+  assert.equal(workspace.entries.has('/workspace/target/debug/hello'), false);
+  assert.deepEqual([...state.knownPaths], []);
+});
+
+test('workspace-sync: target refresh script emits scoped metadata-only sync frames', () => {
+  const script = buildGuestTargetSnapshotScript('/workspace/target/debug');
+  assert.match(script, /root='\/workspace\/target\/debug'/);
+  assert.match(script, /printf 'P\\t%s\\n'/);
+  assert.match(script, /find "\$root" -print/);
+  assert.match(script, /printf 'S\\t%s\\t%s\\n'/);
+  assert.doesNotMatch(script, /base64 < "\$path"/);
 });

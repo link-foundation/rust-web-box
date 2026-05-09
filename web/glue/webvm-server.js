@@ -33,6 +33,7 @@ import { attachConsole } from './cheerpx-bridge.js';
 import { createLfToCrlfNormaliser } from './terminal-stream.js';
 import {
   applyWorkspaceSyncSnapshot,
+  buildGuestTargetSnapshotScript,
   buildGuestSyncProfileBlock,
   createWorkspaceSyncFrameParser,
   decodeWorkspaceSyncPayload,
@@ -234,6 +235,7 @@ export function fullServerMethods({
   runtime,
   runGuestScript,
   primeGuestWorkspace,
+  refreshGuestTarget,
   spawn,
   killSub,
   skipPrime = false,
@@ -310,7 +312,20 @@ export function fullServerMethods({
       await workspace.writeFile(path, buf, options);
     },
     'fs.stat': async ({ path }) => await workspace.stat(path),
-    'fs.readDir': async ({ path }) => await workspace.readDirectory(path),
+    'fs.readDir': async ({ path }) => {
+      if (isTargetTreePath(path) && typeof refreshGuestTarget === 'function') {
+        try {
+          await refreshGuestTarget(path);
+        } catch (err) {
+          runtime.guestSyncError = err?.message ?? String(err);
+          // Keep Explorer usable with the last cached target metadata if
+          // CheerpX is temporarily busy or fails during an on-demand scan.
+          // eslint-disable-next-line no-console
+          console.warn('[rust-web-box] target refresh failed:', err);
+        }
+      }
+      return await workspace.readDirectory(path);
+    },
     'fs.delete': async ({ path, recursive }) => {
       const stat = await assertDeletable(path, { recursive });
       if (!stat) return;
@@ -351,6 +366,11 @@ export function fullServerMethods({
       await primeGuestWorkspace();
     },
   };
+}
+
+function isTargetTreePath(path) {
+  const p = String(path ?? '').replace(/\/+$/, '');
+  return p === '/workspace/target' || p.startsWith('/workspace/target/');
 }
 
 /**
@@ -408,6 +428,19 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
       runtime.guestSyncError = err?.message ?? String(err);
       logger?.warn?.('[rust-web-box] guest-to-workspace sync failed:', err);
     });
+  }
+
+  let targetRefreshTail = Promise.resolve();
+  function refreshGuestTarget(path) {
+    targetRefreshTail = targetRefreshTail.catch(() => {}).then(async () => {
+      await runGuestScript(buildGuestTargetSnapshotScript(path), {
+        name: 'workspace-target-refresh',
+        cwd: '/workspace',
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await guestSyncTail.catch(() => {});
+    });
+    return targetRefreshTail;
   }
   const syncFrameParser = createWorkspaceSyncFrameParser({
     onFrame: handleGuestSyncFrame,
@@ -523,6 +556,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     runtime,
     runGuestScript,
     primeGuestWorkspace,
+    refreshGuestTarget,
     spawn,
     killSub,
     skipPrime,
