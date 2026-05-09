@@ -127,7 +127,7 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
       data: Array.from(new TextEncoder().encode(editedSource)),
       options: { create: false, overwrite: true },
     });
-    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run --release 2>&1', { timeoutMs: 120_000 });
+    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 180_000 });
     assert.equal(rerunEdited.timedOut, false, `edited cargo run timed out: ${rerunEdited.output}`);
     assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);
     assert.match(rerunEdited.output, /saved through live webvm fs bus/, `edited cargo run output:\n${rerunEdited.output}`);

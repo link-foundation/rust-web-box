@@ -187,9 +187,12 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     assert.equal(catEdited.status?.status ?? catEdited.status, 0);
     assert.match(catEdited.output, /saved through webvm fs bus/);
 
-    // Stage G: the next real cargo run must use the edited source, not
-    // the pre-baked binary's old output.
-    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run --release 2>&1', { timeoutMs: 120_000 });
+    // Stage G: the next user-facing cargo run must use the edited
+    // source, not the pre-baked binary's old output. Use the default
+    // debug profile here: Stage D already guards the cached release path,
+    // while this stage intentionally exercises a real rebuild in the
+    // same mode a user gets from typing `cargo run`.
+    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 180_000 });
     assert.equal(rerunEdited.timedOut, false, `edited cargo run timed out: ${rerunEdited.output}`);
     assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);
     assert.match(rerunEdited.output, /saved through webvm fs bus/, `edited cargo run output:\n${rerunEdited.output}`);

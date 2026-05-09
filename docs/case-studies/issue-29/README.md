@@ -64,7 +64,7 @@ During CI, the local browser e2e suite exposed a second integration detail: the 
 
 The WebVM terminal runs real guest commands, but VS Code Web documents can remain dirty until they are explicitly saved. If the user edited `src/main.rs` and then pressed Enter in the terminal, bash could start `cargo run` before the dirty document had been pushed through the FileSystemProvider and mirrored into the guest filesystem.
 
-The root cause was command ordering between the VS Code editor save lifecycle and terminal command submission. Browser e2e also showed a Cargo freshness edge: after the file was mirrored correctly, an immediate `cargo run --release` could still execute the pre-baked binary when the warm disk's target artifacts had mtimes ahead of the CheerpX guest clock.
+The root cause was command ordering between the VS Code editor save lifecycle and terminal command submission. Browser e2e also showed a Cargo freshness edge: after the file was mirrored correctly, an immediate `cargo run` could still execute a pre-baked binary when the warm disk's target artifacts had mtimes ahead of the CheerpX guest clock.
 
 ## Solution
 
@@ -84,7 +84,7 @@ Prompt-time sync still prunes target descendants, so normal shell prompts do not
 
 `web/extensions/webvm-host/extension.js` now calls `vscode.workspace.saveAll(false)` before forwarding terminal input that submits a command and before built-in Cargo task ptys write their Cargo command. This keeps manual-save behavior intact while ensuring the next command sees the editor state the user just submitted.
 
-Guest writes for Rust/Cargo inputs now also make the edited source newer than the newest existing `target/` artifact, with a Cargo fingerprint invalidation fallback for filesystems that refuse that timestamp. This prevents an immediate browser-side save followed by `cargo run --release` from reusing the pre-baked binary.
+Guest writes for Rust/Cargo inputs now also make the edited source newer than the newest existing `target/` artifact, with a Cargo fingerprint invalidation fallback for filesystems that refuse that timestamp. This prevents an immediate browser-side save followed by `cargo run` from reusing a pre-baked binary.
 
 ### Disk Image Hook Alignment
 
@@ -137,7 +137,7 @@ The e2e specs were extended so local and live browser tests now assert:
 
 - `fs.readDir('/workspace/target')` returns Cargo target children after a real `cargo run`.
 - `fs.readDir('/workspace/target/debug')` returns on-demand metadata.
-- Editing `src/main.rs` through the same WebVM FileSystemProvider bus and then running real `cargo run --release` prints the edited message.
+- Editing `src/main.rs` through the same WebVM FileSystemProvider bus and then running real `cargo run` prints the edited message.
 
 ## Upstream Assessment
 

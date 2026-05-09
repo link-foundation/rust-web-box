@@ -8,4 +8,4 @@ bump: patch
 - Marked saved Rust/Cargo inputs newer than existing target artifacts, with a fingerprint invalidation fallback, so warm-disk Cargo runs rebuild after browser-side edits.
 
 ### Added
-- Regression coverage for scoped target snapshots, on-demand target directory refreshes, and edited-source `cargo run --release` e2e verification.
+- Regression coverage for scoped target snapshots, on-demand target directory refreshes, and edited-source `cargo run` e2e verification.
