@@ -1,0 +1,50 @@
+TAP version 13
+# Subtest: workspace-sync: parser strips OSC frames and handles split chunks
+ok 1 - workspace-sync: parser strips OSC frames and handles split chunks
+  ---
+  duration_ms: 1.374762
+  ...
+# Subtest: workspace-sync: decodes snapshot payloads
+ok 2 - workspace-sync: decodes snapshot payloads
+  ---
+  duration_ms: 0.543552
+  ...
+# Subtest: workspace-sync: applies creates, updates, and deletes from guest snapshots
+ok 3 - workspace-sync: applies creates, updates, and deletes from guest snapshots
+  ---
+  duration_ms: 1.959926
+  ...
+# Subtest: workspace-sync: keeps oversized guest files marked as skipped
+ok 4 - workspace-sync: keeps oversized guest files marked as skipped
+  ---
+  duration_ms: 0.266308
+  ...
+# Subtest: workspace-sync: creates metadata entries for skipped target files
+ok 5 - workspace-sync: creates metadata entries for skipped target files
+  ---
+  duration_ms: 0.439446
+  ...
+# Subtest: workspace-sync: refreshes skipped target metadata without syncing contents
+ok 6 - workspace-sync: refreshes skipped target metadata without syncing contents
+  ---
+  duration_ms: 0.222512
+  ...
+# Subtest: workspace-sync: bash profile hook emits hidden sync frames after prompts
+ok 7 - workspace-sync: bash profile hook emits hidden sync frames after prompts
+  ---
+  duration_ms: 0.232687
+  ...
+# Subtest: workspace-sync: target artifacts stay visible as skipped metadata
+ok 8 - workspace-sync: target artifacts stay visible as skipped metadata
+  ---
+  duration_ms: 0.098326
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 57.548419

@@ -1,94 +1,173 @@
-# Case Study: Issue #25 - version-and-commit.rs Checks Git Tags Instead of Crates.io
+# Case Study: Issue #25 - Target Folder Visibility and Natural WebVM Rebuilds
 
 ## Summary
 
-The `version-and-commit.rs` script used `git rev-parse` to check if a version tag existed, then exited early with `already_released=true` if it did. This created a permanent release pipeline failure loop when GitHub releases created tags without the crate being published to crates.io.
+Issue #25 reported a mismatch between local VS Code and rust-web-box:
+local VS Code showed Cargo's `target/` directory after a build, while the
+web workbench hid it from the Explorer. The same report also called out a
+natural-workflow problem: users should edit files, run `cargo run`, and
+see Cargo behave like it does locally, without fake commands or manual
+`target` cleanup.
 
-## Timeline of Events
+The root cause for the visible mismatch was the guest-to-browser sync
+hook introduced in issue #21. It deliberately pruned
+`/workspace/target` to avoid streaming generated artifacts through the
+terminal after every prompt. That protected performance, but it made the
+VS Code Explorer an incomplete view of the VM workspace.
 
-| Date | Event | Detail |
-|------|-------|--------|
-| Prior | browser-commander releases | GitHub releases v0.1.1 through v0.8.0 created tags, but crates.io publishing failed for some |
-| Prior | browser-commander#47 | Pipeline stuck at v0.4.0 on crates.io, GitHub had releases up to v0.8.0 |
-| 2026-01-17 | Issue #29 (browser-commander) | First discovery of git tag vs crates.io divergence |
-| 2026-01-17 | check-release-needed.rs fix | Script was updated to check crates.io API instead of git tags |
-| 2026-04-13 | Issue #25 (this template) | Bug reported: version-and-commit.rs still uses git tags |
+The fix keeps the performance protection while syncing the tree honestly:
+the guest hook now traverses `/workspace/target`, emits target files as
+skipped metadata entries with their sizes, and the IndexedDB workspace
+stores those entries as metadata-only files. VS Code can display the
+Cargo build tree, while rust-web-box still avoids copying large build
+artifacts into the browser workspace or priming fake target files back
+into the VM.
 
-## Root Cause Analysis
+## Issue Data
 
-### The Bug
+- Issue: https://github.com/link-foundation/rust-web-box/issues/25
+- PR: https://github.com/link-foundation/rust-web-box/pull/26
+- Branch: `issue-25-891aa8cfdd35`
+- Opened: 2026-05-08 21:10:55 UTC
+- Reporter: `konard`
 
-In `version-and-commit.rs` (lines 152-154), the `check_tag_exists()` function used:
+| File | Purpose |
+| --- | --- |
+| `evidence/issue-25.json` | Full issue payload captured with `gh issue view`. |
+| `evidence/issue-25-comments.json` | Issue comments. Empty at time of capture. |
+| `evidence/pr-26.json` | Prepared PR metadata before implementation. |
+| `evidence/pr-26-review-comments.json` | Inline PR review comments. Empty at time of capture. |
+| `evidence/pr-26-conversation-comments.json` | PR conversation comments. Empty at time of capture. |
+| `evidence/pr-26-reviews.json` | PR reviews. Empty at time of capture. |
+| `screenshots/local-target-visible.png` | User-provided local VS Code reference: `target/` is visible. |
+| `screenshots/rust-web-box-target-hidden.png` | User-provided rust-web-box failure: `target/` is absent from Explorer. |
 
-```rust
-fn check_tag_exists(version: &str) -> bool {
-    exec_check("git", &["rev-parse", &format!("v{}", version)])
-}
+## Requirements From The Issue
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Do not hide `target/` in the VS Code Explorer | Implemented | `workspace-sync: target artifacts stay visible as skipped metadata` |
+| Preserve natural `cargo run` behavior, not fake output | Preserved | Existing `cargo.runHello` still only writes a real terminal command; no mocked cargo output was added |
+| Sync the file tree as it exists in WebVM | Implemented for tree metadata | Guest sync emits directories and skipped target file metadata |
+| Avoid turning target sync into a browser performance problem | Implemented | Target files remain metadata-only and are excluded from `workspace.snapshot()` |
+| Add reproducing tests before the fix | Implemented | `verification/focused-before.log` failed on the old `/workspace/target -prune` hook |
+| Add investigation notes and evidence under this case study | Implemented | This directory contains payloads, screenshots, test logs, and research notes |
+| Investigate Cargo rebuild/cache expectations | Implemented | See `online-research.md` and issue #17 references |
+
+## Root Cause
+
+The hidden folder was caused by this generated shell sync hook:
+
+```sh
+find /workspace -path /workspace/target -prune -o -path /workspace/.git -prune -o -print
 ```
 
-This checked for git tags as a proxy for "already released", but git tags are not the correct source of truth for Rust package publication.
+The browser-side parser treated skipped files as known paths only; it did
+not expose them through the FileSystemProvider. In practice this meant
+`target/` existed in the CheerpX guest and Cargo could use it, but the
+VS Code Explorer had no corresponding tree entries.
 
-### Why Git Tags Are Unreliable
-
-1. **GitHub releases create tags** - Creating a GitHub release via the UI or API automatically creates a git tag, even if `cargo publish` was never called
-2. **Failed publishes** - If `cargo publish` fails (auth issues, network errors), the tag may already exist from a prior step
-3. **Manual tag creation** - Developers or automation can create tags without publishing
-4. **Tag prefix mismatches** - Multi-language repos may use different tag prefixes (e.g., `rust_v1.0.0` vs `v1.0.0`)
-
-### The Failure Loop
-
-```
-1. version-and-commit.rs bumps version 0.4.0 → 0.4.1
-2. Checks tag v0.4.1 → EXISTS (from a prior GitHub-only release)
-3. Exits early WITHOUT updating Cargo.toml
-4. cargo publish tries 0.4.0 → "already exists" on crates.io
-5. Pipeline is permanently stuck — every run hits the same tag check
-```
-
-### Why check-release-needed.rs Was Already Correct
-
-The `check-release-needed.rs` script (added during issue #21 investigation) already used the correct approach — querying the crates.io API:
-
-```rust
-fn check_version_on_crates_io(crate_name: &str, version: &str) -> bool {
-    let url = format!("https://crates.io/api/v1/crates/{}/{}", crate_name, version);
-    // HTTP 200 = published, 404 = not published
-}
-```
-
-The inconsistency arose because `version-and-commit.rs` was not updated at the same time.
+The original prune had a reasonable motivation. Cargo's `target/`
+contains binaries, dep-info files, fingerprints, incremental artifacts,
+and other generated data. Streaming all target file bodies through an OSC
+terminal frame after every prompt would be slow and would bloat the
+IndexedDB workspace. The implementation needed a middle ground: show the
+tree without copying generated contents.
 
 ## Solution
 
-### Changes Made
+- `web/glue/workspace-sync.js`
+  - Stops pruning `/workspace/target`.
+  - Keeps pruning `/workspace/.git`.
+  - Emits target files as `S\t<base64 path>\t<size>` skipped metadata.
+  - Parses skipped-file metadata into `snapshot.skippedFiles`.
+  - Creates or refreshes metadata-only workspace files for target
+    artifacts while preserving the previous behavior for non-target
+    oversized files.
 
-1. **Replaced `check_tag_exists()` with `check_version_on_crates_io()`** in `version-and-commit.rs`
-   - Added `ureq`, `serde`, and `serde_json` dependencies
-   - Added `get_crate_name()` helper to read crate name from Cargo.toml
-   - Queries `https://crates.io/api/v1/crates/{crate_name}/{version}` API endpoint
-   - Returns `true` only if crates.io confirms the version exists
+- `web/glue/workspace-fs.js`
+  - Adds `writeMetadataFile(path, { size })`.
+  - Shows metadata-only files in `stat()` and `readDirectory()`.
+  - Rejects `readFile()` for metadata-only entries with an `Unavailable`
+    error instead of returning empty or fake contents.
+  - Excludes metadata-only files from `snapshot()` so workspace priming
+    does not write placeholder target artifacts back into WebVM.
 
-2. **Added `--tag-prefix` support** to `version-and-commit.rs`
-   - Configurable tag prefix (default `"v"`) for multi-language repos
-   - Aligns with `create-github-release.rs` which already supports `--tag-prefix`
+- `web/disk/Dockerfile.disk`
+  - Updates the baked `/root/.bash_profile` sync hook to match the page
+    generated hook, so deployed warm disks and local page preparation use
+    the same protocol.
 
-3. **Added test script** (`experiments/test-crates-io-check.rs`)
-   - Validates the crates.io API check against known published and unpublished versions
+- `web/tests/workspace-sync.test.mjs`
+  - Reproduces the old prune bug.
+  - Verifies skipped target metadata decoding and application.
+  - Verifies metadata refresh when a target artifact changes size.
+  - Preserves the oversized-file behavior outside `target/`.
 
-### Design Decisions
+- `web/tests/e2e/local-pages-e2e.test.mjs`
+  - Adds the missing assertion that `/workspace/target` appears in the
+    warm-disk tree when the browser e2e suite is able to run.
 
-- **On error, assume not published** - If the crates.io API is unreachable, the script assumes the version is not yet published. This is safer than incorrectly skipping a release.
-- **Consistent with check-release-needed.rs** - Both scripts now use the same approach, reducing confusion and maintenance burden.
+## Why Metadata-Only Target Files
 
-## Lessons Learned
+Cargo's build cache documentation confirms that `target/` is Cargo's
+normal output location for final artifacts and build/intermediate data.
+It also contains incremental compiler cache directories used to speed up
+subsequent builds. Those files belong in the tree view, but copying their
+contents into the JS workspace is not necessary for the Explorer use
+case and would make prompt-time sync much heavier.
 
-1. **Use the authoritative source of truth** - For Rust packages, crates.io is the source of truth, not git tags
-2. **Keep related scripts consistent** - When fixing a pattern in one script, audit all scripts for the same anti-pattern
-3. **Test with real API calls** - The experiment script validates the fix against actual crates.io data
-4. **Multi-language repos need tag prefixes** - Hard-coded `v` prefix breaks in monorepos with multiple languages
+The metadata-only design keeps these invariants:
 
-## Related Issues
+- `target/` is visible and deletions are reflected.
+- File sizes update for target artifacts.
+- Non-target oversized files still keep their existing JS-side content
+  instead of being replaced by placeholders.
+- VS Code saves still sync real source files into WebVM before reporting
+  success.
+- Workspace priming never sends metadata-only artifacts back into the
+  guest as fake files.
 
-- [browser-commander#47](https://github.com/link-foundation/browser-commander/issues/47) - Original discovery of the stuck pipeline
-- [browser-commander#29](https://github.com/link-foundation/browser-commander/issues/29) - First fix for git tag vs crates.io check
-- [Issue #21](../issue-21/) - Previous case study covering the same category of CI/CD issues
+## Verification
+
+| Log | Result |
+| --- | --- |
+| `verification/focused-before.log` | Focused test failed before the fix because the generated hook still pruned `/workspace/target`. |
+| `verification/focused-after.log` | 8 focused workspace-sync tests passed. |
+| `verification/node-web-tests.log` | 179 web tests passed, 3 browser e2e tests skipped because local Playwright/browser-commander or live URL was not configured. |
+| `verification/bash-sync-hook-syntax.log` | Generated bash sync hook passed `bash -n`. |
+| `verification/git-diff-check.log` | `git diff --check` passed. |
+| `verification/cargo-fmt-check.log` | `cargo fmt --check` passed. |
+| `verification/cargo-clippy.log` | `cargo clippy --all-targets --all-features` passed. |
+| `verification/cargo-test.log` | `cargo test --all-features --verbose` passed. |
+| `verification/cargo-doc-test.log` | `cargo test --doc --verbose` passed. |
+| `verification/check-file-size.log` | `rust-script scripts/check-file-size.rs` passed. |
+| `verification/cargo-build-release.log` | `cargo build --release --verbose` passed. |
+| `verification/cargo-package-list.log` | `cargo package --list --allow-dirty` passed. |
+| `verification/check-changelog-fragment.log` | `rust-script scripts/check-changelog-fragment.rs` passed with PR-like env vars. |
+| `verification/check-version-modification.log` | `rust-script scripts/check-version-modification.rs` passed with PR-like env vars. |
+
+## Remaining Constraints
+
+- Target file contents are intentionally not mirrored into IndexedDB.
+  Opening a metadata-only target binary from the Explorer returns an
+  `Unavailable` error rather than fake content.
+- Guest-to-browser sync still runs at interactive prompt boundaries. A
+  long-running command's generated files become visible after the command
+  returns to a prompt.
+- `.git` remains pruned from prompt sync. VS Code itself also hides some
+  folders such as `.git` by default.
+- No upstream issue was filed for this case. The confirmed defect was in
+  this repository's generated sync hook and workspace store behavior.
+  The broader CheerpX OverlayDevice/cargo build performance concern is
+  the same category already documented in issue #17.
+
+## Related Case Studies
+
+- `docs/case-studies/issue-21/README.md`: introduced two-way workspace
+  sync and explains why the original target prune was added.
+- `docs/case-studies/issue-17/README.md`: covers the `cargo run`
+  warm-disk and CheerpX OverlayDevice mitigation work.
+- `online-research.md`: summarizes the official docs consulted for
+  Cargo build cache behavior, VS Code Explorer hiding semantics, and
+  CheerpX filesystem devices.

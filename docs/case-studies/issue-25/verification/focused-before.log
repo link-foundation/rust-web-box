@@ -1,0 +1,126 @@
+TAP version 13
+# Subtest: workspace-sync: parser strips OSC frames and handles split chunks
+ok 1 - workspace-sync: parser strips OSC frames and handles split chunks
+  ---
+  duration_ms: 1.416585
+  ...
+# Subtest: workspace-sync: decodes snapshot payloads
+ok 2 - workspace-sync: decodes snapshot payloads
+  ---
+  duration_ms: 0.427288
+  ...
+# Subtest: workspace-sync: applies creates, updates, and deletes from guest snapshots
+ok 3 - workspace-sync: applies creates, updates, and deletes from guest snapshots
+  ---
+  duration_ms: 2.221136
+  ...
+# Subtest: workspace-sync: keeps oversized guest files marked as skipped
+ok 4 - workspace-sync: keeps oversized guest files marked as skipped
+  ---
+  duration_ms: 0.205407
+  ...
+# Subtest: workspace-sync: bash profile hook emits hidden sync frames after prompts
+ok 5 - workspace-sync: bash profile hook emits hidden sync frames after prompts
+  ---
+  duration_ms: 0.213068
+  ...
+# Subtest: workspace-sync: target artifacts stay visible as skipped metadata
+not ok 6 - workspace-sync: target artifacts stay visible as skipped metadata
+  ---
+  duration_ms: 1.28578
+  location: '/tmp/gh-issue-solver-1778301174814/web/tests/workspace-sync.test.mjs:151:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input was expected to not match the regular expression /\/workspace\/target -prune/. Input:
+
+    '# rust-web-box: mirror small terminal-side workspace edits back to VS Code.\n' +
+      'export RWB_SYNC_MAX_FILE_BYTES="${RWB_SYNC_MAX_FILE_BYTES:-262144}"\n' +
+      '__rwb_sync_from_guest() {\n' +
+      '  [ "${RWB_SYNC_DISABLE:-0}" = "1" ] && return 0\n' +
+      '  [ -d /workspace ] || return 0\n' +
+      '  {\n' +
+      "    printf 'RWB_SYNC_V1\\n'\n" +
+      '    find /workspace -path /workspace/target -prune -o -path /workspace/.git -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do\n' +
+      '      [ "$path" = /workspace ] && continue\n' +
+      '      if [ -d "$path" ]; then\n' +
+      `        printf 'D\\t%s\\n' "$(printf '%s' "$path" | base64 | tr -d '\\n')"\n` +
+      '      elif [ -f "$path" ]; then\n' +
+      `        size=$(wc -c < "$path" 2>/dev/null | tr -d ' ')\n` +
+      '        if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then\n' +
+      `          printf 'F\\t%s\\t' "$(printf '%s' "$path" | base64 | tr -d '\\n')"\n` +
+      `          base64 < "$path" | tr -d '\\n'\n` +
+      "          printf '\\n'\n" +
+      '        else\n' +
+      `          printf 'S\\t%s\\n' "$(printf '%s' "$path" | base64 | tr -d '\\n')"\n` +
+      '        fi\n' +
+      '      fi\n' +
+      '    done\n' +
+      '  } | {\n' +
+      "    printf '\\033]777;rust-web-box-sync;'\n" +
+      "    base64 | tr -d '\\n'\n" +
+      "    printf '\\007'\n" +
+      '  }\n' +
+      '}\n' +
+      'if [ -n "${PROMPT_COMMAND:-}" ]; then\n' +
+      '  PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}"\n' +
+      'else\n' +
+      '  PROMPT_COMMAND="__rwb_sync_from_guest"\n' +
+      'fi\n'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    # rust-web-box: mirror small terminal-side workspace edits back to VS Code.
+    export RWB_SYNC_MAX_FILE_BYTES="${RWB_SYNC_MAX_FILE_BYTES:-262144}"
+    __rwb_sync_from_guest() {
+      [ "${RWB_SYNC_DISABLE:-0}" = "1" ] && return 0
+      [ -d /workspace ] || return 0
+      {
+        printf 'RWB_SYNC_V1\n'
+        find /workspace -path /workspace/target -prune -o -path /workspace/.git -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do
+          [ "$path" = /workspace ] && continue
+          if [ -d "$path" ]; then
+            printf 'D\t%s\n' "$(printf '%s' "$path" | base64 | tr -d '\n')"
+          elif [ -f "$path" ]; then
+            size=$(wc -c < "$path" 2>/dev/null | tr -d ' ')
+            if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then
+              printf 'F\t%s\t' "$(printf '%s' "$path" | base64 | tr -d '\n')"
+              base64 < "$path" | tr -d '\n'
+              printf '\n'
+            else
+              printf 'S\t%s\n' "$(printf '%s' "$path" | base64 | tr -d '\n')"
+            fi
+          fi
+        done
+      } | {
+        printf '\033]777;rust-web-box-sync;'
+        base64 | tr -d '\n'
+        printf '\007'
+      }
+    }
+    if [ -n "${PROMPT_COMMAND:-}" ]; then
+      PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}"
+    else
+      PROMPT_COMMAND="__rwb_sync_from_guest"
+    fi
+
+  operator: 'doesNotMatch'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1778301174814/web/tests/workspace-sync.test.mjs:153:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 5
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 59.618599
