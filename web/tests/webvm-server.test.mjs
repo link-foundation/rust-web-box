@@ -430,14 +430,16 @@ test('webvm-server: target readDirectory refreshes guest metadata on demand', as
   const { cx } = makeFakeCx({
     onRun: async ({ cmd, args, state }) => {
       if (cmd === '/bin/sh' && String(args?.[0] ?? '').includes('workspace-target-refresh')) {
-        state.writer(enc.encode(syncFrame([
-          `P\t${b64('/workspace/target')}`,
-          `D\t${b64('/workspace/target')}`,
-          `D\t${b64('/workspace/target/debug')}`,
-          `S\t${b64('/workspace/target/debug/hello')}\t7352`,
-          `D\t${b64('/workspace/target/release')}`,
-          `S\t${b64('/workspace/target/release/hello')}\t8192`,
-        ])), 1);
+        setTimeout(() => {
+          state.writer(enc.encode(syncFrame([
+            `P\t${b64('/workspace/target')}`,
+            `D\t${b64('/workspace/target')}`,
+            `D\t${b64('/workspace/target/debug')}`,
+            `S\t${b64('/workspace/target/debug/hello')}\t7352`,
+            `D\t${b64('/workspace/target/release')}`,
+            `S\t${b64('/workspace/target/release/hello')}\t8192`,
+          ])), 1);
+        }, 0);
       }
     },
   });

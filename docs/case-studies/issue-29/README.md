@@ -70,6 +70,8 @@ The root cause was command ordering between the VS Code editor save lifecycle an
 
 `webvm-server.js` calls that refresh only when VS Code asks `fs.readDir` for `/workspace/target` or a path under it. The refresh updates cached Explorer metadata and prunes stale metadata inside only that target subtree.
 
+The server waits for the matching scoped sync frame before returning `fs.readDir`. This avoids a real browser race where CheerpX can complete the helper script before the hidden OSC frame has reached the page console handler.
+
 Prompt-time sync still prunes target descendants, so normal shell prompts do not scan the full build cache.
 
 ### Save Before Commands

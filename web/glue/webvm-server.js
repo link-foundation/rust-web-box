@@ -373,6 +373,11 @@ function isTargetTreePath(path) {
   return p === '/workspace/target' || p.startsWith('/workspace/target/');
 }
 
+function normalizeTargetTreePath(path) {
+  const p = String(path ?? '').replace(/\/{2,}/g, '/').replace(/\/+$/, '');
+  return isTargetTreePath(p) ? p : '/workspace/target';
+}
+
 /**
  * Bring the full WebVM server online: attach the console, start the
  * shell loop, prime `/workspace/`, and return the methods table.
@@ -418,27 +423,87 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   };
   const guestSyncState = { knownPaths: new Set() };
   let guestSyncTail = Promise.resolve();
+  const guestSyncWaiters = new Set();
+
+  function settleGuestSyncWaiter(waiter, err, snapshot) {
+    clearTimeout(waiter.timer);
+    guestSyncWaiters.delete(waiter);
+    if (err) waiter.reject(err);
+    else waiter.resolve(snapshot);
+  }
+
+  function settleMatchingGuestSyncWaiters(snapshot) {
+    if (!snapshot?.scope) return;
+    for (const waiter of [...guestSyncWaiters]) {
+      if (waiter.scope === snapshot.scope) {
+        settleGuestSyncWaiter(waiter, null, snapshot);
+      }
+    }
+  }
+
+  function rejectGuestSyncWaiters(err) {
+    for (const waiter of [...guestSyncWaiters]) {
+      settleGuestSyncWaiter(waiter, err);
+    }
+  }
+
+  function waitForGuestSyncScope(scope, timeoutMs = opts.targetRefreshTimeoutMs ?? 10_000) {
+    let waiter;
+    const promise = new Promise((resolve, reject) => {
+      waiter = {
+        scope,
+        resolve,
+        reject,
+        timer: setTimeout(
+          () => settleGuestSyncWaiter(
+            waiter,
+            new Error(`timed out waiting for guest sync scope ${scope}`),
+          ),
+          timeoutMs,
+        ),
+      };
+      guestSyncWaiters.add(waiter);
+    });
+    return {
+      promise,
+      cancel() {
+        if (guestSyncWaiters.has(waiter)) {
+          clearTimeout(waiter.timer);
+          guestSyncWaiters.delete(waiter);
+        }
+      },
+    };
+  }
+
   function handleGuestSyncFrame(encodedPayload) {
     guestSyncTail = guestSyncTail.catch(() => {}).then(async () => {
       const snapshot = decodeWorkspaceSyncPayload(encodedPayload);
       await applyWorkspaceSyncSnapshot(workspace, snapshot, guestSyncState);
       runtime.guestSyncError = null;
       runtime.lastGuestSyncAt = Date.now();
+      settleMatchingGuestSyncWaiters(snapshot);
     }).catch((err) => {
       runtime.guestSyncError = err?.message ?? String(err);
       logger?.warn?.('[rust-web-box] guest-to-workspace sync failed:', err);
+      rejectGuestSyncWaiters(err);
     });
   }
 
   let targetRefreshTail = Promise.resolve();
   function refreshGuestTarget(path) {
     targetRefreshTail = targetRefreshTail.catch(() => {}).then(async () => {
-      await runGuestScript(buildGuestTargetSnapshotScript(path), {
-        name: 'workspace-target-refresh',
-        cwd: '/workspace',
-      });
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await guestSyncTail.catch(() => {});
+      const scope = normalizeTargetTreePath(path);
+      const synced = waitForGuestSyncScope(scope);
+      try {
+        await runGuestScript(buildGuestTargetSnapshotScript(scope), {
+          name: 'workspace-target-refresh',
+          cwd: '/workspace',
+        });
+        await synced.promise;
+      } catch (err) {
+        synced.cancel();
+        throw err;
+      }
     });
     return targetRefreshTail;
   }
