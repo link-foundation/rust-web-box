@@ -132,6 +132,7 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     assert.equal(ls.status?.status ?? ls.status, 0);
     assert.match(ls.output, /Cargo\.toml/);
     assert.match(ls.output, /src/);
+    assert.match(ls.output, /target/);
 
     // Stage C: pre-built `cargo run` artifact. The disk image bakes a
     // release binary so we can verify the *execution* path without

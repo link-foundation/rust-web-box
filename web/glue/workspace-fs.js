@@ -424,6 +424,11 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
       err.code = 'FileNotFound';
       throw err;
     }
+    if (entry.metadataOnly) {
+      const err = new Error(`content for ${norm} is not synced into the browser workspace`);
+      err.code = 'Unavailable';
+      throw err;
+    }
     return entry.data instanceof Uint8Array
       ? entry.data
       : new Uint8Array(entry.data ?? []);
@@ -450,6 +455,28 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
       size: buf.byteLength,
       mtime: Date.now(),
       data: buf,
+    });
+    notify({ kind: existed ? 'change' : 'create', path: norm });
+  }
+
+  async function writeMetadataFile(path, { size = 0 } = {}) {
+    const norm = normalize(path);
+    const existed = await getEntry(norm);
+    const normalizedSize = Number.isFinite(size) && size >= 0 ? size : 0;
+    if (
+      existed?.type === TYPE_FILE &&
+      existed.metadataOnly &&
+      (existed.size ?? 0) === normalizedSize
+    ) {
+      return;
+    }
+    await ensureDirChain(norm);
+    await putEntry({
+      path: norm,
+      type: TYPE_FILE,
+      size: normalizedSize,
+      mtime: Date.now(),
+      metadataOnly: true,
     });
     notify({ kind: existed ? 'change' : 'create', path: norm });
   }
@@ -525,6 +552,7 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
     const out = {};
     for (const e of all) {
       if (e.type !== TYPE_FILE) continue;
+      if (e.metadataOnly) continue;
       out[e.path] = e.data instanceof Uint8Array ? e.data : new Uint8Array(e.data ?? []);
     }
     return out;
@@ -540,6 +568,7 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
     readDirectory,
     readFile,
     writeFile,
+    writeMetadataFile,
     delete: deletePath,
     rename,
     createDirectory,

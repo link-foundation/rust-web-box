@@ -38,7 +38,7 @@ function makeWorkspace(files = {}) {
         err.code = 'FileNotFound';
         throw err;
       }
-      return { type: entry.type, size: entry.data?.byteLength ?? 0, mtime: 0 };
+      return { type: entry.type, size: entry.data?.byteLength ?? entry.size ?? 0, mtime: 0 };
     },
     async readFile(path) {
       const entry = entries.get(path);
@@ -51,6 +51,9 @@ function makeWorkspace(files = {}) {
     },
     async writeFile(path, bytes) {
       entries.set(path, { type: 1, data: bytes });
+    },
+    async writeMetadataFile(path, { size = 0 } = {}) {
+      entries.set(path, { type: 1, metadataOnly: true, size });
     },
     async createDirectory(path) {
       entries.set(path, { type: 2 });
@@ -79,12 +82,16 @@ test('workspace-sync: decodes snapshot payloads', () => {
   const snapshot = decodeWorkspaceSyncPayload(payload([
     `D\t${b64('/workspace/src')}`,
     `F\t${b64('/workspace/src/main.rs')}\t${b64('hello\n')}`,
+    `S\t${b64('/workspace/target/debug/hello')}\t12345`,
     `F\t${b64('/tmp/outside')}\t${b64('ignored\n')}`,
   ]));
 
   assert.deepEqual(snapshot.dirs, ['/workspace/src']);
   assert.deepEqual(snapshot.files.map((f) => [f.path, dec.decode(f.bytes)]), [
     ['/workspace/src/main.rs', 'hello\n'],
+  ]);
+  assert.deepEqual(snapshot.skippedFiles, [
+    { path: '/workspace/target/debug/hello', size: 12345 },
   ]);
 });
 
@@ -140,11 +147,69 @@ test('workspace-sync: keeps oversized guest files marked as skipped', async () =
   assert.deepEqual([...state.knownPaths], ['/workspace/large.bin']);
 });
 
+test('workspace-sync: creates metadata entries for skipped target files', async () => {
+  const workspace = makeWorkspace();
+  const state = { knownPaths: new Set() };
+  const snapshot = decodeWorkspaceSyncPayload(payload([
+    `D\t${b64('/workspace/target')}`,
+    `D\t${b64('/workspace/target/debug')}`,
+    `S\t${b64('/workspace/target/debug/hello')}\t7352`,
+  ]));
+
+  await applyWorkspaceSyncSnapshot(workspace, snapshot, state);
+
+  assert.deepEqual(workspace.entries.get('/workspace/target'), { type: 2 });
+  assert.deepEqual(workspace.entries.get('/workspace/target/debug'), { type: 2 });
+  assert.deepEqual(workspace.entries.get('/workspace/target/debug/hello'), {
+    type: 1,
+    metadataOnly: true,
+    size: 7352,
+  });
+  assert.deepEqual([...state.knownPaths].sort(), [
+    '/workspace/target',
+    '/workspace/target/debug',
+    '/workspace/target/debug/hello',
+  ]);
+});
+
+test('workspace-sync: refreshes skipped target metadata without syncing contents', async () => {
+  const workspace = makeWorkspace();
+  workspace.entries.set('/workspace/target', { type: 2 });
+  workspace.entries.set('/workspace/target/debug', { type: 2 });
+  await workspace.writeMetadataFile('/workspace/target/debug/hello', { size: 7352 });
+  const state = {
+    knownPaths: new Set([
+      '/workspace/target',
+      '/workspace/target/debug',
+      '/workspace/target/debug/hello',
+    ]),
+  };
+  const snapshot = decodeWorkspaceSyncPayload(payload([
+    `D\t${b64('/workspace/target')}`,
+    `D\t${b64('/workspace/target/debug')}`,
+    `S\t${b64('/workspace/target/debug/hello')}\t8128`,
+  ]));
+
+  await applyWorkspaceSyncSnapshot(workspace, snapshot, state);
+
+  assert.deepEqual(workspace.entries.get('/workspace/target/debug/hello'), {
+    type: 1,
+    metadataOnly: true,
+    size: 8128,
+  });
+});
+
 test('workspace-sync: bash profile hook emits hidden sync frames after prompts', () => {
   const block = buildGuestSyncProfileBlock();
   assert.match(block, /__rwb_sync_from_guest/);
   assert.match(block, /PROMPT_COMMAND="__rwb_sync_from_guest/);
   assert.match(block, /rust-web-box-sync/);
-  assert.match(block, /printf 'S\\t%s\\n'/);
-  assert.match(block, /\/workspace\/target -prune/);
+  assert.match(block, /printf 'S\\t%s\\t%s\\n'/);
+});
+
+test('workspace-sync: target artifacts stay visible as skipped metadata', () => {
+  const block = buildGuestSyncProfileBlock();
+  assert.doesNotMatch(block, /\/workspace\/target -prune/);
+  assert.match(block, /\/workspace\/target\/\*/);
+  assert.match(block, /printf 'S\\t%s\\t%s\\n'/);
 });
