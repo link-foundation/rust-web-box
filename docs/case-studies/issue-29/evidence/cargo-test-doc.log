@@ -3,29 +3,29 @@
        Fresh utf8parse v0.2.2
        Fresh colorchoice v1.0.5
        Fresh is_terminal_polyfill v1.70.2
+       Fresh anstyle-query v1.1.5
+       Fresh quote v1.0.42
        Fresh anstyle-parse v0.2.7
        Fresh anstyle v1.0.14
-       Fresh anstyle-query v1.1.5
-       Fresh heck v0.5.0
-       Fresh quote v1.0.42
-       Fresh anstream v0.6.21
-       Fresh clap_lex v1.1.0
        Fresh strsim v0.11.1
-       Fresh dtor-proc-macro v0.0.5
        Fresh syn v2.0.111
-       Fresh dtor v0.0.6
-       Fresh clap_builder v4.5.60
-       Fresh serde_core v1.0.228
-       Fresh thiserror-impl v1.0.69
+       Fresh anstream v0.6.21
+       Fresh heck v0.5.0
+       Fresh clap_lex v1.1.0
+       Fresh dtor-proc-macro v0.0.5
        Fresh clap_derive v4.5.55
        Fresh serde_derive v1.0.228
+       Fresh serde_core v1.0.228
+       Fresh clap_builder v4.5.60
+       Fresh thiserror-impl v1.0.69
+       Fresh dtor v0.0.6
        Fresh memchr v2.8.0
        Fresh ctor-proc-macro v0.0.6
-       Fresh aho-corasick v1.1.4
        Fresh clap v4.5.60
        Fresh serde v1.0.228
        Fresh ctor v0.4.3
        Fresh thiserror v1.0.69
+       Fresh aho-corasick v1.1.4
        Fresh dotenvy v0.15.7
        Fresh lino-env v0.1.0
        Fresh regex-syntax v0.8.10

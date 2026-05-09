@@ -427,6 +427,7 @@ test('webvm-server: failed guest save rejects and leaves JS workspace unchanged'
 });
 
 test('webvm-server: target readDirectory refreshes guest metadata on demand', async () => {
+  const stolenOutput = [];
   const { cx } = makeFakeCx({
     onRun: async ({ cmd, args, state }) => {
       if (cmd === '/bin/sh' && String(args?.[0] ?? '').includes('workspace-target-refresh')) {
@@ -453,6 +454,10 @@ test('webvm-server: target readDirectory refreshes guest metadata on demand', as
   });
   await server.bootTask;
 
+  // The e2e harness uses cx.setCustomConsole() directly to capture
+  // low-level VM command output. The page server must reattach its own
+  // console before relying on hidden workspace-sync frames.
+  cx.setCustomConsole((bytes) => stolenOutput.push(dec.decode(bytes)), 80, 24);
   const entries = await server.methods['fs.readDir']({ path: '/workspace/target' });
 
   assert.deepEqual([...entries].sort(), [
@@ -474,6 +479,7 @@ test('webvm-server: target readDirectory refreshes guest metadata on demand', as
     '/rust-web-box-workspace-target-refresh.sh',
   );
   assert.match(dataState.writes.at(-1).contents, /printf 'P\\t%s\\n'/);
+  assert.equal(stolenOutput.join(''), '');
 });
 
 test('webvm-server: non-recursive empty directory delete uses guest rmdir', async () => {

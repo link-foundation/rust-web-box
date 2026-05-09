@@ -495,6 +495,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
       const scope = normalizeTargetTreePath(path);
       const synced = waitForGuestSyncScope(scope);
       try {
+        console_.reattach?.();
         await runGuestScript(buildGuestTargetSnapshotScript(scope), {
           name: 'workspace-target-refresh',
           cwd: '/workspace',

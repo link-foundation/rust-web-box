@@ -362,6 +362,8 @@ export async function bootLinux({
 export function attachConsole(cx, { cols = 80, rows = 24 } = {}) {
   if (!cx) throw new TypeError('attachConsole requires a CheerpX Linux handle');
   const listeners = new Set();
+  let currentCols = cols;
+  let currentRows = rows;
   const writer = (buf, vt) => {
     if (vt !== undefined && vt !== 1) return;
     let view;
@@ -372,11 +374,13 @@ export function attachConsole(cx, { cols = 80, rows = 24 } = {}) {
     for (const cb of listeners) cb(view);
   };
   let cxReadFunc;
-  if (typeof cx.setCustomConsole === 'function') {
-    cxReadFunc = cx.setCustomConsole(writer, cols, rows);
-  } else {
+  function bindConsole() {
+    cxReadFunc = cx.setCustomConsole(writer, currentCols, currentRows);
+  }
+  if (typeof cx.setCustomConsole !== 'function') {
     throw new Error('CheerpX build is missing setCustomConsole (need >= 1.2)');
   }
+  bindConsole();
   return {
     write(input) {
       if (typeof input === 'string') {
@@ -388,7 +392,12 @@ export function attachConsole(cx, { cols = 80, rows = 24 } = {}) {
       }
     },
     resize(c, r) {
+      currentCols = c;
+      currentRows = r;
       if (typeof cx.setConsoleSize === 'function') cx.setConsoleSize(c, r);
+    },
+    reattach() {
+      bindConsole();
     },
     onData(cb) {
       listeners.add(cb);

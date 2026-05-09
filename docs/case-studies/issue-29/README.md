@@ -18,6 +18,7 @@ The fix keeps prompt-time synchronization cheap while adding a scoped, on-demand
 - Original screenshot: `raw/issue-29-screenshot.png`
 - Focused test log: `evidence/focused-web-tests.log`
 - Full Node test log: `evidence/node-web-tests.log`
+- Local browser e2e attempt log: `evidence/local-pages-e2e-repro.log`
 - Guest sync shell syntax log: `evidence/bash-sync-hook-syntax.log`
 - Diff whitespace log: `evidence/git-diff-check.log`
 - Changelog, version, and file-size check logs: `evidence/check-changelog-fragment.log`, `evidence/check-version-modification.log`, `evidence/check-file-size.log`
@@ -37,6 +38,7 @@ The issue had no comments when evidence was captured. PR #30 had no conversation
 | 2026-05-09 20:28 UTC | The screenshot and GitHub issue/PR evidence were captured into this case-study directory. |
 | 2026-05-09 20:38 UTC | Focused sync/server/extension tests passed with 31 tests. |
 | 2026-05-09 20:39 UTC | Full `node --test web/tests/` passed with 190 passing tests and 4 skipped tests. |
+| 2026-05-09 21:02 UTC | Pages local-e2e CI exposed that direct CheerpX console captures can hide the target-refresh sync frame from the page server. |
 
 ## Requirements
 
@@ -56,6 +58,8 @@ The prompt-time guest sync deliberately pruned `/workspace/target` descendants a
 
 The root cause was local sync granularity: the system had one cheap prompt sync, but no separate scoped refresh path for large generated folders.
 
+During CI, the local browser e2e suite exposed a second integration detail: the test helper used `cx.setCustomConsole()` directly to capture low-level command output. CheerpX has one console callback, so that capture replaced the page server's callback. A later target refresh could emit the hidden sync frame successfully while the server never saw it.
+
 ### Stale cargo run After Editor Edits
 
 The WebVM terminal runs real guest commands, but VS Code Web documents can remain dirty until they are explicitly saved. If the user edited `src/main.rs` and then pressed Enter in the terminal, bash could start `cargo run` before the dirty document had been pushed through the FileSystemProvider and mirrored into the guest filesystem.
@@ -72,6 +76,8 @@ The root cause was command ordering between the VS Code editor save lifecycle an
 
 The server waits for the matching scoped sync frame before returning `fs.readDir`. This avoids a real browser race where CheerpX can complete the helper script before the hidden OSC frame has reached the page console handler.
 
+Before each target scan, the server reattaches its CheerpX console callback. This keeps the hidden sync-frame parser connected even after a test or debug helper temporarily captured VM output with `cx.setCustomConsole()`.
+
 Prompt-time sync still prunes target descendants, so normal shell prompts do not scan the full build cache.
 
 ### Save Before Commands
@@ -87,10 +93,10 @@ Prompt-time sync still prunes target descendants, so normal shell prompts do not
 Focused regression suite:
 
 ```bash
-node --test web/tests/workspace-sync.test.mjs web/tests/webvm-server.test.mjs web/tests/extension-pty-listeners.test.mjs > docs/case-studies/issue-29/evidence/focused-web-tests.log 2>&1
+node --test web/tests/cheerpx-bridge.test.mjs web/tests/webvm-server.test.mjs web/tests/workspace-sync.test.mjs web/tests/extension-pty-listeners.test.mjs > docs/case-studies/issue-29/evidence/focused-web-tests.log 2>&1
 ```
 
-Result: 31 passed, 0 failed.
+Result: 47 passed, 0 failed.
 
 Full web test suite:
 
@@ -98,7 +104,7 @@ Full web test suite:
 node --test web/tests/ > docs/case-studies/issue-29/evidence/node-web-tests.log 2>&1
 ```
 
-Result: 190 passed, 4 skipped, 0 failed.
+Result: 191 passed, 4 skipped, 0 failed.
 
 The skipped tests were browser e2e cases. The local environment did not have `browser-commander` / Playwright installed, and `RUST_WEB_BOX_LIVE_URL` was not set for live Pages e2e. The e2e specs themselves were still parsed and included in the Node test run.
 
