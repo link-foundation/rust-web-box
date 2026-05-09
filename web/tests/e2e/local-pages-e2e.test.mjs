@@ -194,7 +194,7 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     // timed-out command that has already entered Cargo's compile path.
     const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 45_000 });
     if (rerunEdited.timedOut) {
-      assert.match(rerunEdited.output, /Compiling\s+hello/, `edited cargo run did not recompile:\n${rerunEdited.output}`);
+      assert.match(rerunEdited.output, /Compiling(?:\x1b\[[0-9;]*m)*\s+hello/, `edited cargo run did not recompile:\n${rerunEdited.output}`);
       assert.doesNotMatch(rerunEdited.output, /Hello from rust-web-box!/, `edited cargo run reused old binary:\n${rerunEdited.output}`);
     } else {
       assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);

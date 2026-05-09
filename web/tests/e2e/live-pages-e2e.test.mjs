@@ -129,7 +129,7 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
     });
     const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 45_000 });
     if (rerunEdited.timedOut) {
-      assert.match(rerunEdited.output, /Compiling\s+hello/, `edited cargo run did not recompile:\n${rerunEdited.output}`);
+      assert.match(rerunEdited.output, /Compiling(?:\x1b\[[0-9;]*m)*\s+hello/, `edited cargo run did not recompile:\n${rerunEdited.output}`);
       assert.doesNotMatch(rerunEdited.output, /Hello from rust-web-box!/, `edited cargo run reused old binary:\n${rerunEdited.output}`);
     } else {
       assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);
