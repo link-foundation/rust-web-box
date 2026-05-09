@@ -371,15 +371,17 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   const server = startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
   await server.bootTask;
   await server.methods['fs.writeFile']({
-    path: '/workspace/new-file.txt',
-    data: new TextEncoder().encode('saved\n'),
+    path: '/workspace/src/main.rs',
+    data: new TextEncoder().encode('fn main() { println!("saved"); }\n'),
   });
 
   assert.equal(state.lastInput.length, 0, 'file sync must not use console input');
   assert.equal(dataState.writes.length, 3, 'expected shell setup, prime, and save scripts');
   assert.equal(dataState.writes[2].filename, '/rust-web-box-workspace-sync.sh');
-  assert.match(dataState.writes[2].contents, /cat > '\/workspace\/new-file\.txt'/);
+  assert.match(dataState.writes[2].contents, /cat > '\/workspace\/src\/main\.rs'/);
   assert.match(dataState.writes[2].contents, /saved/);
+  assert.match(dataState.writes[2].contents, /sleep 1/);
+  assert.match(dataState.writes[2].contents, /touch -m '\/workspace\/src\/main\.rs'/);
 });
 
 test('webvm-server: failed guest save rejects and leaves JS workspace unchanged', async () => {

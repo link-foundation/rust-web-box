@@ -24,149 +24,149 @@ TAP version 13
 # Subtest: loadCheerpX: prefers vendored module, falls back to CDN
 ok 1 - loadCheerpX: prefers vendored module, falls back to CDN
   ---
-  duration_ms: 2.825945
+  duration_ms: 3.653734
   ...
 # Subtest: loadCheerpX: throws aggregated error when both fail
 ok 2 - loadCheerpX: throws aggregated error when both fail
   ---
-  duration_ms: 0.501186
+  duration_ms: 0.541779
   ...
 # Subtest: bootLinux: rejects without CheerpX module
 ok 3 - bootLinux: rejects without CheerpX module
   ---
-  duration_ms: 0.285266
+  duration_ms: 0.32778
   ...
 # Subtest: bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
 ok 4 - bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
   ---
-  duration_ms: 0.425275
+  duration_ms: 0.471595
   ...
 # Subtest: bootLinux: builds the WebVM-style mount stack and surfaces progress
 ok 5 - bootLinux: builds the WebVM-style mount stack and surfaces progress
   ---
-  duration_ms: 0.347188
+  duration_ms: 0.425344
   ...
 # Subtest: createBlockDevice: selects the CheerpX device for each disk kind
 ok 6 - createBlockDevice: selects the CheerpX device for each disk kind
   ---
-  duration_ms: 0.262612
+  duration_ms: 0.300419
   ...
 # Subtest: resolveDiskUrl: uses warm.url when set and probe succeeds
 ok 7 - resolveDiskUrl: uses warm.url when set and probe succeeds
   ---
-  duration_ms: 0.398105
+  duration_ms: 0.412947
   ...
 # Subtest: resolveDiskUrl: falls back to default.url when warm.url is null
 ok 8 - resolveDiskUrl: falls back to default.url when warm.url is null
   ---
-  duration_ms: 0.141941
+  duration_ms: 0.169764
   ...
 # Subtest: resolveDiskUrl: falls back to default.url when warm probe fails (404)
 ok 9 - resolveDiskUrl: falls back to default.url when warm probe fails (404)
   ---
-  duration_ms: 0.411854
+  duration_ms: 0.459405
   ...
 # Subtest: resolveDiskUrl: falls back to hard-coded URL on fetch error
 ok 10 - resolveDiskUrl: falls back to hard-coded URL on fetch error
   ---
-  duration_ms: 0.572224
+  duration_ms: 0.615248
   ...
 # Subtest: attachConsole: rejects without a Linux handle
 ok 11 - attachConsole: rejects without a Linux handle
   ---
-  duration_ms: 0.210765
+  duration_ms: 0.250594
   ...
 # Subtest: attachConsole: write() drives cxReadFunc per character
 ok 12 - attachConsole: write() drives cxReadFunc per character
   ---
-  duration_ms: 0.206859
+  duration_ms: 0.280269
   ...
 # Subtest: attachConsole: onData receives writer output as Uint8Array
 ok 13 - attachConsole: onData receives writer output as Uint8Array
   ---
-  duration_ms: 0.326517
+  duration_ms: 0.306848
   ...
 # Subtest: attachConsole: reattach restores its writer after another console capture
 ok 14 - attachConsole: reattach restores its writer after another console capture
   ---
-  duration_ms: 0.218526
+  duration_ms: 0.31569
   ...
 # Subtest: attachConsole: dispose drops listeners
 ok 15 - attachConsole: dispose drops listeners
   ---
-  duration_ms: 0.143233
+  duration_ms: 0.217244
   ...
 # Subtest: attachConsole: throws when CheerpX has no setCustomConsole
 ok 16 - attachConsole: throws when CheerpX has no setCustomConsole
   ---
-  duration_ms: 0.148161
+  duration_ms: 0.169173
   ...
 # Subtest: extension pty: makePseudoterminal disposes prior bus subscribers on re-open
 ok 17 - extension pty: makePseudoterminal disposes prior bus subscribers on re-open
   ---
-  duration_ms: 5.531591
+  duration_ms: 5.563975
   ...
 # Subtest: extension pty: makeCargoPty disposes prior bus subscribers on re-open
 ok 18 - extension pty: makeCargoPty disposes prior bus subscribers on re-open
   ---
-  duration_ms: 1.267371
+  duration_ms: 1.391877
   ...
 # Subtest: extension pty: auto-terminal creation guards against duplicates
 ok 19 - extension pty: auto-terminal creation guards against duplicates
   ---
-  duration_ms: 2.140983
+  duration_ms: 2.042769
   ...
 # Subtest: extension pty: terminal Enter saves dirty editors before forwarding input
 ok 20 - extension pty: terminal Enter saves dirty editors before forwarding input
   ---
-  duration_ms: 1.697772
+  duration_ms: 0.896298
   ...
 # Subtest: extension pty: cargo tasks save dirty editors before running cargo
 ok 21 - extension pty: cargo tasks save dirty editors before running cargo
   ---
-  duration_ms: 0.956026
+  duration_ms: 0.563101
   ...
 # Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
 ok 22 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
   ---
-  duration_ms: 8.168794
+  duration_ms: 8.256885
   ...
 # Subtest: webvm-server: existing CRLF passed through, bare CR untouched
 ok 23 - webvm-server: existing CRLF passed through, bare CR untouched
   ---
-  duration_ms: 5.65127
+  duration_ms: 5.104529
   ...
 # [rust-web-box] workspace prime skipped (opts.skipPrime=true)
 # [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
 # [rust-web-box] guest workspace sync failed: Error: guest write failed
-#     at Object.run (file:///tmp/gh-issue-solver-1778358434238/web/tests/webvm-server.test.mjs:399:15)
-#     at file:///tmp/gh-issue-solver-1778358434238/web/glue/webvm-server.js:198:19
+#     at Object.run (file:///tmp/gh-issue-solver-1778358434238/web/tests/webvm-server.test.mjs:401:15)
+#     at file:///tmp/gh-issue-solver-1778358434238/web/glue/webvm-server.js:221:19
 # [rust-web-box] workspace prime skipped (opts.skipPrime=true)
 # [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
 # Subtest: webvm-server: vt channel filtered (only stdout broadcast)
 ok 24 - webvm-server: vt channel filtered (only stdout broadcast)
   ---
-  duration_ms: 9.398769
+  duration_ms: 5.939927
   ...
 # Subtest: webvm-server: primes /workspace through a /data script, not terminal input
 ok 25 - webvm-server: primes /workspace through a /data script, not terminal input
   ---
-  duration_ms: 1.332737
+  duration_ms: 1.133832
   ...
 # Subtest: webvm-server: onPhase callback receives every emitted phase, including ready
 ok 26 - webvm-server: onPhase callback receives every emitted phase, including ready
   ---
-  duration_ms: 0.676539
+  duration_ms: 0.457773
   ...
 # Subtest: webvm-server: mirrors saved files through /data without typing into the terminal
 ok 27 - webvm-server: mirrors saved files through /data without typing into the terminal
   ---
-  duration_ms: 0.714767
+  duration_ms: 0.558634
   ...
 # Subtest: webvm-server: failed guest save rejects and leaves JS workspace unchanged
 ok 28 - webvm-server: failed guest save rejects and leaves JS workspace unchanged
   ---
-  duration_ms: 2.349075
+  duration_ms: 1.89612
   ...
 # [rust-web-box] workspace prime skipped (opts.skipPrime=true)
 # [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
@@ -175,101 +175,101 @@ ok 28 - webvm-server: failed guest save rejects and leaves JS workspace unchange
 # Subtest: webvm-server: target readDirectory refreshes guest metadata on demand
 ok 29 - webvm-server: target readDirectory refreshes guest metadata on demand
   ---
-  duration_ms: 5.705139
+  duration_ms: 4.020521
   ...
 # Subtest: webvm-server: non-recursive empty directory delete uses guest rmdir
 ok 30 - webvm-server: non-recursive empty directory delete uses guest rmdir
   ---
-  duration_ms: 0.781056
+  duration_ms: 0.673726
   ...
 # Subtest: webvm-server: workspace.prime bus method is a no-op when skipPrime is set
 ok 31 - webvm-server: workspace.prime bus method is a no-op when skipPrime is set
   ---
-  duration_ms: 0.38249
+  duration_ms: 0.439796
   ...
 # Subtest: webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
 ok 32 - webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
   ---
-  duration_ms: 0.332136
+  duration_ms: 0.279748
   ...
 # [rust-web-box] workspace prime failed: Error: workspace prime timed out after 50ms (suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)
-#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1778358434238/web/glue/webvm-server.js:595:28)
+#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1778358434238/web/glue/webvm-server.js:618:28)
 #     at listOnTimeout (node:internal/timers:581:17)
 #     at process.processTimers (node:internal/timers:519:7)
 # Subtest: webvm-server: bootTask reaches "ready" even when workspace prime hangs
 ok 33 - webvm-server: bootTask reaches "ready" even when workspace prime hangs
   ---
-  duration_ms: 51.085138
+  duration_ms: 50.988696
   ...
 # Subtest: webvm-server: makeChannelPair sanity
 ok 34 - webvm-server: makeChannelPair sanity
   ---
-  duration_ms: 0.438694
+  duration_ms: 0.520967
   ...
 # Subtest: workspace-sync: parser strips OSC frames and handles split chunks
 ok 35 - workspace-sync: parser strips OSC frames and handles split chunks
   ---
-  duration_ms: 2.995518
+  duration_ms: 2.448795
   ...
 # Subtest: workspace-sync: decodes snapshot payloads
 ok 36 - workspace-sync: decodes snapshot payloads
   ---
-  duration_ms: 1.300961
+  duration_ms: 0.577532
   ...
 # Subtest: workspace-sync: applies creates, updates, and deletes from guest snapshots
 ok 37 - workspace-sync: applies creates, updates, and deletes from guest snapshots
   ---
-  duration_ms: 1.58227
+  duration_ms: 1.213451
   ...
 # Subtest: workspace-sync: keeps oversized guest files marked as skipped
 ok 38 - workspace-sync: keeps oversized guest files marked as skipped
   ---
-  duration_ms: 0.304194
+  duration_ms: 0.219098
   ...
 # Subtest: workspace-sync: creates metadata entries for skipped target files
 ok 39 - workspace-sync: creates metadata entries for skipped target files
   ---
-  duration_ms: 0.477643
+  duration_ms: 0.38179
   ...
 # Subtest: workspace-sync: refreshes skipped target metadata without syncing contents
 ok 40 - workspace-sync: refreshes skipped target metadata without syncing contents
   ---
-  duration_ms: 0.356751
+  duration_ms: 0.288281
   ...
 # Subtest: workspace-sync: bash profile hook emits hidden sync frames after prompts
 ok 41 - workspace-sync: bash profile hook emits hidden sync frames after prompts
   ---
-  duration_ms: 0.232236
+  duration_ms: 0.182532
   ...
 # Subtest: workspace-sync: target directory itself is surfaced without descending into it
 ok 42 - workspace-sync: target directory itself is surfaced without descending into it
   ---
-  duration_ms: 0.126948
+  duration_ms: 0.077907
   ...
 # Subtest: workspace-sync: PROMPT_COMMAND is not double-installed if already present
 ok 43 - workspace-sync: PROMPT_COMMAND is not double-installed if already present
   ---
-  duration_ms: 0.176113
+  duration_ms: 0.110535
   ...
 # Subtest: workspace-sync: target paths are not deleted from JS workspace by sweep
 ok 44 - workspace-sync: target paths are not deleted from JS workspace by sweep
   ---
-  duration_ms: 0.357654
+  duration_ms: 0.315791
   ...
 # Subtest: workspace-sync: scoped target snapshots prune only target metadata
 ok 45 - workspace-sync: scoped target snapshots prune only target metadata
   ---
-  duration_ms: 0.486285
+  duration_ms: 0.307649
   ...
 # Subtest: workspace-sync: scoped target snapshot removes target when guest target is gone
 ok 46 - workspace-sync: scoped target snapshot removes target when guest target is gone
   ---
-  duration_ms: 0.23441
+  duration_ms: 0.152877
   ...
 # Subtest: workspace-sync: target refresh script emits scoped metadata-only sync frames
 ok 47 - workspace-sync: target refresh script emits scoped metadata-only sync frames
   ---
-  duration_ms: 1.50143
+  duration_ms: 0.319327
   ...
 1..47
 # tests 47
@@ -279,4 +279,4 @@ ok 47 - workspace-sync: target refresh script emits scoped metadata-only sync fr
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 30090.699138
+# duration_ms 30092.636417

@@ -144,7 +144,30 @@ function buildShellProfileScript() {
 }
 
 function scriptForWrite(path, bytes) {
-  return `${heredocForFile(path, bytes)}\n`;
+  return [
+    heredocForFile(path, bytes),
+    cargoFreshnessMtimeScript(path),
+  ].filter(Boolean).join('\n') + '\n';
+}
+
+function cargoFreshnessMtimeScript(path) {
+  if (!isCargoInputPath(path)) return '';
+  const quotedPath = shellQuote(path);
+  return [
+    // Cargo's freshness checks can miss a browser save that lands in
+    // the same one-second mtime bucket as the pre-baked target artifacts.
+    'if [ -d /workspace/target ]; then',
+    '  sleep 1',
+    `  touch -m '${quotedPath}' 2>/dev/null || true`,
+    'fi',
+  ].join('\n');
+}
+
+function isCargoInputPath(path) {
+  const p = String(path ?? '');
+  return p === '/workspace/Cargo.toml' ||
+    p === '/workspace/Cargo.lock' ||
+    p.endsWith('.rs');
 }
 
 function scriptForDelete(path, { recursive = false, type } = {}) {

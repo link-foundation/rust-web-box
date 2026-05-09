@@ -1,39 +1,39 @@
        Fresh unicode-ident v1.0.22
-       Fresh proc-macro2 v1.0.103
        Fresh utf8parse v0.2.2
-       Fresh anstyle-query v1.1.5
        Fresh is_terminal_polyfill v1.70.2
-       Fresh anstyle-parse v0.2.7
        Fresh anstyle v1.0.14
+       Fresh proc-macro2 v1.0.103
+       Fresh anstyle-parse v0.2.7
+       Fresh anstyle-query v1.1.5
        Fresh colorchoice v1.0.5
-       Fresh strsim v0.11.1
        Fresh quote v1.0.42
        Fresh anstream v0.6.21
        Fresh dtor-proc-macro v0.0.5
-       Fresh heck v0.5.0
-       Fresh clap_lex v1.1.0
+       Fresh strsim v0.11.1
        Fresh syn v2.0.111
-       Fresh clap_builder v4.5.60
+       Fresh clap_lex v1.1.0
+       Fresh heck v0.5.0
        Fresh dtor v0.0.6
-       Fresh serde_core v1.0.228
-       Fresh thiserror-impl v1.0.69
        Fresh serde_derive v1.0.228
        Fresh clap_derive v4.5.55
+       Fresh thiserror-impl v1.0.69
+       Fresh clap_builder v4.5.60
+       Fresh serde_core v1.0.228
        Fresh ctor-proc-macro v0.0.6
-       Fresh dotenvy v0.15.7
        Fresh ctor v0.4.3
+       Fresh thiserror v1.0.69
        Fresh serde v1.0.228
        Fresh clap v4.5.60
-       Fresh thiserror v1.0.69
-       Fresh memchr v2.8.0
+       Fresh dotenvy v0.15.7
        Fresh lino-env v0.1.0
+       Fresh memchr v2.8.0
        Fresh lino-arguments v0.3.0
-       Fresh aho-corasick v1.1.4
        Fresh regex-syntax v0.8.10
+       Fresh aho-corasick v1.1.4
        Fresh regex-automata v0.4.14
        Fresh regex v1.12.3
        Fresh example-sum-package-name v0.10.0 (/tmp/gh-issue-solver-1778358434238)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
      Running `/tmp/gh-issue-solver-1778358434238/target/debug/deps/example_sum_package_name-ababe9ed79871228`
 
 running 0 tests
@@ -53,26 +53,26 @@ test sum::test_cli_negative_numbers ... ok
 test sum::test_cli_default_args ... ok
 test sum::test_cli_sum_two_numbers ... ok
 
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 
      Running `/tmp/gh-issue-solver-1778358434238/target/debug/deps/unit-eef3fa3d9071ba9b`
 
 running 16 tests
-test ci_cd::changelog_parsing::test_empty_section_fallback ... ok
 test ci_cd::changelog_parsing::test_nonexistent_version ... ok
 test ci_cd::changelog_parsing::test_last_version_extraction ... ok
+test ci_cd::changelog_parsing::test_empty_section_fallback ... ok
 test ci_cd::changelog_parsing::test_middle_version_extraction ... ok
+test ci_cd::workspace_manifest_resolution::rust_root_cli_parser_returns_none_without_configuration ... ok
 test ci_cd::changelog_parsing::test_version_with_dots_regex_escape ... ok
 test ci_cd::workspace_manifest_resolution::path_helpers_match_repository_layout ... ok
-test ci_cd::workspace_manifest_resolution::rust_root_cli_parser_returns_none_without_configuration ... ok
 test ci_cd::workspace_manifest_resolution::rust_root_prefers_explicit_parameter ... ok
 test sum::test_sum_large_numbers ... ok
 test sum::test_sum_mixed_sign ... ok
 test sum::test_sum_negative_numbers ... ok
 test sum::test_sum_positive_numbers ... ok
 test sum::test_sum_zero ... ok
-test ci_cd::workspace_manifest_resolution::errors_when_workspace_has_no_publishable_members ... ok
 test ci_cd::workspace_manifest_resolution::resolves_root_package_manifest_when_package_exists ... ok
+test ci_cd::workspace_manifest_resolution::errors_when_workspace_has_no_publishable_members ... ok
 test ci_cd::workspace_manifest_resolution::resolves_first_publishable_workspace_member ... ok
 
 test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
