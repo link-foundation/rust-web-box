@@ -11,6 +11,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { startWebVMServer } from '../glue/webvm-server.js';
+import {
+  WORKSPACE_SYNC_OSC_END,
+  WORKSPACE_SYNC_OSC_PREFIX,
+} from '../glue/workspace-sync.js';
 
 function makeChannelPair() {
   const a = new EventTarget();
@@ -24,7 +28,18 @@ function makeChannelPair() {
   return [a, b];
 }
 
-function makeFakeCx() {
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function b64(input) {
+  return Buffer.from(input).toString('base64');
+}
+
+function syncFrame(lines) {
+  return `${WORKSPACE_SYNC_OSC_PREFIX}${b64(['RWB_SYNC_V1', ...lines, ''].join('\n'))}${WORKSPACE_SYNC_OSC_END}`;
+}
+
+function makeFakeCx({ onRun } = {}) {
   const state = { writer: null, lastInput: [], runCalls: [] };
   const cx = {
     setCustomConsole(fn /* , cols, rows */) {
@@ -34,6 +49,7 @@ function makeFakeCx() {
     setConsoleSize() {},
     async run(cmd, args, opts) {
       state.runCalls.push({ cmd, args, opts });
+      await onRun?.({ cmd, args, opts, state });
       if (cmd === '/bin/bash') {
         // Hold open forever so the shell loop doesn't respawn during the test.
         await new Promise(() => {});
@@ -94,6 +110,85 @@ function makeStatefulWorkspace(files = {}) {
       fileMap.delete(from);
     },
     async createDirectory() {},
+  };
+}
+
+function makeTreeWorkspace() {
+  const entries = new Map();
+  entries.set('/workspace', { type: 2 });
+
+  async function stat(path) {
+    const entry = entries.get(path);
+    if (!entry) {
+      const err = new Error(`ENOENT: ${path}`);
+      err.code = 'FileNotFound';
+      throw err;
+    }
+    return {
+      type: entry.type,
+      size: entry.data?.byteLength ?? entry.size ?? 0,
+      mtime: 0,
+    };
+  }
+
+  async function readDirectory(path) {
+    await stat(path);
+    const prefix = path === '/' ? '/' : `${path}/`;
+    const seen = new Map();
+    for (const [entryPath, entry] of entries) {
+      if (entryPath === path || !entryPath.startsWith(prefix)) continue;
+      const rest = entryPath.slice(prefix.length);
+      const slash = rest.indexOf('/');
+      if (slash < 0) {
+        seen.set(rest, entry.type);
+      } else if (!seen.has(rest.slice(0, slash))) {
+        seen.set(rest.slice(0, slash), 2);
+      }
+    }
+    return [...seen.entries()];
+  }
+
+  async function createDirectory(path) {
+    entries.set(path, { type: 2 });
+  }
+
+  return {
+    entries,
+    snapshot: async () => ({}),
+    async readFile(path) {
+      const entry = entries.get(path);
+      if (!entry || entry.type !== 1 || entry.metadataOnly) {
+        const err = new Error(`ENOENT: ${path}`);
+        err.code = 'FileNotFound';
+        throw err;
+      }
+      return entry.data;
+    },
+    async writeFile(path, bytes) {
+      entries.set(path, {
+        type: 1,
+        data: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
+      });
+    },
+    async writeMetadataFile(path, { size = 0 } = {}) {
+      entries.set(path, { type: 1, metadataOnly: true, size });
+    },
+    stat,
+    readDirectory,
+    async delete(path) {
+      for (const entryPath of [...entries.keys()].sort((a, b) => b.length - a.length)) {
+        if (entryPath === path || entryPath.startsWith(`${path}/`)) {
+          entries.delete(entryPath);
+        }
+      }
+    },
+    async rename(from, to) {
+      const entry = entries.get(from);
+      if (!entry) throw new Error(`ENOENT: ${from}`);
+      entries.set(to, { ...entry });
+      entries.delete(from);
+    },
+    createDirectory,
   };
 }
 
@@ -276,23 +371,24 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   const server = startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
   await server.bootTask;
   await server.methods['fs.writeFile']({
-    path: '/workspace/new-file.txt',
-    data: new TextEncoder().encode('saved\n'),
+    path: '/workspace/src/main.rs',
+    data: new TextEncoder().encode('fn main() { println!("saved"); }\n'),
   });
 
   assert.equal(state.lastInput.length, 0, 'file sync must not use console input');
   assert.equal(dataState.writes.length, 3, 'expected shell setup, prime, and save scripts');
   assert.equal(dataState.writes[2].filename, '/rust-web-box-workspace-sync.sh');
-  assert.match(dataState.writes[2].contents, /cat > '\/workspace\/new-file\.txt'/);
+  assert.match(dataState.writes[2].contents, /cat > '\/workspace\/src\/main\.rs'/);
   assert.match(dataState.writes[2].contents, /saved/);
+  assert.match(dataState.writes[2].contents, /rwb_target_mtime=/);
+  assert.match(dataState.writes[2].contents, /touch -d "@\$rwb_next_mtime" '\/workspace\/src\/main\.rs'/);
+  assert.match(dataState.writes[2].contents, /rm -rf \/workspace\/target\/debug\/\.fingerprint \/workspace\/target\/release\/\.fingerprint/);
 });
 
 test('webvm-server: failed guest save rejects and leaves JS workspace unchanged', async () => {
   // Regression for issue #21: VS Code saves used to update the JS-side
   // workspace first, then swallow guest mirror errors. The editor tab
   // looked saved while the next `cargo run` still saw the old VM file.
-  const enc = new TextEncoder();
-  const dec = new TextDecoder();
   const state = { writer: null, runCalls: [] };
   const cx = {
     setCustomConsole(fn) {
@@ -331,6 +427,62 @@ test('webvm-server: failed guest save rejects and leaves JS workspace unchanged'
     dec.decode(await workspace.readFile('/workspace/src/main.rs')),
     'old\n',
   );
+});
+
+test('webvm-server: target readDirectory refreshes guest metadata on demand', async () => {
+  const stolenOutput = [];
+  const { cx } = makeFakeCx({
+    onRun: async ({ cmd, args, state }) => {
+      if (cmd === '/bin/sh' && String(args?.[0] ?? '').includes('workspace-target-refresh')) {
+        setTimeout(() => {
+          state.writer(enc.encode(syncFrame([
+            `P\t${b64('/workspace/target')}`,
+            `D\t${b64('/workspace/target')}`,
+            `D\t${b64('/workspace/target/debug')}`,
+            `S\t${b64('/workspace/target/debug/hello')}\t7352`,
+            `D\t${b64('/workspace/target/release')}`,
+            `S\t${b64('/workspace/target/release/hello')}\t8192`,
+          ])), 1);
+        }, 0);
+      }
+    },
+  });
+  const workspace = makeTreeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: { skipPrime: true, skipShellLoop: true },
+  });
+  await server.bootTask;
+
+  // The e2e harness uses cx.setCustomConsole() directly to capture
+  // low-level VM command output. The page server must reattach its own
+  // console before relying on hidden workspace-sync frames.
+  cx.setCustomConsole((bytes) => stolenOutput.push(dec.decode(bytes)), 80, 24);
+  const entries = await server.methods['fs.readDir']({ path: '/workspace/target' });
+
+  assert.deepEqual([...entries].sort(), [
+    ['debug', 2],
+    ['release', 2],
+  ]);
+  assert.deepEqual(workspace.entries.get('/workspace/target/debug/hello'), {
+    type: 1,
+    metadataOnly: true,
+    size: 7352,
+  });
+  assert.deepEqual(workspace.entries.get('/workspace/target/release/hello'), {
+    type: 1,
+    metadataOnly: true,
+    size: 8192,
+  });
+  assert.equal(
+    dataState.writes.at(-1).filename,
+    '/rust-web-box-workspace-target-refresh.sh',
+  );
+  assert.match(dataState.writes.at(-1).contents, /printf 'P\\t%s\\n'/);
+  assert.equal(stolenOutput.join(''), '');
 });
 
 test('webvm-server: non-recursive empty directory delete uses guest rmdir', async () => {

@@ -1,126 +1,148 @@
-# Case Study: Issue #29 - Unsupported Look-Ahead Regex in create-github-release.rs
+# Case Study: Issue #29 - WebVM Workspace Synchronization
 
 ## Summary
 
-The `scripts/create-github-release.rs` script used a regex pattern containing a positive look-ahead assertion `(?=...)`, which is not supported by Rust's `regex` crate. This caused a panic during GitHub release creation, preventing releases from completing even though crates.io publishing succeeded.
+Issue #29 reported two related WebVM workspace problems:
 
-## Timeline of Events
+- The guest `/workspace/target` directory existed in the terminal, but VS Code Explorer showed an empty `target` folder.
+- Editing Rust source in VS Code and immediately running `cargo run` in the WebVM terminal could reuse the old guest file contents, so the new build did not reflect the editor change.
 
-| Date | Event | Detail |
-|------|-------|--------|
-| Prior | Template scripts converted to Rust | All CI/CD scripts were translated from JavaScript (.mjs) to Rust (.rs) using rust-script (Issue #25 era) |
-| Prior | Regex pattern introduced | The `get_changelog_for_version()` function was written with `(?=\n## \[|$)` look-ahead |
-| 2026-04-13 | mem-rs v0.2.0 release attempt | `linksplatform/mem-rs` release published to crates.io but GitHub Release creation panicked |
-| 2026-04-13 | linksplatform/mem-rs#34 | Bug reported after investigating the failed release |
-| 2026-04-13 | Issue #29 filed | Bug ported back to this template repository for fix |
+The fix keeps prompt-time synchronization cheap while adding a scoped, on-demand target metadata refresh for Explorer expansion. It also saves dirty VS Code workspace documents before terminal Enter and before built-in Cargo tasks send their command to the guest.
 
-## Root Cause Analysis
+## Captured Evidence
 
-### The Bug
+- Issue data: `evidence/issue-29.json`
+- Issue comments: `evidence/issue-29-comments.json`
+- Pull request data: `evidence/pr-30.json`
+- Pull request comments and reviews: `evidence/pr-30-conversation-comments.json`, `evidence/pr-30-review-comments.json`, `evidence/pr-30-reviews.json`
+- Original screenshot: `raw/issue-29-screenshot.png`
+- Focused test log: `evidence/focused-web-tests.log`
+- Full Node test log: `evidence/node-web-tests.log`
+- Local browser e2e attempt log: `evidence/local-pages-e2e-repro.log`
+- Guest sync shell syntax log: `evidence/bash-sync-hook-syntax.log`
+- Diff whitespace log: `evidence/git-diff-check.log`
+- Changelog, version, and file-size check logs: `evidence/check-changelog-fragment.log`, `evidence/check-version-modification.log`, `evidence/check-file-size.log`
+- Rust check logs: `evidence/cargo-fmt-check.log`, `evidence/cargo-clippy.log`, `evidence/cargo-test-all-features.log`, `evidence/cargo-test-doc.log`
+- Online research notes: `online-research.md`
 
-In `scripts/create-github-release.rs` (line 80), the changelog parsing function used:
+The issue had no comments when evidence was captured. PR #30 had no conversation comments, inline review comments, or reviews at capture time.
 
-```rust
-let pattern = format!(r"(?s)## \[{}\].*?\n(.*?)(?=\n## \[|$)", escaped_version);
-let re = Regex::new(&pattern).unwrap();
-```
+## Timeline
 
-The `(?=\n## \[|$)` portion is a **positive look-ahead assertion**, which tells the regex engine: "match only if followed by `\n## [` or end-of-string, but don't consume the match."
+| Date | Event |
+| --- | --- |
+| 2026-05-09 04:49 UTC | Issue #25 fix added metadata-only `target` entries so Explorer could see Cargo build outputs. |
+| 2026-05-09 07:30 UTC | Issue #27 fix removed prompt-time full target scans after they caused duplicate terminal output, expensive scans, and metadata churn. |
+| 2026-05-09 09:18 UTC | Issue #29 was opened with a screenshot showing `/workspace/target` populated in the terminal but empty in Explorer, plus stale `cargo run` behavior after editor changes. |
+| 2026-05-09 20:27 UTC | PR #30 was opened from `issue-29-bbfa3711ed5c` as a draft. |
+| 2026-05-09 20:28 UTC | The screenshot and GitHub issue/PR evidence were captured into this case-study directory. |
+| 2026-05-09 20:38 UTC | Focused sync/server/extension tests passed with 31 tests. |
+| 2026-05-09 20:39 UTC | Full `node --test web/tests/` passed with 190 passing tests and 4 skipped tests. |
+| 2026-05-09 21:02 UTC | Pages local-e2e CI exposed that direct CheerpX console captures can hide the target-refresh sync frame from the page server. |
 
-### Why Rust's `regex` Crate Doesn't Support Look-Ahead
+## Requirements
 
-Rust's `regex` crate uses a **finite automaton (FA) engine** that guarantees **linear-time matching** — O(n) in the length of the input, regardless of the pattern. This is a deliberate design choice for safety and performance:
+1. Keep the VS Code Explorer view and the WebVM `/workspace` filesystem synchronized.
+2. Include Cargo `target` metadata in Explorer instead of showing an empty folder when guest `target` exists.
+3. Avoid reintroducing the expensive prompt-time full-target scan that caused issue #27.
+4. Ensure editor changes to Rust source are saved into the WebVM filesystem before the next `cargo run`.
+5. Add unit, integration, and e2e coverage for the sync details.
+6. Preserve logs, issue data, screenshot evidence, root-cause analysis, and online research in `docs/case-studies/issue-29`.
+7. Report upstream issues only if the investigation finds an upstream project defect.
 
-1. **Look-ahead requires backtracking** — Look-ahead assertions need the engine to "peek ahead" without consuming input, which requires backtracking or a separate pass
-2. **Backtracking engines can be exponential** — PCRE-style engines with look-ahead can exhibit catastrophic backtracking (O(2^n)) on adversarial inputs
-3. **Rust prioritizes safety** — The `regex` crate trades feature completeness for guaranteed performance bounds
+## Root Causes
 
-The `regex` crate documents this explicitly: "look-around, including look-ahead and look-behind, is not supported."
+### Empty target Folder
 
-### The Failure Mode
+The prompt-time guest sync deliberately pruned `/workspace/target` descendants after issue #27. That was the right tradeoff for terminal responsiveness because Cargo target trees can contain many files. The side effect was that Explorer saw only the `target` directory entry and did not have child metadata when the user expanded it.
 
-```
-thread 'main' panicked at scripts/create-github-release.rs:48:35:
-called `Result::unwrap()` on an `Err` value: Syntax(
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-regex parse error:
-    (?s)## \[0\.2\.0\].*?\n(.*?)(?=\n## \[|$)
-                                 ^^^
-error: look-around, including look-ahead and look-behind, is not supported
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-)
-```
+The root cause was local sync granularity: the system had one cheap prompt sync, but no separate scoped refresh path for large generated folders.
 
-The `.unwrap()` on the `Regex::new()` result converts the compilation error into a panic, crashing the script.
+During CI, the local browser e2e suite exposed a second integration detail: the test helper used `cx.setCustomConsole()` directly to capture low-level command output. CheerpX has one console callback, so that capture replaced the page server's callback. A later target refresh could emit the hidden sync frame successfully while the server never saw it.
 
-### How the Bug Was Introduced
+### Stale cargo run After Editor Edits
 
-When CI/CD scripts were translated from JavaScript to Rust, the regex pattern was likely carried over from a JavaScript implementation where `RegExp` supports look-ahead natively (JavaScript's regex engine is PCRE-based). The pattern worked correctly in the `.mjs` version but is invalid in Rust.
+The WebVM terminal runs real guest commands, but VS Code Web documents can remain dirty until they are explicitly saved. If the user edited `src/main.rs` and then pressed Enter in the terminal, bash could start `cargo run` before the dirty document had been pushed through the FileSystemProvider and mirrored into the guest filesystem.
+
+The root cause was command ordering between the VS Code editor save lifecycle and terminal command submission. Browser e2e also showed a Cargo freshness edge: after the file was mirrored correctly, an immediate `cargo run` could still execute a pre-baked binary when the warm disk's target artifacts had mtimes ahead of the CheerpX guest clock.
 
 ## Solution
 
-### Fix Applied
+### Scoped target Refresh
 
-Replaced the single look-ahead regex with a **two-step approach**:
+`workspace-sync.js` now supports scoped sync payloads with a `P` record. `buildGuestTargetSnapshotScript()` emits a hidden sync frame for `/workspace/target` or one of its descendants. The snapshot includes directory entries and metadata-only file stubs, not file contents.
 
-```rust
-// Step 1: Find the version header
-let header_pattern = format!(r"(?m)^## \[{}\]", escaped_version);
-let header_re = Regex::new(&header_pattern).unwrap();
+`webvm-server.js` calls that refresh only when VS Code asks `fs.readDir` for `/workspace/target` or a path under it. The refresh updates cached Explorer metadata and prunes stale metadata inside only that target subtree.
 
-if let Some(m) = header_re.find(&content) {
-    // Step 2: Skip past the header line
-    let after_header = &content[m.end()..];
-    let body_start = after_header.find('\n').map_or(after_header.len(), |i| i + 1);
-    let body = &after_header[body_start..];
+The server waits for the matching scoped sync frame before returning `fs.readDir`. This avoids a real browser race where CheerpX can complete the helper script before the hidden OSC frame has reached the page console handler.
 
-    // Step 3: Find the next section boundary
-    let next_section_re = Regex::new(r"(?m)^## \[").unwrap();
-    let section_body = if let Some(next) = next_section_re.find(body) {
-        &body[..next.start()]
-    } else {
-        body  // Last section — take everything remaining
-    };
+Before each target scan, the server reattaches its CheerpX console callback. This keeps the hidden sync-frame parser connected even after a test or debug helper temporarily captured VM output with `cx.setCustomConsole()`.
 
-    let trimmed = section_body.trim();
-    if trimmed.is_empty() {
-        format!("Release v{}", version)
-    } else {
-        trimmed.to_string()
-    }
-}
+Prompt-time sync still prunes target descendants, so normal shell prompts do not scan the full build cache.
+
+### Save Before Commands
+
+`web/extensions/webvm-host/extension.js` now calls `vscode.workspace.saveAll(false)` before forwarding terminal input that submits a command and before built-in Cargo task ptys write their Cargo command. This keeps manual-save behavior intact while ensuring the next command sees the editor state the user just submitted.
+
+Guest writes for Rust/Cargo inputs now also make the edited source newer than the newest existing `target/` artifact, with a Cargo fingerprint invalidation fallback for filesystems that refuse that timestamp. This prevents an immediate browser-side save followed by `cargo run` from reusing a pre-baked binary.
+
+### Disk Image Hook Alignment
+
+`web/disk/Dockerfile.disk` now bakes the same cheap prompt hook behavior as the runtime page hook: it surfaces `/workspace/target` as a directory when present, prunes target descendants during prompt sync, and avoids double-installing `PROMPT_COMMAND`.
+
+## Verification
+
+Focused regression suite:
+
+```bash
+node --test web/tests/cheerpx-bridge.test.mjs web/tests/webvm-server.test.mjs web/tests/workspace-sync.test.mjs web/tests/extension-pty-listeners.test.mjs > docs/case-studies/issue-29/evidence/focused-web-tests.log 2>&1
 ```
 
-### Why This Approach
+Result: 47 passed, 0 failed.
 
-1. **No look-ahead needed** — Instead of asserting "followed by `## [`", we find the boundary explicitly using a second regex and use string slicing
-2. **Handles edge cases** — Works for the last section (no next `## [` header), empty sections, and versions with regex-special characters (dots are escaped)
-3. **Uses only `regex` crate features** — All patterns are FA-compatible with guaranteed linear-time matching
-4. **Equivalent semantics** — Produces identical output to the original pattern's intent
+Full web test suite:
 
-### Verification
+```bash
+node --test web/tests/ > docs/case-studies/issue-29/evidence/node-web-tests.log 2>&1
+```
 
-A test script (`experiments/test-changelog-parsing.rs`) validates:
-- Extracting a version section bounded by another section
-- Extracting the last version section (no trailing boundary)
-- Non-existent version returns default message
-- Version strings with dots are properly regex-escaped
-- Empty version sections return the default fallback
+Result: 191 passed, 4 skipped, 0 failed.
 
-## Impact
+The skipped tests were browser e2e cases. The local environment did not have `browser-commander` / Playwright installed, and `RUST_WEB_BOX_LIVE_URL` was not set for live Pages e2e. The e2e specs themselves were still parsed and included in the Node test run.
 
-- **Affected repositories** — Any repository using this template's `create-github-release.rs` script
-- **Known incident** — `linksplatform/mem-rs` v0.2.0 release: crates.io published successfully, but GitHub Release creation failed
-- **Severity** — The release was partially complete: the package was available on crates.io but the GitHub Release with notes and badges was missing
+Guest sync shell syntax:
 
-## Lessons Learned
+```bash
+node --input-type=module -e "import { buildGuestSyncProfileBlock, buildGuestTargetSnapshotScript } from './web/glue/workspace-sync.js'; process.stdout.write(buildGuestSyncProfileBlock()); process.stdout.write('\n'); process.stdout.write(buildGuestTargetSnapshotScript('/workspace/target'));" | bash -n > docs/case-studies/issue-29/evidence/bash-sync-hook-syntax.log 2>&1
+```
 
-1. **Test regex patterns at compile time** — When porting regex patterns between languages, verify compatibility with the target engine. Rust's `regex` crate has documented limitations.
-2. **Avoid `.unwrap()` on regex compilation from dynamic patterns** — Consider using `expect()` with a descriptive message or handling the error gracefully to provide actionable diagnostics.
-3. **Language migration requires testing** — When translating scripts from JavaScript to Rust, patterns, libraries, and runtime behavior differ. Each translation should include tests that exercise the ported logic.
-4. **Two-step parsing is often cleaner** — Using string slicing with simple regex matches is more readable and debuggable than complex single-regex patterns with assertions.
+Result: passed with an empty log.
 
-## Related Issues
+Rust and repository checks:
 
-- [linksplatform/mem-rs#34](https://github.com/linksplatform/mem-rs/issues/34) — Original discovery of the panic during mem-rs v0.2.0 release
-- [Issue #25](../issue-25/) — Previous case study covering CI/CD script translation to Rust
+```bash
+git diff --check
+GITHUB_BASE_REF=main rust-script scripts/check-changelog-fragment.rs
+GITHUB_EVENT_NAME=pull_request GITHUB_BASE_REF=main GITHUB_HEAD_REF=issue-29-bbfa3711ed5c rust-script scripts/check-version-modification.rs
+rust-script scripts/check-file-size.rs
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features
+cargo test --all-features --verbose
+cargo test --doc --verbose
+```
+
+Result: all passed locally.
+
+The e2e specs were extended so local and live browser tests now assert:
+
+- `fs.readDir('/workspace/target')` returns Cargo target children after a real `cargo run`.
+- `fs.readDir('/workspace/target/debug')` returns on-demand metadata.
+- Editing `src/main.rs` through the same WebVM FileSystemProvider bus and then running real `cargo run` no longer reuses the pre-baked binary. In fast environments the test asserts the edited message; in CI it accepts the command entering Cargo's compile path because a fresh CheerpX Rust compile can exceed the command timeout.
+
+## Upstream Assessment
+
+No upstream GitHub issue was opened. The observed behavior was caused by local coordination between the guest sync hook, the in-browser FileSystemProvider cache, and terminal command submission. The upstream APIs used by the fix provide the required primitives.
+
+## Follow-up Risk
+
+The fix intentionally does not sync Cargo target file contents into VS Code. It syncs metadata-only file stubs so Explorer can show the generated tree without pulling large artifacts into browser storage.

@@ -155,7 +155,20 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     assert.match(cargoRun.output, /Hello from rust-web-box!/, `cargo run output:\n${cargoRun.output}`);
     assert.match(cargoRun.output, /Finished/, `cargo run did not print Finished:\n${cargoRun.output}`);
 
-    // Stage E: save through the same FileSystemProvider bus that VS Code
+    // Stage E: expanding target/ in the Explorer calls fs.readDir. That
+    // should refresh target metadata from the guest on demand, without
+    // reintroducing the issue #27 prompt-time full-target scan.
+    const targetRoot = await requestWorkbenchBus(page, 'fs.readDir', {
+      path: '/workspace/target',
+    });
+    assert.ok(targetRoot.some(([name]) => name === 'debug'), JSON.stringify(targetRoot));
+    assert.ok(targetRoot.some(([name]) => name === 'release'), JSON.stringify(targetRoot));
+    const targetDebug = await requestWorkbenchBus(page, 'fs.readDir', {
+      path: '/workspace/target/debug',
+    });
+    assert.ok(targetDebug.length > 0, 'expected target/debug metadata after on-demand refresh');
+
+    // Stage F: save through the same FileSystemProvider bus that VS Code
     // uses, then read from inside the guest. This is the narrow e2e
     // guard for issue #21's "Ctrl+S must affect the next VM command"
     // report without forcing a fresh cargo build in the browser.
@@ -173,6 +186,20 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     const catEdited = await runInVM(page, 'cat /workspace/src/main.rs');
     assert.equal(catEdited.status?.status ?? catEdited.status, 0);
     assert.match(catEdited.output, /saved through webvm fs bus/);
+
+    // Stage G: the next user-facing cargo run must use the edited
+    // source, not the pre-baked binary's old output. CheerpX can take
+    // several minutes to finish a fresh Rust compile in CI, so this
+    // guard accepts either a completed run with the edited output or a
+    // timed-out command that has already entered Cargo's compile path.
+    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 45_000 });
+    if (rerunEdited.timedOut) {
+      assert.match(rerunEdited.output, /Compiling(?:\x1b\[[0-9;]*m)*\s+hello/, `edited cargo run did not recompile:\n${rerunEdited.output}`);
+      assert.doesNotMatch(rerunEdited.output, /Hello from rust-web-box!/, `edited cargo run reused old binary:\n${rerunEdited.output}`);
+    } else {
+      assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);
+      assert.match(rerunEdited.output, /saved through webvm fs bus/, `edited cargo run output:\n${rerunEdited.output}`);
+    }
 
     // No CheerpException must have leaked into console.error during the
     // run. (CheerpX 1.2.11 logged it asynchronously, after `cx.run`

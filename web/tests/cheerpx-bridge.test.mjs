@@ -253,6 +253,31 @@ test('attachConsole: onData receives writer output as Uint8Array', () => {
   assert.deepEqual(seen, [[1, 2, 3], [9]]);
 });
 
+test('attachConsole: reattach restores its writer after another console capture', () => {
+  let writer;
+  let calls = 0;
+  const reads = [];
+  const fakeCx = {
+    setCustomConsole(w) {
+      writer = w;
+      calls += 1;
+      const call = calls;
+      return (charCode) => reads.push([call, charCode]);
+    },
+  };
+  const c = attachConsole(fakeCx);
+  const seen = [];
+  c.onData((u8) => seen.push(Array.from(u8)));
+
+  fakeCx.setCustomConsole(() => {}, 80, 24);
+  c.reattach();
+  writer(new Uint8Array([7]), 1);
+  c.write('x');
+
+  assert.deepEqual(seen, [[7]]);
+  assert.deepEqual(reads, [[3, 'x'.charCodeAt(0)]]);
+});
+
 test('attachConsole: dispose drops listeners', () => {
   let writer;
   const fakeCx = {

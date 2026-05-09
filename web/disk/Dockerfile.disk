@@ -68,26 +68,22 @@ RUN printf '%s\n' \
       '  [ -d /workspace ] || return 0' \
       '  {' \
       '    printf '"'"'RWB_SYNC_V1\n'"'"'' \
-      '    find /workspace -path /workspace/.git -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do' \
+      '    if [ -d /workspace/target ]; then' \
+      '      printf '"'"'D\t%s\n'"'"' "$(printf '"'"'%s'"'"' /workspace/target | base64 | tr -d '"'"'\n'"'"')"' \
+      '    fi' \
+      '    find /workspace -path /workspace/.git -prune -o -path /workspace/target -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do' \
       '      [ "$path" = /workspace ] && continue' \
       '      if [ -d "$path" ]; then' \
       '        printf '"'"'D\t%s\n'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')"' \
       '      elif [ -f "$path" ]; then' \
       '        size=$(wc -c < "$path" 2>/dev/null | tr -d '"'"' '"'"')' \
-      '        case "$path" in' \
-      '          /workspace/target/*)' \
-      '            printf '"'"'S\t%s\t%s\n'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')" "${size:-0}"' \
-      '            ;;' \
-      '          *)' \
-      '            if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then' \
-      '              printf '"'"'F\t%s\t'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')"' \
-      '              base64 < "$path" | tr -d '"'"'\n'"'"'' \
-      '              printf '"'"'\n'"'"'' \
-      '            else' \
-      '              printf '"'"'S\t%s\t%s\n'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')" "${size:-0}"' \
-      '            fi' \
-      '            ;;' \
-      '        esac' \
+      '        if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then' \
+      '          printf '"'"'F\t%s\t'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')"' \
+      '          base64 < "$path" | tr -d '"'"'\n'"'"'' \
+      '          printf '"'"'\n'"'"'' \
+      '        else' \
+      '          printf '"'"'S\t%s\t%s\n'"'"' "$(printf '"'"'%s'"'"' "$path" | base64 | tr -d '"'"'\n'"'"')" "${size:-0}"' \
+      '        fi' \
       '      fi' \
       '    done' \
       '  } | {' \
@@ -97,7 +93,10 @@ RUN printf '%s\n' \
       '  }' \
       '}' \
       'if [ -n "${PROMPT_COMMAND:-}" ]; then' \
-      '  PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}"' \
+      '  case "${PROMPT_COMMAND}" in' \
+      '    *__rwb_sync_from_guest*) ;;' \
+      '    *) PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}" ;;' \
+      '  esac' \
       'else' \
       '  PROMPT_COMMAND="__rwb_sync_from_guest"' \
       'fi' \
