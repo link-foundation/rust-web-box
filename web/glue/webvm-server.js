@@ -419,12 +419,29 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   // staircase indentation that bare-LF would otherwise produce.
   const stdoutDecoder = new TextDecoder('utf-8', { fatal: false });
   const normaliseCrlf = createLfToCrlfNormaliser();
+  // Issue #27: opt-in trace for the terminal byte-stream pipeline. Set
+  // `window.__RWB_DEBUG_TERMINAL_STREAM = true` in DevTools to log every
+  // visible chunk plus listener count, which makes "duplicate output"
+  // regressions trivially diagnosable. Off by default (zero overhead).
+  let stdoutChunkCount = 0;
   console_.onData((bytes) => {
     const text = stdoutDecoder.decode(bytes, { stream: true });
     if (!text) return;
     const visible = syncFrameParser.filter(text);
     if (!visible) return;
-    busServer.emit('proc.stdout', { pid: 1, chunk: normaliseCrlf(visible) });
+    const chunk = normaliseCrlf(visible);
+    if (
+      typeof globalThis !== 'undefined' &&
+      globalThis.__RWB_DEBUG_TERMINAL_STREAM
+    ) {
+      stdoutChunkCount += 1;
+      // eslint-disable-next-line no-console
+      console.log(
+        `[rwb:terminal-stream] #${stdoutChunkCount} bytes=${chunk.length}`,
+        JSON.stringify(chunk.slice(0, 80)),
+      );
+    }
+    busServer.emit('proc.stdout', { pid: 1, chunk });
   });
 
   // Per-terminal subscriber tracking. Every "spawn" returns the same

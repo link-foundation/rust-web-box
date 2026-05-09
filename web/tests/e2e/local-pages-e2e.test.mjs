@@ -207,3 +207,125 @@ test('local e2e: workbench surfaces the warm disk manifest', async (t) => {
   assert.equal(json.warm.kind, 'github');
   assert.equal(json.warm.release_tag, 'disk-latest');
 });
+
+test('local e2e: proc.stdout emit pipeline is single-delivery and disposers detach listeners (issue #27)', async (t) => {
+  // Issue #27 regression. The user-visible symptom was: every typed
+  // character appeared twice in the terminal, and every line of command
+  // output (e.g. `cargo run`'s "Hello from rust-web-box!") rendered
+  // duplicated. The root cause lived in the webvm-host extension: each
+  // call to `makePseudoterminal().open()` did
+  //   `stdoutDispose = bus.on('proc.stdout', …)`
+  // without disposing the previous subscriber. VS Code Web calls open()
+  // more than once per pty (panel reattach, terminal restore), so each
+  // reattach added a fresh listener, and the writeEmitter that fanned
+  // those subscribers into xterm received N copies of every byte.
+  //
+  // We can't reach VS Code's xterm DOM from this harness (the workbench
+  // panel only mounts after a user gesture, and the e2e harness sets
+  // `__RUST_WEB_BOX_SKIP_BASH = true` to avoid the CheerpX 1.3.0 'a1'
+  // OverlayDevice wedge), so we validate the runtime invariants the
+  // extension's fix relies on, exercised against the real page-side bus:
+  //
+  //   1. The page's busServer emits each `proc.stdout` chunk exactly once
+  //      per BroadcastChannel subscriber. (If this regressed, every
+  //      consumer — extension, debugger, future tooling — would see
+  //      doubles regardless of how disciplined they were about
+  //      subscriber lifecycle.)
+  //
+  //   2. The unsubscribe function returned by the page's bus dispatcher
+  //      actually detaches the listener. The extension's fix
+  //      (detachBusListeners() before re-binding) only works if calling
+  //      that disposer stops further deliveries — so this is the runtime
+  //      precondition for the fix.
+  //
+  // The narrow source-shape regression (every `bus.on('proc.stdout', …)`
+  // site in extension.js is preceded by a paired `detachBusListeners()`
+  // call) is asserted separately in
+  // `web/tests/extension-pty-listeners.test.mjs`.
+  const commander = await tryLoadBrowserCommander();
+  if (bailIfMissingPrereqs(t, { commander })) return;
+
+  const server = await startDevServer({ basePrefix: BASE_PREFIX });
+  t.after(() => server.stop());
+
+  await withWorkbench(server.url, async ({ page, errors, diagnostics }) => {
+    const vmPhase = await waitForLinux(page, { diagnostics: { ...diagnostics, errors } });
+    assert.equal(vmPhase, 'ready');
+
+    const result = await page.evaluate(async () => {
+      const busServer = globalThis.__rustWebBox?.busServer;
+      if (!busServer || typeof busServer.emit !== 'function') {
+        throw new Error('page-side busServer not exposed on __rustWebBox');
+      }
+
+      // Sentinel markers that cannot legitimately appear in the stream
+      // unless we put them there.
+      const MARKER_A = 'rwb_dup_check_a_' + Math.random().toString(36).slice(2, 10);
+      const MARKER_B = 'rwb_dup_check_b_' + Math.random().toString(36).slice(2, 10);
+
+      // Spin up an *independent* BroadcastChannel subscriber — the same
+      // way the webvm-host extension would in its host worker. The bus
+      // server lives in the page; this listener attaches from the same
+      // page context, which still exercises the BroadcastChannel
+      // postMessage → message-event delivery path.
+      const channel = new BroadcastChannel('rust-web-box/webvm-bus');
+      const inbox = [];
+      const onMessage = (ev) => {
+        const msg = ev.data;
+        if (msg?.kind === 'event' && msg.topic === 'proc.stdout' && msg.payload?.chunk) {
+          inbox.push(msg.payload.chunk);
+        }
+      };
+      channel.addEventListener('message', onMessage);
+
+      // Wait one microtask + one macrotask flush so the listener is wired
+      // before we emit. BroadcastChannel postMessage is synchronous-ish
+      // but message dispatch is on the next task; emitting too early
+      // would mask the regression by losing chunks unrelated to the bug.
+      await new Promise((r) => setTimeout(r, 0));
+
+      // Invariant 1: page-side emit is single-delivery. Emit once and
+      // give the message-event a tick to land. The pre-#27 doubled
+      // pipeline would put MARKER_A in the inbox twice; the fixed
+      // pipeline puts it in once.
+      busServer.emit('proc.stdout', { pid: 1, chunk: MARKER_A });
+      await new Promise((r) => setTimeout(r, 100));
+
+      const countA = inbox.filter((c) => c === MARKER_A).length;
+
+      // Invariant 2: subscribers detach cleanly. Remove our listener and
+      // emit a *different* marker — it must not arrive. The extension's
+      // fix (detachBusListeners() before re-binding) is built on this
+      // exact precondition. If `removeEventListener` no-ops here, the
+      // detach pattern in extension.js silently leaks listeners again.
+      channel.removeEventListener('message', onMessage);
+      busServer.emit('proc.stdout', { pid: 1, chunk: MARKER_B });
+      await new Promise((r) => setTimeout(r, 100));
+
+      const countB = inbox.filter((c) => c === MARKER_B).length;
+
+      channel.close();
+      return {
+        markerA: MARKER_A,
+        markerB: MARKER_B,
+        countA,
+        countB,
+        inboxSize: inbox.length,
+      };
+    });
+
+    assert.equal(
+      result.countA, 1,
+      `marker ${result.markerA} should appear exactly 1x in proc.stdout ` +
+      `(single-delivery invariant), saw ${result.countA}. ` +
+      `> 1 is the regression returning.`,
+    );
+    assert.equal(
+      result.countB, 0,
+      `marker ${result.markerB} should appear 0x after the listener detached ` +
+      `(disposer invariant), saw ${result.countB}. > 0 means the unsubscribe ` +
+      `function returned by the bus did not actually remove the listener — ` +
+      `the extension's detachBusListeners() fix would silently leak.`,
+    );
+  }, { commander });
+});

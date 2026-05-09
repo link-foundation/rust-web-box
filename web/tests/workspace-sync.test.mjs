@@ -207,9 +207,54 @@ test('workspace-sync: bash profile hook emits hidden sync frames after prompts',
   assert.match(block, /printf 'S\\t%s\\t%s\\n'/);
 });
 
-test('workspace-sync: target artifacts stay visible as skipped metadata', () => {
+test('workspace-sync: target directory itself is surfaced without descending into it', () => {
+  // Issue #27: the previous version of this profile descended into
+  // /workspace/target on every prompt (find without -prune), which
+  // turned each interactive prompt into a multi-second scan over
+  // ~10K cargo build artifacts. The fix prunes target/ contents from
+  // the per-prompt scan but still emits a single 'D' frame for the
+  // directory itself so VS Code's Explorer can show "target" — keeping
+  // the user-visible promise of issue #25 ("target folder visible")
+  // without the catastrophic perf regression of issue #27.
   const block = buildGuestSyncProfileBlock();
-  assert.doesNotMatch(block, /\/workspace\/target -prune/);
-  assert.match(block, /\/workspace\/target\/\*/);
-  assert.match(block, /printf 'S\\t%s\\t%s\\n'/);
+  assert.match(block, /-path \/workspace\/target -prune/);
+  assert.match(block, /if \[ -d \/workspace\/target \]; then/);
+  assert.match(block, /printf 'D\\t%s\\n' "\$\(printf '%s' \/workspace\/target/);
+});
+
+test('workspace-sync: PROMPT_COMMAND is not double-installed if already present', () => {
+  // Re-sourcing /root/.bash_profile would otherwise double the prompt
+  // hook, doubling every per-prompt scan and making the perf regression
+  // worse. Issue #27.
+  const block = buildGuestSyncProfileBlock();
+  assert.match(block, /\*__rwb_sync_from_guest\*\) ;;/);
+});
+
+test('workspace-sync: target paths are not deleted from JS workspace by sweep', async () => {
+  // The deletion sweep treats "in knownPaths but not in currentPaths"
+  // as removed. Because target/* is now pruned from the scan, every
+  // such path would otherwise be wiped. Issue #27 keeps the cached
+  // metadata stubs untouched so the Explorer keeps surfacing them
+  // even between prompts.
+  const workspace = makeWorkspace();
+  workspace.entries.set('/workspace/target', { type: 2 });
+  workspace.entries.set('/workspace/target/debug', { type: 2 });
+  workspace.entries.set('/workspace/target/debug/hello', {
+    type: 1,
+    metadataOnly: true,
+    size: 1234,
+  });
+  const state = {
+    knownPaths: new Set([
+      '/workspace/target',
+      '/workspace/target/debug',
+      '/workspace/target/debug/hello',
+    ]),
+  };
+  const snapshot = decodeWorkspaceSyncPayload(payload([
+    `D\t${b64('/workspace/target')}`,
+  ]));
+  await applyWorkspaceSyncSnapshot(workspace, snapshot, state);
+  assert.ok(workspace.entries.get('/workspace/target/debug/hello'));
+  assert.ok(workspace.entries.get('/workspace/target/debug'));
 });

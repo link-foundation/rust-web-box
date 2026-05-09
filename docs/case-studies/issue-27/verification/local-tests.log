@@ -1,0 +1,20 @@
+  ...
+# Subtest: workspace-sync: PROMPT_COMMAND is not double-installed if already present
+ok 183 - workspace-sync: PROMPT_COMMAND is not double-installed if already present
+  ---
+  duration_ms: 0.126069
+  ...
+# Subtest: workspace-sync: target paths are not deleted from JS workspace by sweep
+ok 184 - workspace-sync: target paths are not deleted from JS workspace by sweep
+  ---
+  duration_ms: 0.417795
+  ...
+1..184
+# tests 184
+# suites 0
+# pass 184
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 30371.377129
