@@ -19,8 +19,9 @@ The fix keeps `cargo run` real. The warm disk now pre-bakes a lean dev profile (
 | `evidence/live-console-after-timeout.log` | Live reproduction against Pages. The second debug rebuild logs `Program exited with code 71` at about 268.8 seconds. |
 | `evidence/live-console-lean-profile-probe.log` | Runtime-only profile probe. It proves old disks cannot receive `CARGO_PROFILE_DEV_DEBUG=0` without invalidating the pre-bake. |
 | `verification/webvm-server-before-fix.log` | Reproducing regression tests failing before the implementation. |
-| `verification/webvm-server-after-artifact-eviction-fix.log` | Focused WebVM server tests passing after the save-script artifact eviction guard was added. |
-| `verification/focused-node-after-artifact-eviction-fix.log` | Focused boot-shell, disk-staging, and WebVM server tests passing after the CI e2e stale-binary failure was fixed. |
+| `verification/webvm-server-after-fingerprint-stale-fix.log` | Focused WebVM server tests passing after the save-script fingerprint stale guard was added. |
+| `verification/focused-node-after-fingerprint-stale-fix.log` | Focused boot-shell, disk-staging, and WebVM server tests passing after the CI e2e stale-binary failure was fixed. |
+| `verification/node-web-tests-after-fingerprint-stale-fix.log` | Full web test suite passing after the fingerprint stale guard was added. |
 | `verification/disk-staging-after-fix.log` | Disk staging tests passing after local-disk staging support was added. |
 | `online-research.md` | CheerpX and Cargo references used for the fix. |
 
@@ -45,7 +46,7 @@ The failed runtime-only probe is important: setting lean dev-profile environment
 - `web/disk/Dockerfile.disk` now writes `[profile.dev] incremental = false`, `debug = 0`, and `codegen-units = 1`, exports matching env in `/root/.bash_profile`, and pre-bakes debug/release artifacts under those settings.
 - `web/disk/build.sh` still minimizes the ext2 image for upload, but grows it back by a small writable reserve so edited rebuilds have filesystem headroom.
 - `web/glue/webvm-server.js` writes a guarded bash profile. It enables `CARGO_PROFILE_DEV_*` only when `/root/.cargo/config.toml` declares the matching lean profile, so old published disks are not invalidated by new page JavaScript.
-- Browser saves now age existing `/workspace/target` metadata after writing Cargo inputs and remove only top-level debug/release executable artifacts. That forces Cargo's normal rebuild path from the edited source without deleting fingerprint trees; the executable backstop covers CheerpX guest-clock and ext2 mtime cases where metadata aging alone can still leave Cargo trusting the pre-baked binary.
+- Browser saves now age existing `/workspace/target` metadata after writing Cargo inputs and overwrite existing Cargo dep-info fingerprint marker files with a stale marker. That forces Cargo's normal rebuild path from the edited source without deleting fingerprint trees; the fingerprint backstop covers CheerpX lower-layer delete behavior and ext2 mtime cases where metadata aging alone can still leave Cargo trusting the pre-baked binary.
 - `.github/workflows/disk-image.yml` runs its destructive edited-source smoke test on a copy of the ext2 image before staging the untouched built disk for browser e2e and release.
 - `web/tests/helpers/cheerpx-page-harness.mjs` uses the same guard for direct e2e `cx.run` commands.
 - `web/tests/e2e/*` now require the edited `cargo run` to complete and print the edited output when the staged disk has the lean profile.

@@ -176,22 +176,19 @@ function cargoFreshnessMtimeScript(path) {
     'if [ -d /workspace/target ]; then',
     '  find /workspace/target -exec touch -t 197001010000 {} \\; 2>/dev/null || true',
     'fi',
-    // CheerpX guest clocks and ext2 mtimes are not reliable enough for
-    // Cargo's freshness checks by themselves. Remove only the final
-    // top-level executable artifacts so the next `cargo run` goes through
-    // Cargo's normal rebuild path without deleting the fingerprint tree.
-    'for __rwb_profile in debug release; do',
-    '  __rwb_dir="/workspace/target/$__rwb_profile"',
-    '  [ -d "$__rwb_dir" ] || continue',
-    '  for __rwb_artifact in "$__rwb_dir"/*; do',
-    '    [ -f "$__rwb_artifact" ] || continue',
-    '    case "$__rwb_artifact" in',
-    '      *.d|*.rlib|*.rmeta|*.so|*.a|*.o|*.wasm) continue ;;',
-    '    esac',
-    '    rm -f "$__rwb_artifact" 2>/dev/null || true',
+    // CheerpX lower-layer deletes can leave pre-baked files visible, and
+    // guest clocks/mtimes are not reliable enough by themselves. Mark
+    // Cargo's existing dep-info fingerprints stale by overwriting them;
+    // that keeps the tree shape intact while forcing Cargo's dirty check
+    // to rebuild the edited package.
+    'for __rwb_fp_dir in /workspace/target/debug/.fingerprint/* /workspace/target/release/.fingerprint/*; do',
+    '  [ -d "$__rwb_fp_dir" ] || continue',
+    '  for __rwb_marker in "$__rwb_fp_dir"/dep-*; do',
+    '    [ -f "$__rwb_marker" ] || continue',
+    "    printf '%s\\n' 'rust-web-box stale after browser save' > \"$__rwb_marker\" 2>/dev/null || true",
     '  done',
     'done',
-    'unset __rwb_profile __rwb_dir __rwb_artifact 2>/dev/null || true',
+    'unset __rwb_fp_dir __rwb_marker 2>/dev/null || true',
     `touch -m '${quotedPath}' 2>/dev/null || true`,
   ].join('\n');
 }
