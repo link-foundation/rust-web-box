@@ -178,14 +178,15 @@ function cargoFreshnessMtimeScript(path) {
     'fi',
     // CheerpX lower-layer deletes can leave pre-baked files visible, and
     // guest clocks/mtimes are not reliable enough by themselves. Mark
-    // Cargo's existing dep-info fingerprints stale by overwriting them;
-    // that keeps the tree shape intact while forcing Cargo's dirty check
-    // to rebuild the edited package.
+    // Cargo's text fingerprint hashes stale while leaving binary dep-info
+    // files intact, so Cargo's dirty check can safely rebuild.
     'for __rwb_fp_dir in /workspace/target/debug/.fingerprint/* /workspace/target/release/.fingerprint/*; do',
     '  [ -d "$__rwb_fp_dir" ] || continue',
-    '  for __rwb_marker in "$__rwb_fp_dir"/dep-*; do',
+    '  for __rwb_marker in "$__rwb_fp_dir"/bin-* "$__rwb_fp_dir"/lib-* "$__rwb_fp_dir"/test-* "$__rwb_fp_dir"/bench-* "$__rwb_fp_dir"/example-* "$__rwb_fp_dir"/build-script-*; do',
     '    [ -f "$__rwb_marker" ] || continue',
-    "    printf '%s\\n' 'rust-web-box stale after browser save' > \"$__rwb_marker\" 2>/dev/null || true",
+    '    case "$__rwb_marker" in *.json|*/dep-*|*/invoked.timestamp) continue ;; esac',
+    "    printf '%s' '0000000000000000' > \"$__rwb_marker\" 2>/dev/null || true",
+    '    touch -t 197001010000 "$__rwb_marker" 2>/dev/null || true',
     '  done',
     'done',
     'unset __rwb_fp_dir __rwb_marker 2>/dev/null || true',

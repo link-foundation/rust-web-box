@@ -2,177 +2,177 @@ TAP version 13
 # Subtest: boot shell: index.html mounts directly into <body> with no custom UI overlay
 ok 1 - boot shell: index.html mounts directly into <body> with no custom UI overlay
   ---
-  duration_ms: 5.781608
+  duration_ms: 6.722071
   ...
 # Subtest: boot shell: index.html references workbench config meta
 ok 2 - boot shell: index.html references workbench config meta
   ---
-  duration_ms: 0.604033
+  duration_ms: 1.848832
   ...
 # Subtest: boot shell: console filter runs before VS Code loader
 ok 3 - boot shell: console filter runs before VS Code loader
   ---
-  duration_ms: 0.578634
+  duration_ms: 0.836119
   ...
 # Subtest: boot shell: workbench config preinstalls our two extensions
 ok 4 - boot shell: workbench config preinstalls our two extensions
   ---
-  duration_ms: 0.523653
+  duration_ms: 0.745523
   ...
 # Subtest: boot shell: index.html points to vendored vscode-web bundle
 ok 5 - boot shell: index.html points to vendored vscode-web bundle
   ---
-  duration_ms: 0.466869
+  duration_ms: 0.657742
   ...
 # Subtest: boot shell: glue modules exist
 ok 6 - boot shell: glue modules exist
   ---
-  duration_ms: 5.522772
+  duration_ms: 5.039968
   ...
 # Subtest: boot shell: extensions are present with package.json + extension.js
 ok 7 - boot shell: extensions are present with package.json + extension.js
   ---
-  duration_ms: 2.154209
+  duration_ms: 1.086694
   ...
 # Subtest: boot shell: webvm-host package.json declares web extensionKind
 ok 8 - boot shell: webvm-host package.json declares web extensionKind
   ---
-  duration_ms: 1.384859
+  duration_ms: 4.441715
   ...
 # Subtest: boot shell: rust-analyzer-web package.json declares rust language
 ok 9 - boot shell: rust-analyzer-web package.json declares rust language
   ---
-  duration_ms: 1.973449
+  duration_ms: 2.195879
   ...
 # Subtest: boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
 ok 10 - boot shell: service worker synthesises COOP/COEP headers (require-corp for same-origin disk)
   ---
-  duration_ms: 0.992452
+  duration_ms: 2.869096
   ...
 # Subtest: boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.3.0
 ok 11 - boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.3.0
   ---
-  duration_ms: 1.448715
+  duration_ms: 1.186754
   ...
 # Subtest: boot shell: workbench bootstrap provides process.env for browserified dependencies
 ok 12 - boot shell: workbench bootstrap provides process.env for browserified dependencies
   ---
-  duration_ms: 0.708558
+  duration_ms: 0.837942
   ...
 # Subtest: boot shell: rendered index keeps the browser process.env shim
 ok 13 - boot shell: rendered index keeps the browser process.env shim
   ---
-  duration_ms: 2.143773
+  duration_ms: 1.373281
   ...
 # Subtest: boot shell: webvm-host extension shows a "Booting Linux VM" banner
 ok 14 - boot shell: webvm-host extension shows a "Booting Linux VM" banner
   ---
-  duration_ms: 2.550601
+  duration_ms: 1.314283
   ...
 # Subtest: boot shell: webvm-host auto-opens a terminal on activation
 ok 15 - boot shell: webvm-host auto-opens a terminal on activation
   ---
-  duration_ms: 1.239162
+  duration_ms: 0.587508
   ...
 # Subtest: boot shell: webvm-host auto-opens src/main.rs on activation
 ok 16 - boot shell: webvm-host auto-opens src/main.rs on activation
   ---
-  duration_ms: 0.88349
+  duration_ms: 1.316907
   ...
 # Subtest: boot shell: webvm-host forwards page-side fs.change events to VS Code
 ok 17 - boot shell: webvm-host forwards page-side fs.change events to VS Code
   ---
-  duration_ms: 2.609328
+  duration_ms: 1.938956
   ...
 # Subtest: boot shell: workspace-fs seeds a root Cargo project
 ok 18 - boot shell: workspace-fs seeds a root Cargo project
   ---
-  duration_ms: 1.125961
+  duration_ms: 1.437997
   ...
 # Subtest: boot shell: webvm-server mirrors workspace through a quiet DataDevice script
 ok 19 - boot shell: webvm-server mirrors workspace through a quiet DataDevice script
   ---
-  duration_ms: 0.920115
+  duration_ms: 2.151584
   ...
 # Subtest: boot shell: boot.js wires guest debug logs for ?debug routes
 ok 20 - boot shell: boot.js wires guest debug logs for ?debug routes
   ---
-  duration_ms: 0.692625
+  duration_ms: 1.038882
   ...
 # Subtest: boot shell: boot.js passes CheerpX DataDevice to the WebVM server
 ok 21 - boot shell: boot.js passes CheerpX DataDevice to the WebVM server
   ---
-  duration_ms: 0.74908
+  duration_ms: 0.794277
   ...
 # Subtest: boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
 ok 22 - boot shell: webvm-server normalises bare LF to CRLF before broadcasting stdout
   ---
-  duration_ms: 0.560889
+  duration_ms: 2.721406
   ...
 # Subtest: boot shell: boot.js stages workspace-only server before VM is up
 ok 23 - boot shell: boot.js stages workspace-only server before VM is up
   ---
-  duration_ms: 0.497943
+  duration_ms: 0.585614
   ...
 # Subtest: boot shell: disk manifest carries an Alpine warm image entry staged for Pages
 ok 24 - boot shell: disk manifest carries an Alpine warm image entry staged for Pages
   ---
-  duration_ms: 2.190082
+  duration_ms: 0.839895
   ...
 # Subtest: boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
 ok 25 - boot shell: rust-analyzer-web does not probe a missing WASM unless package metadata opts in
   ---
-  duration_ms: 2.151965
+  duration_ms: 7.808775
   ...
 # Subtest: boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world
 ok 26 - boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world
   ---
-  duration_ms: 0.883609
+  duration_ms: 1.212982
   ...
 # Subtest: boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run output
 ok 27 - boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run output
   ---
-  duration_ms: 0.545676
+  duration_ms: 0.697533
   ...
 # Subtest: boot shell: pages workflow deploys to GitHub Pages on main
 ok 28 - boot shell: pages workflow deploys to GitHub Pages on main
   ---
-  duration_ms: 1.607121
+  duration_ms: 0.606365
   ...
 # Subtest: boot shell: warm disk staging fails closed by default
 ok 29 - boot shell: warm disk staging fails closed by default
   ---
-  duration_ms: 1.154755
+  duration_ms: 0.611794
   ...
 # Subtest: boot shell: disk-image workflow exists and triggers on workflow_dispatch
 ok 30 - boot shell: disk-image workflow exists and triggers on workflow_dispatch
   ---
-  duration_ms: 2.517612
+  duration_ms: 0.561318
   ...
 # Subtest: boot shell: disk-image workflow auto-publishes to disk-latest on push to main
 ok 31 - boot shell: disk-image workflow auto-publishes to disk-latest on push to main
   ---
-  duration_ms: 0.718344
+  duration_ms: 0.489512
   ...
 # Subtest: cargo-install: full request sequence for `cargo install serde` routes correctly
 ok 32 - cargo-install: full request sequence for `cargo install serde` routes correctly
   ---
-  duration_ms: 19.918619
+  duration_ms: 22.86163
   ...
 # Subtest: cargo-install: sparse-index host classification matches production rules
 ok 33 - cargo-install: sparse-index host classification matches production rules
   ---
-  duration_ms: 0.159258
+  duration_ms: 0.129334
   ...
 # Subtest: cargo-install: docs.rs and crates.io mirrors are blocked (defence in depth)
 ok 34 - cargo-install: docs.rs and crates.io mirrors are blocked (defence in depth)
   ---
-  duration_ms: 0.518044
+  duration_ms: 0.651382
   ...
 # Subtest: cargo-install: tarball download survives transient proxy failure on an index call
 ok 35 - cargo-install: tarball download survives transient proxy failure on an index call
   ---
-  duration_ms: 0.597264
+  duration_ms: 0.660707
   ...
 # [rust-web-box] CheerpX served from CDN; vendored copy not found: Error: vendored missing
 #     at TestContext.<anonymous> (file:///tmp/gh-issue-solver-1778409422575/web/tests/cheerpx-bridge.test.mjs:14:23)
@@ -199,659 +199,659 @@ ok 35 - cargo-install: tarball download survives transient proxy failure on an i
 # Subtest: loadCheerpX: prefers vendored module, falls back to CDN
 ok 36 - loadCheerpX: prefers vendored module, falls back to CDN
   ---
-  duration_ms: 2.805992
+  duration_ms: 3.082104
   ...
 # Subtest: loadCheerpX: throws aggregated error when both fail
 ok 37 - loadCheerpX: throws aggregated error when both fail
   ---
-  duration_ms: 0.464284
+  duration_ms: 0.513788
   ...
 # Subtest: bootLinux: rejects without CheerpX module
 ok 38 - bootLinux: rejects without CheerpX module
   ---
-  duration_ms: 0.299388
+  duration_ms: 0.333627
   ...
 # Subtest: bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
 ok 39 - bootLinux: falls back to fallbackDiskUrl when primary CloudDevice mount fails
   ---
-  duration_ms: 0.390404
+  duration_ms: 0.525395
   ...
 # Subtest: bootLinux: builds the WebVM-style mount stack and surfaces progress
 ok 40 - bootLinux: builds the WebVM-style mount stack and surfaces progress
   ---
-  duration_ms: 0.264625
+  duration_ms: 0.406157
   ...
 # Subtest: createBlockDevice: selects the CheerpX device for each disk kind
 ok 41 - createBlockDevice: selects the CheerpX device for each disk kind
   ---
-  duration_ms: 0.318216
+  duration_ms: 0.324766
   ...
 # Subtest: resolveDiskUrl: uses warm.url when set and probe succeeds
 ok 42 - resolveDiskUrl: uses warm.url when set and probe succeeds
   ---
-  duration_ms: 0.345736
+  duration_ms: 0.330374
   ...
 # Subtest: resolveDiskUrl: falls back to default.url when warm.url is null
 ok 43 - resolveDiskUrl: falls back to default.url when warm.url is null
   ---
-  duration_ms: 0.125939
+  duration_ms: 0.199569
   ...
 # Subtest: resolveDiskUrl: falls back to default.url when warm probe fails (404)
 ok 44 - resolveDiskUrl: falls back to default.url when warm probe fails (404)
   ---
-  duration_ms: 0.340609
+  duration_ms: 0.50895
   ...
 # Subtest: resolveDiskUrl: falls back to hard-coded URL on fetch error
 ok 45 - resolveDiskUrl: falls back to hard-coded URL on fetch error
   ---
-  duration_ms: 0.534397
+  duration_ms: 0.689451
   ...
 # Subtest: attachConsole: rejects without a Linux handle
 ok 46 - attachConsole: rejects without a Linux handle
   ---
-  duration_ms: 0.264125
+  duration_ms: 0.29473
   ...
 # Subtest: attachConsole: write() drives cxReadFunc per character
 ok 47 - attachConsole: write() drives cxReadFunc per character
   ---
-  duration_ms: 0.215912
+  duration_ms: 0.293889
   ...
 # Subtest: attachConsole: onData receives writer output as Uint8Array
 ok 48 - attachConsole: onData receives writer output as Uint8Array
   ---
-  duration_ms: 2.109852
+  duration_ms: 1.344639
   ...
 # Subtest: attachConsole: reattach restores its writer after another console capture
 ok 49 - attachConsole: reattach restores its writer after another console capture
   ---
-  duration_ms: 0.394259
+  duration_ms: 0.266068
   ...
 # Subtest: attachConsole: dispose drops listeners
 ok 50 - attachConsole: dispose drops listeners
   ---
-  duration_ms: 0.201921
+  duration_ms: 0.144826
   ...
 # Subtest: attachConsole: throws when CheerpX has no setCustomConsole
 ok 51 - attachConsole: throws when CheerpX has no setCustomConsole
   ---
-  duration_ms: 0.159779
+  duration_ms: 0.130635
   ...
 # Subtest: cheerpx vendor list: cxcore-no-return-call.wasm is fetched
 ok 52 - cheerpx vendor list: cxcore-no-return-call.wasm is fetched
   ---
-  duration_ms: 4.795024
+  duration_ms: 5.548979
   ...
 # Subtest: cheerpx vendor list: every cxcore*.js has a paired .wasm
 ok 53 - cheerpx vendor list: every cxcore*.js has a paired .wasm
   ---
-  duration_ms: 1.620491
+  duration_ms: 1.447853
   ...
 # Subtest: cheerpx vendor list: cx_esm.js / cx.esm.js are still required
 ok 54 - cheerpx vendor list: cx_esm.js / cx.esm.js are still required
   ---
-  duration_ms: 0.976139
+  duration_ms: 1.06471
   ...
 # Subtest: coi-bootstrap: glue/coi-bootstrap.js exists and exports nothing (classic script)
 ok 55 - coi-bootstrap: glue/coi-bootstrap.js exists and exports nothing (classic script)
   ---
-  duration_ms: 4.630368
+  duration_ms: 6.656963
   ...
 # Subtest: coi-bootstrap: index.html loads coi-bootstrap.js as the first <script> in <head>
 ok 56 - coi-bootstrap: index.html loads coi-bootstrap.js as the first <script> in <head>
   ---
-  duration_ms: 0.95072
+  duration_ms: 1.135576
   ...
 # Subtest: coi-bootstrap: build/index.template.html loads coi-bootstrap.js as the first <script> in <head>
 ok 57 - coi-bootstrap: build/index.template.html loads coi-bootstrap.js as the first <script> in <head>
   ---
-  duration_ms: 1.714201
+  duration_ms: 2.624991
   ...
 # Subtest: coi-bootstrap: boot.js no longer registers the SW directly (single owner)
 ok 58 - coi-bootstrap: boot.js no longer registers the SW directly (single owner)
   ---
-  duration_ms: 0.872162
+  duration_ms: 0.859485
   ...
 # Subtest: coi-bootstrap: sw.js still synthesizes COOP/COEP (regression guard for the header half)
 ok 59 - coi-bootstrap: sw.js still synthesizes COOP/COEP (regression guard for the header half)
   ---
-  duration_ms: 0.559315
+  duration_ms: 0.739063
   ...
 # Subtest: coi-bootstrap: warm load (already isolated) is a no-op — no reload, no register
 ok 60 - coi-bootstrap: warm load (already isolated) is a no-op — no reload, no register
   ---
-  duration_ms: 2.018996
+  duration_ms: 2.014179
   ...
 # Subtest: coi-bootstrap: ?coi=0 opt-out skips registration entirely
 ok 61 - coi-bootstrap: ?coi=0 opt-out skips registration entirely
   ---
-  duration_ms: 7.197604
+  duration_ms: 1.276888
   ...
 # Subtest: coi-bootstrap: no service worker API logs a warning and bails (no throw)
 ok 62 - coi-bootstrap: no service worker API logs a warning and bails (no throw)
   ---
-  duration_ms: 2.129802
+  duration_ms: 3.283074
   ...
 # Subtest: coi-bootstrap: fresh load with controller attached but not isolated triggers ONE reload
 ok 63 - coi-bootstrap: fresh load with controller attached but not isolated triggers ONE reload
   ---
-  duration_ms: 5.558284
+  duration_ms: 2.917618
   ...
 # Subtest: coi-bootstrap: second pass with marker set does NOT reload (loop guard)
 ok 64 - coi-bootstrap: second pass with marker set does NOT reload (loop guard)
   ---
-  duration_ms: 1.953459
+  duration_ms: 1.870043
   ...
 # Subtest: coi-bootstrap: fresh load with no controller registers SW with relative URL
 ok 65 - coi-bootstrap: fresh load with no controller registers SW with relative URL
   ---
-  duration_ms: 2.106658
+  duration_ms: 2.1356
   ...
 # Subtest: console-filter: suppresses known VS Code startup chatter only
 ok 66 - console-filter: suppresses known VS Code startup chatter only
   ---
-  duration_ms: 7.533765
+  duration_ms: 9.222207
   ...
 # Subtest: console-filter: debug mode bypasses filtering
 ok 67 - console-filter: debug mode bypasses filtering
   ---
-  duration_ms: 2.047709
+  duration_ms: 3.357115
   ...
 # Subtest: console-filter: suppresses exact known CheerpX internal a1 errors
 ok 68 - console-filter: suppresses exact known CheerpX internal a1 errors
   ---
-  duration_ms: 1.915732
+  duration_ms: 1.755693
   ...
 # Subtest: console-filter: leaves unrelated runtime errors visible
 ok 69 - console-filter: leaves unrelated runtime errors visible
   ---
-  duration_ms: 2.960093
+  duration_ms: 2.662217
   ...
 # Subtest: parseDebugSpec: returns null when no signal is present
 ok 70 - parseDebugSpec: returns null when no signal is present
   ---
-  duration_ms: 2.346876
+  duration_ms: 2.850558
   ...
 # Subtest: parseDebugSpec: ?debug=1 enables all namespaces
 ok 71 - parseDebugSpec: ?debug=1 enables all namespaces
   ---
-  duration_ms: 0.752263
+  duration_ms: 0.770511
   ...
 # Subtest: parseDebugSpec: ?debug=cheerpx,bus parses to a package namespace set
 ok 72 - parseDebugSpec: ?debug=cheerpx,bus parses to a package namespace set
   ---
-  duration_ms: 0.160661
+  duration_ms: 0.243113
   ...
 # Subtest: parseDebugSpec: localStorage rustWebBoxDebug is honoured when URL is silent
 ok 73 - parseDebugSpec: localStorage rustWebBoxDebug is honoured when URL is silent
   ---
-  duration_ms: 0.094742
+  duration_ms: 0.182573
   ...
 # Subtest: parseDebugSpec: URL parameter wins over localStorage
 ok 74 - parseDebugSpec: URL parameter wins over localStorage
   ---
-  duration_ms: 0.167401
+  duration_ms: 0.207519
   ...
 # Subtest: parseDebugSpec: accepts debug-style wildcards and exclusions
 ok 75 - parseDebugSpec: accepts debug-style wildcards and exclusions
   ---
-  duration_ms: 0.248921
+  duration_ms: 0.235962
   ...
 # Subtest: createDebug: returns a no-op (zero cost) when debug is off
 ok 76 - createDebug: returns a no-op (zero cost) when debug is off
   ---
-  duration_ms: 0.18742
+  duration_ms: 0.280338
   ...
 # Subtest: createDebug: does not evaluate lazy arguments when disabled
 ok 77 - createDebug: does not evaluate lazy arguments when disabled
   ---
-  duration_ms: 0.125247
+  duration_ms: 0.125919
   ...
 # Subtest: createDebug: logs through sink when ?debug=1
 ok 78 - createDebug: logs through sink when ?debug=1
   ---
-  duration_ms: 0.267169
+  duration_ms: 0.269193
   ...
 # Subtest: createDebug: evaluates lazy arguments only when enabled
 ok 79 - createDebug: evaluates lazy arguments only when enabled
   ---
-  duration_ms: 0.326748
+  duration_ms: 0.367849
   ...
 # Subtest: createDebug: filters by namespace when spec is a list
 ok 80 - createDebug: filters by namespace when spec is a list
   ---
-  duration_ms: 0.240079
+  duration_ms: 3.023417
   ...
 # Subtest: createDebug: excludes namespaces with debug-style negation
 ok 81 - createDebug: excludes namespaces with debug-style negation
   ---
-  duration_ms: 0.237395
+  duration_ms: 0.329152
   ...
 # Subtest: createDebug: tolerates a localStorage shim that throws (private mode)
 ok 82 - createDebug: tolerates a localStorage shim that throws (private mode)
   ---
-  duration_ms: 0.151055
+  duration_ms: 0.185818
   ...
 # Subtest: dumpRuntime: returns a JSON-serialisable snapshot
 ok 83 - dumpRuntime: returns a JSON-serialisable snapshot
   ---
-  duration_ms: 0.500658
+  duration_ms: 0.522651
   ...
 # Subtest: dumpRuntime: handles a missing __rustWebBox gracefully
 ok 84 - dumpRuntime: handles a missing __rustWebBox gracefully
   ---
-  duration_ms: 0.099079
+  duration_ms: 0.118156
   ...
 # Subtest: probeUrl: returns ok=true when fetch yields a basic/cors readable response
 ok 85 - probeUrl: returns ok=true when fetch yields a basic/cors readable response
   ---
-  duration_ms: 2.116492
+  duration_ms: 2.463219
   ...
 # Subtest: probeUrl: returns ok=false reason=cors-or-network when fetch throws TypeError
 ok 86 - probeUrl: returns ok=false reason=cors-or-network when fetch throws TypeError
   ---
-  duration_ms: 0.424133
+  duration_ms: 0.458425
   ...
 # Subtest: probeUrl: returns ok=false reason=not-found when server replies 404
 ok 87 - probeUrl: returns ok=false reason=not-found when server replies 404
   ---
-  duration_ms: 0.266919
+  duration_ms: 0.263383
   ...
 # Subtest: probeUrl: returns ok=false reason=opaque if response is opaque (no-cors slipped through)
 ok 88 - probeUrl: returns ok=false reason=opaque if response is opaque (no-cors slipped through)
   ---
-  duration_ms: 0.174982
+  duration_ms: 0.231205
   ...
 # Subtest: probeUrl: returns ok=false reason=invalid-input for missing url or fetchImpl
 ok 89 - probeUrl: returns ok=false reason=invalid-input for missing url or fetchImpl
   ---
-  duration_ms: 0.132098
+  duration_ms: 0.151406
   ...
 # Subtest: probeUrl: skips probe (returns ok=true) for non-HTTP(S) URLs like wss://
 ok 90 - probeUrl: skips probe (returns ok=true) for non-HTTP(S) URLs like wss://
   ---
-  duration_ms: 0.121581
+  duration_ms: 0.152317
   ...
 # Subtest: probeUrl: probes same-origin relative URLs instead of treating them as opaque-safe
 ok 91 - probeUrl: probes same-origin relative URLs instead of treating them as opaque-safe
   ---
-  duration_ms: 0.165117
+  duration_ms: 0.205026
   ...
 # Subtest: probeUrl: returns ok=false reason=timeout when AbortController fires
 ok 92 - probeUrl: returns ok=false reason=timeout when AbortController fires
   ---
-  duration_ms: 0.224175
+  duration_ms: 0.264445
   ...
 # Subtest: resolveDiskUrl: surfaces a structured CORS warning when warm probe is CORS-blocked
 ok 93 - resolveDiskUrl: surfaces a structured CORS warning when warm probe is CORS-blocked
   ---
-  duration_ms: 0.771403
+  duration_ms: 0.732203
   ...
 # Subtest: resolveDiskUrl: emits an info log (not a warning) when warm probe is missing (404)
 ok 94 - resolveDiskUrl: emits an info log (not a warning) when warm probe is missing (404)
   ---
-  duration_ms: 0.348951
+  duration_ms: 0.406607
   ...
 # Subtest: resolveDiskUrl: tolerates legacy probes that return a bare boolean
 ok 95 - resolveDiskUrl: tolerates legacy probes that return a bare boolean
   ---
-  duration_ms: 0.187971
+  duration_ms: 0.236183
   ...
 # Subtest: resolveDiskUrl: structured warning never references undefined when probe returns bare false
 ok 96 - resolveDiskUrl: structured warning never references undefined when probe returns bare false
   ---
-  duration_ms: 0.248941
+  duration_ms: 1.298419
   ...
 # Subtest: resolveDiskConfig: probes GitHubDevice entries via .meta and preserves kind
 ok 97 - resolveDiskConfig: probes GitHubDevice entries via .meta and preserves kind
   ---
-  duration_ms: 1.532169
+  duration_ms: 0.268331
   ...
 # Subtest: disk manifest: committed warm source is not a browser GitHub Release redirect
 ok 98 - disk manifest: committed warm source is not a browser GitHub Release redirect
   ---
-  duration_ms: 14.592371
+  duration_ms: 12.339182
   ...
 # Subtest: stage-pages-disk: writes WebVM GitHubDevice chunks plus .meta
 ok 99 - stage-pages-disk: writes WebVM GitHubDevice chunks plus .meta
   ---
-  duration_ms: 16.991245
+  duration_ms: 15.123551
   ...
 # Subtest: stage-pages-disk: removes stale chunks before writing a new image
 ok 100 - stage-pages-disk: removes stale chunks before writing a new image
   ---
-  duration_ms: 3.389683
+  duration_ms: 10.156642
   ...
 # Subtest: stage-pages-disk: keeps a local source image when source lives in output directory
 ok 101 - stage-pages-disk: keeps a local source image when source lives in output directory
   ---
-  duration_ms: 3.363104
+  duration_ms: 7.232032
   ...
 # Subtest: stage-pages-disk: manifest warm entry is converted to same-origin GitHubDevice layout
 ok 102 - stage-pages-disk: manifest warm entry is converted to same-origin GitHubDevice layout
   ---
-  duration_ms: 0.259278
+  duration_ms: 0.407008
   ...
 # Subtest: live e2e: the deployed Pages site boots and runs `tree --version`
 ok 103 - live e2e: the deployed Pages site boots and runs `tree --version` # SKIP RUST_WEB_BOX_LIVE_URL not set; skipping live e2e
   ---
-  duration_ms: 1.067414
+  duration_ms: 1.468973
   ...
 # Subtest: local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --version`
 ok 104 - local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --version` # SKIP browser-commander / playwright not installed; skipping local e2e
   ---
-  duration_ms: 2.551051
+  duration_ms: 2.962456
   ...
 # Subtest: local e2e: workbench surfaces the warm disk manifest
 ok 105 - local e2e: workbench surfaces the warm disk manifest # SKIP browser-commander / playwright not installed
   ---
-  duration_ms: 0.442681
+  duration_ms: 0.590211
   ...
 # Subtest: local e2e: proc.stdout emit pipeline is single-delivery and disposers detach listeners (issue \#27)
 ok 106 - local e2e: proc.stdout emit pipeline is single-delivery and disposers detach listeners (issue \#27) # SKIP browser-commander / playwright not installed; skipping local e2e
   ---
-  duration_ms: 0.354109
+  duration_ms: 0.539756
   ...
 # Subtest: extension paths: dev server at root → no base prefix
 ok 107 - extension paths: dev server at root → no base prefix
   ---
-  duration_ms: 0.833445
+  duration_ms: 1.237609
   ...
 # Subtest: extension paths: GitHub Pages at /rust-web-box/ → base prefix added
 ok 108 - extension paths: GitHub Pages at /rust-web-box/ → base prefix added
   ---
-  duration_ms: 1.069017
+  duration_ms: 1.682233
   ...
 # Subtest: extension paths: deeply nested deploy at /foo/bar/ → base prefix added
 ok 109 - extension paths: deeply nested deploy at /foo/bar/ → base prefix added
   ---
-  duration_ms: 0.121792
+  duration_ms: 0.185237
   ...
 # Subtest: extension paths: legacy path without {BASE_PATH} still gets rewritten (no regression)
 ok 110 - extension paths: legacy path without {BASE_PATH} still gets rewritten (no regression)
   ---
-  duration_ms: 0.082163
+  duration_ms: 0.146939
   ...
 # Subtest: extension paths: unknown placeholders pass through unchanged
 ok 111 - extension paths: unknown placeholders pass through unchanged
   ---
-  duration_ms: 0.102082
+  duration_ms: 0.134442
   ...
 # Subtest: extension paths: idempotent — running twice produces the same result
 ok 112 - extension paths: idempotent — running twice produces the same result
   ---
-  duration_ms: 0.084686
+  duration_ms: 0.13404
   ...
 # Subtest: extension paths: handles missing additionalBuiltinExtensions gracefully
 ok 113 - extension paths: handles missing additionalBuiltinExtensions gracefully
   ---
-  duration_ms: 0.544314
+  duration_ms: 0.705534
   ...
 # Subtest: extension paths: rendered index.html ships {BASE_PATH} placeholder (no regression)
 ok 114 - extension paths: rendered index.html ships {BASE_PATH} placeholder (no regression)
   ---
-  duration_ms: 6.257169
+  duration_ms: 8.680697
   ...
 # Subtest: extension paths: inline bootstrap substitutes {BASE_PATH} (no regression)
 ok 115 - extension paths: inline bootstrap substitutes {BASE_PATH} (no regression)
   ---
-  duration_ms: 0.697883
+  duration_ms: 1.153584
   ...
 # Subtest: extension pty: makePseudoterminal disposes prior bus subscribers on re-open
 ok 116 - extension pty: makePseudoterminal disposes prior bus subscribers on re-open
   ---
-  duration_ms: 6.19825
+  duration_ms: 5.638614
   ...
 # Subtest: extension pty: makeCargoPty disposes prior bus subscribers on re-open
 ok 117 - extension pty: makeCargoPty disposes prior bus subscribers on re-open
   ---
-  duration_ms: 1.362995
+  duration_ms: 1.298741
   ...
 # Subtest: extension pty: auto-terminal creation guards against duplicates
 ok 118 - extension pty: auto-terminal creation guards against duplicates
   ---
-  duration_ms: 2.737328
+  duration_ms: 4.08309
   ...
 # Subtest: extension pty: terminal Enter saves dirty editors before forwarding input
 ok 119 - extension pty: terminal Enter saves dirty editors before forwarding input
   ---
-  duration_ms: 1.206912
+  duration_ms: 1.372621
   ...
 # Subtest: extension pty: cargo tasks save dirty editors before running cargo
 ok 120 - extension pty: cargo tasks save dirty editors before running cargo
   ---
-  duration_ms: 0.841197
+  duration_ms: 0.8575
   ...
 # Subtest: classifyHost: known direct hosts route direct
 ok 121 - classifyHost: known direct hosts route direct
   ---
-  duration_ms: 1.112172
+  duration_ms: 1.0645
   ...
 # Subtest: classifyHost: known proxy-only hosts route via proxy
 ok 122 - classifyHost: known proxy-only hosts route via proxy
   ---
-  duration_ms: 0.128111
+  duration_ms: 0.138216
   ...
 # Subtest: classifyHost: unknown hosts are blocked
 ok 123 - classifyHost: unknown hosts are blocked
   ---
-  duration_ms: 0.114261
+  duration_ms: 0.12059
   ...
 # Subtest: vmFetch: routes static.crates.io directly
 ok 124 - vmFetch: routes static.crates.io directly
   ---
-  duration_ms: 22.200799
+  duration_ms: 21.587666
   ...
 # Subtest: vmFetch: routes crates.io api directly
 ok 125 - vmFetch: routes crates.io api directly
   ---
-  duration_ms: 0.487929
+  duration_ms: 0.511625
   ...
 # Subtest: vmFetch: rejects non-allowlisted hosts with NetworkBlockedError
 ok 126 - vmFetch: rejects non-allowlisted hosts with NetworkBlockedError
   ---
-  duration_ms: 0.575249
+  duration_ms: 0.69615
   ...
 # Subtest: vmFetch: index.crates.io tries proxies in order until one succeeds
 ok 127 - vmFetch: index.crates.io tries proxies in order until one succeeds
   ---
-  duration_ms: 2.108691
+  duration_ms: 2.356539
   ...
 # Subtest: vmFetch: ProxyChainError when every proxy fails
 ok 128 - vmFetch: ProxyChainError when every proxy fails
   ---
-  duration_ms: 0.544353
+  duration_ms: 0.607888
   ...
 # Subtest: vmFetch: ProxyChainError captures thrown errors per proxy
 ok 129 - vmFetch: ProxyChainError captures thrown errors per proxy
   ---
-  duration_ms: 0.527478
+  duration_ms: 0.437654
   ...
 # Subtest: createNetworkShim: requires a fetch implementation
 ok 130 - createNetworkShim: requires a fetch implementation
   ---
-  duration_ms: 0.250874
+  duration_ms: 0.287078
   ...
 # Subtest: vmFetch: forwards init across direct and proxy paths
 ok 131 - vmFetch: forwards init across direct and proxy paths
   ---
-  duration_ms: 0.529952
+  duration_ms: 0.462421
   ...
 # Subtest: pages-parity: dev-server --base=/x/y refuses anything outside the prefix (Pages mirror)
 ok 132 - pages-parity: dev-server --base=/x/y refuses anything outside the prefix (Pages mirror)
   ---
-  duration_ms: 92.817491
+  duration_ms: 94.567492
   ...
 # Subtest: pages-parity: bare-root visit redirects to the prefix (matches Pages /rust-web-box/ canonical URL)
 ok 133 - pages-parity: bare-root visit redirects to the prefix (matches Pages /rust-web-box/ canonical URL)
   ---
-  duration_ms: 39.094148
+  duration_ms: 44.308427
   ...
 # Subtest: pages-parity: index.html shipped under sub-path still encodes the {BASE_PATH} placeholder
 ok 134 - pages-parity: index.html shipped under sub-path still encodes the {BASE_PATH} placeholder
   ---
-  duration_ms: 42.30222
+  duration_ms: 49.61249
   ...
 # Subtest: pages-parity: COOP/COEP headers are set under the sub-path (CheerpX SAB requirement)
 ok 135 - pages-parity: COOP/COEP headers are set under the sub-path (CheerpX SAB requirement)
   ---
-  duration_ms: 40.824773
+  duration_ms: 45.400989
   ...
 # Subtest: pages-parity: extensions are reachable under the sub-path (the literal issue-\#3 404)
 ok 136 - pages-parity: extensions are reachable under the sub-path (the literal issue-\#3 404)
   ---
-  duration_ms: 39.211113
+  duration_ms: 48.5215
   ...
 # Subtest: source-map-stubs: parses line and block sourceMappingURL comments
 ok 137 - source-map-stubs: parses line and block sourceMappingURL comments
   ---
-  duration_ms: 1.596685
+  duration_ms: 1.728882
   ...
 # Subtest: source-map-stubs: only resolves local .map URLs
 ok 138 - source-map-stubs: only resolves local .map URLs
   ---
-  duration_ms: 0.58868
+  duration_ms: 0.737172
   ...
 # Subtest: source-map-stubs: writes valid JSON stubs for missing local maps
 ok 139 - source-map-stubs: writes valid JSON stubs for missing local maps
   ---
-  duration_ms: 11.817286
+  duration_ms: 13.210923
   ...
 # Subtest: lfToCrlf: converts lone LF to CRLF
 ok 140 - lfToCrlf: converts lone LF to CRLF
   ---
-  duration_ms: 1.814482
+  duration_ms: 0.879023
   ...
 # Subtest: lfToCrlf: preserves existing CRLF
 ok 141 - lfToCrlf: preserves existing CRLF
   ---
-  duration_ms: 0.145607
+  duration_ms: 0.105788
   ...
 # Subtest: lfToCrlf: leaves bare CR alone
 ok 142 - lfToCrlf: leaves bare CR alone
   ---
-  duration_ms: 0.094342
+  duration_ms: 0.07392
   ...
 # Subtest: lfToCrlf: matches the staircase repro from the screenshot
 ok 143 - lfToCrlf: matches the staircase repro from the screenshot
   ---
-  duration_ms: 0.222191
+  duration_ms: 0.302442
   ...
 # Subtest: normaliser: stateful across chunks split mid-CRLF
 ok 144 - normaliser: stateful across chunks split mid-CRLF
   ---
-  duration_ms: 1.669135
+  duration_ms: 1.523947
   ...
 # Subtest: normaliser: independent instances do not share state
 ok 145 - normaliser: independent instances do not share state
   ---
-  duration_ms: 0.124477
+  duration_ms: 0.163504
   ...
 # Subtest: normaliser: empty / non-string input is passed through
 ok 146 - normaliser: empty / non-string input is passed through
   ---
-  duration_ms: 0.131356
+  duration_ms: 0.102062
   ...
 # Subtest: normaliser: handles ANSI control sequences without mangling them
 ok 147 - normaliser: handles ANSI control sequences without mangling them
   ---
-  duration_ms: 0.114861
+  duration_ms: 0.10051
   ...
 # Subtest: bus: client request / server response round-trip
 ok 148 - bus: client request / server response round-trip
   ---
-  duration_ms: 2.334587
+  duration_ms: 2.112766
   ...
 # Subtest: bus: unknown method returns NO_METHOD error
 ok 149 - bus: unknown method returns NO_METHOD error
   ---
-  duration_ms: 2.177393
+  duration_ms: 1.594792
   ...
 # Subtest: bus: handler errors propagate to client
 ok 150 - bus: handler errors propagate to client
   ---
-  duration_ms: 0.441691
+  duration_ms: 0.485554
   ...
 # Subtest: bus: events broadcast to subscribers
 ok 151 - bus: events broadcast to subscribers
   ---
-  duration_ms: 5.7169
+  duration_ms: 5.735027
   ...
 # Subtest: bus: request times out when server never responds
 ok 152 - bus: request times out when server never responds
   ---
-  duration_ms: 25.257235
+  duration_ms: 25.338209
   ...
 # Subtest: bus: parallel requests do not interfere
 ok 153 - bus: parallel requests do not interfere
   ---
-  duration_ms: 21.11722
+  duration_ms: 21.019558
   ...
 # Subtest: bus: client throws on missing channel
 ok 154 - bus: client throws on missing channel
   ---
-  duration_ms: 0.36795
+  duration_ms: 0.434128
   ...
 # Subtest: bus: server throws on missing channel
 ok 155 - bus: server throws on missing channel
   ---
-  duration_ms: 0.123394
+  duration_ms: 0.246679
   ...
 # Subtest: bus: setMethods hot-swaps the handler table
 ok 156 - bus: setMethods hot-swaps the handler table
   ---
-  duration_ms: 0.646976
+  duration_ms: 0.691723
   ...
 # Subtest: bus: dispose stops handling new requests
 ok 157 - bus: dispose stops handling new requests
   ---
-  duration_ms: 25.935908
+  duration_ms: 26.08204
   ...
 # Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
 ok 158 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
   ---
-  duration_ms: 8.175244
+  duration_ms: 12.004071
   ...
 # Subtest: webvm-server: existing CRLF passed through, bare CR untouched
 ok 159 - webvm-server: existing CRLF passed through, bare CR untouched
   ---
-  duration_ms: 5.61504
+  duration_ms: 5.732644
   ...
 # [rust-web-box] workspace prime skipped (opts.skipPrime=true)
 # [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
 # [rust-web-box] guest workspace sync failed: Error: guest write failed
-#     at Object.run (file:///tmp/gh-issue-solver-1778409422575/web/tests/webvm-server.test.mjs:433:15)
-#     at file:///tmp/gh-issue-solver-1778409422575/web/glue/webvm-server.js:251:19
+#     at Object.run (file:///tmp/gh-issue-solver-1778409422575/web/tests/webvm-server.test.mjs:436:15)
+#     at file:///tmp/gh-issue-solver-1778409422575/web/glue/webvm-server.js:252:19
 # [rust-web-box] workspace prime skipped (opts.skipPrime=true)
 # [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
 # Subtest: webvm-server: vt channel filtered (only stdout broadcast)
 ok 160 - webvm-server: vt channel filtered (only stdout broadcast)
   ---
-  duration_ms: 5.268001
+  duration_ms: 5.90423
   ...
 # Subtest: webvm-server: primes /workspace through a /data script, not terminal input
 ok 161 - webvm-server: primes /workspace through a /data script, not terminal input
   ---
-  duration_ms: 1.519569
+  duration_ms: 1.949001
   ...
 # Subtest: webvm-server: bash profile applies the lean cargo dev profile only on matching disks
 ok 162 - webvm-server: bash profile applies the lean cargo dev profile only on matching disks
   ---
-  duration_ms: 0.723961
+  duration_ms: 0.901867
   ...
 # Subtest: webvm-server: onPhase callback receives every emitted phase, including ready
 ok 163 - webvm-server: onPhase callback receives every emitted phase, including ready
   ---
-  duration_ms: 0.600978
+  duration_ms: 0.625685
   ...
 # Subtest: webvm-server: mirrors saved files through /data without typing into the terminal
 ok 164 - webvm-server: mirrors saved files through /data without typing into the terminal
   ---
-  duration_ms: 2.172175
+  duration_ms: 1.052211
   ...
 # Subtest: webvm-server: failed guest save rejects and leaves JS workspace unchanged
 ok 165 - webvm-server: failed guest save rejects and leaves JS workspace unchanged
   ---
-  duration_ms: 2.663569
+  duration_ms: 4.014156
   ...
 # [rust-web-box] workspace prime skipped (opts.skipPrime=true)
 # [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
@@ -860,166 +860,166 @@ ok 165 - webvm-server: failed guest save rejects and leaves JS workspace unchang
 # Subtest: webvm-server: target readDirectory refreshes guest metadata on demand
 ok 166 - webvm-server: target readDirectory refreshes guest metadata on demand
   ---
-  duration_ms: 7.972842
+  duration_ms: 8.772503
   ...
 # Subtest: webvm-server: non-recursive empty directory delete uses guest rmdir
 ok 167 - webvm-server: non-recursive empty directory delete uses guest rmdir
   ---
-  duration_ms: 0.754968
+  duration_ms: 0.93715
   ...
 # Subtest: webvm-server: workspace.prime bus method is a no-op when skipPrime is set
 ok 168 - webvm-server: workspace.prime bus method is a no-op when skipPrime is set
   ---
-  duration_ms: 0.300089
+  duration_ms: 0.374038
   ...
 # Subtest: webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
 ok 169 - webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
   ---
-  duration_ms: 0.31343
+  duration_ms: 0.427298
   ...
 # [rust-web-box] workspace prime failed: Error: workspace prime timed out after 50ms (suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)
-#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1778409422575/web/glue/webvm-server.js:648:28)
+#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1778409422575/web/glue/webvm-server.js:649:28)
 #     at listOnTimeout (node:internal/timers:581:17)
 #     at process.processTimers (node:internal/timers:519:7)
 # Subtest: webvm-server: bootTask reaches "ready" even when workspace prime hangs
 ok 170 - webvm-server: bootTask reaches "ready" even when workspace prime hangs
   ---
-  duration_ms: 53.236477
+  duration_ms: 54.880408
   ...
 # Subtest: webvm-server: makeChannelPair sanity
 ok 171 - webvm-server: makeChannelPair sanity
   ---
-  duration_ms: 0.731743
+  duration_ms: 0.651263
   ...
 # Subtest: workspace-fs: normalize() canonicalises paths
 ok 172 - workspace-fs: normalize() canonicalises paths
   ---
-  duration_ms: 1.227314
+  duration_ms: 1.088636
   ...
 # Subtest: workspace-fs: seed includes src/main.rs at /workspace level
 ok 173 - workspace-fs: seed includes src/main.rs at /workspace level
   ---
-  duration_ms: 1.758797
+  duration_ms: 1.525469
   ...
 # Subtest: workspace-fs: seed contains a buildable Cargo project at /workspace root
 ok 174 - workspace-fs: seed contains a buildable Cargo project at /workspace root
   ---
-  duration_ms: 0.169634
+  duration_ms: 0.194401
   ...
 # Subtest: workspace-fs: default cargo task runs from /workspace root
 ok 175 - workspace-fs: default cargo task runs from /workspace root
   ---
-  duration_ms: 0.155262
+  duration_ms: 0.170344
   ...
 # Subtest: workspace-fs: file/dir type constants are stable
 ok 176 - workspace-fs: file/dir type constants are stable
   ---
-  duration_ms: 0.101392
+  duration_ms: 0.100481
   ...
 # Subtest: workspace-fs: seed paths all begin with /workspace
 ok 177 - workspace-fs: seed paths all begin with /workspace
   ---
-  duration_ms: 0.137185
+  duration_ms: 0.12046
   ...
 # Subtest: workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
 ok 178 - workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
   ---
-  duration_ms: 0.44133
+  duration_ms: 0.438616
   ...
 # Subtest: workspace-fs: default settings keep manual save dirty indicators visible
 ok 179 - workspace-fs: default settings keep manual save dirty indicators visible
   ---
-  duration_ms: 0.11375
+  duration_ms: 0.132117
   ...
 # Subtest: workspace-server: vm.status reports stage 1
 ok 180 - workspace-server: vm.status reports stage 1
   ---
-  duration_ms: 1.184921
+  duration_ms: 1.226512
   ...
 # Subtest: workspace-server: fs.* methods delegate to the workspace
 ok 181 - workspace-server: fs.* methods delegate to the workspace
   ---
-  duration_ms: 0.908887
+  duration_ms: 0.986034
   ...
 # Subtest: workspace-server: proc.spawn / write / wait reject with VM_BOOTING
 ok 182 - workspace-server: proc.spawn / write / wait reject with VM_BOOTING
   ---
-  duration_ms: 0.491955
+  duration_ms: 0.551735
   ...
 # Subtest: workspace-server: proc.resize and proc.kill are no-ops in stage 1
 ok 183 - workspace-server: proc.resize and proc.kill are no-ops in stage 1
   ---
-  duration_ms: 1.557246
+  duration_ms: 2.04876
   ...
 # Subtest: workspace-server: throws when workspace is missing
 ok 184 - workspace-server: throws when workspace is missing
   ---
-  duration_ms: 0.444074
+  duration_ms: 0.764472
   ...
 # Subtest: workspace-sync: parser strips OSC frames and handles split chunks
 ok 185 - workspace-sync: parser strips OSC frames and handles split chunks
   ---
-  duration_ms: 2.828816
+  duration_ms: 3.061022
   ...
 # Subtest: workspace-sync: decodes snapshot payloads
 ok 186 - workspace-sync: decodes snapshot payloads
   ---
-  duration_ms: 0.693736
+  duration_ms: 0.778903
   ...
 # Subtest: workspace-sync: applies creates, updates, and deletes from guest snapshots
 ok 187 - workspace-sync: applies creates, updates, and deletes from guest snapshots
   ---
-  duration_ms: 1.532571
+  duration_ms: 1.737044
   ...
 # Subtest: workspace-sync: keeps oversized guest files marked as skipped
 ok 188 - workspace-sync: keeps oversized guest files marked as skipped
   ---
-  duration_ms: 0.290324
+  duration_ms: 0.406196
   ...
 # Subtest: workspace-sync: creates metadata entries for skipped target files
 ok 189 - workspace-sync: creates metadata entries for skipped target files
   ---
-  duration_ms: 0.410384
+  duration_ms: 0.568799
   ...
 # Subtest: workspace-sync: refreshes skipped target metadata without syncing contents
 ok 190 - workspace-sync: refreshes skipped target metadata without syncing contents
   ---
-  duration_ms: 0.333799
+  duration_ms: 0.45544
   ...
 # Subtest: workspace-sync: bash profile hook emits hidden sync frames after prompts
 ok 191 - workspace-sync: bash profile hook emits hidden sync frames after prompts
   ---
-  duration_ms: 0.257935
+  duration_ms: 0.337414
   ...
 # Subtest: workspace-sync: target directory itself is surfaced without descending into it
 ok 192 - workspace-sync: target directory itself is surfaced without descending into it
   ---
-  duration_ms: 0.102023
+  duration_ms: 0.15394
   ...
 # Subtest: workspace-sync: PROMPT_COMMAND is not double-installed if already present
 ok 193 - workspace-sync: PROMPT_COMMAND is not double-installed if already present
   ---
-  duration_ms: 0.149804
+  duration_ms: 0.231637
   ...
 # Subtest: workspace-sync: target paths are not deleted from JS workspace by sweep
 ok 194 - workspace-sync: target paths are not deleted from JS workspace by sweep
   ---
-  duration_ms: 0.292798
+  duration_ms: 0.566205
   ...
 # Subtest: workspace-sync: scoped target snapshots prune only target metadata
 ok 195 - workspace-sync: scoped target snapshots prune only target metadata
   ---
-  duration_ms: 0.319968
+  duration_ms: 0.530301
   ...
 # Subtest: workspace-sync: scoped target snapshot removes target when guest target is gone
 ok 196 - workspace-sync: scoped target snapshot removes target when guest target is gone
   ---
-  duration_ms: 0.205146
+  duration_ms: 0.320419
   ...
 # Subtest: workspace-sync: target refresh script emits scoped metadata-only sync frames
 ok 197 - workspace-sync: target refresh script emits scoped metadata-only sync frames
   ---
-  duration_ms: 1.028186
+  duration_ms: 1.557848
   ...
 1..197
 # tests 197
@@ -1029,4 +1029,4 @@ ok 197 - workspace-sync: target refresh script emits scoped metadata-only sync f
 # cancelled 0
 # skipped 4
 # todo 0
-# duration_ms 30346.046372
+# duration_ms 30369.463457

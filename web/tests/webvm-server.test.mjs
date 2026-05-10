@@ -411,9 +411,12 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   assert.match(dataState.writes[2].contents, /saved/);
   assert.match(dataState.writes[2].contents, /find \/workspace\/target -exec touch -t 197001010000/);
   assert.match(dataState.writes[2].contents, /for __rwb_fp_dir in \/workspace\/target\/debug\/\.fingerprint/);
-  assert.match(dataState.writes[2].contents, /rust-web-box stale after browser save/);
+  assert.match(dataState.writes[2].contents, /bin-\*/);
+  assert.match(dataState.writes[2].contents, /0000000000000000/);
+  assert.match(dataState.writes[2].contents, /\*\.json\|\*\/dep-\*\|\*\/invoked\.timestamp/);
   assert.match(dataState.writes[2].contents, /touch -m '\/workspace\/src\/main\.rs'/);
   assert.doesNotMatch(dataState.writes[2].contents, /rm -rf .*\.fingerprint/);
+  assert.doesNotMatch(dataState.writes[2].contents, /> "\$__rwb_marker".*dep-\*/);
 });
 
 test('webvm-server: failed guest save rejects and leaves JS workspace unchanged', async () => {
