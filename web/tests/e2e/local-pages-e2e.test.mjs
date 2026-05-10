@@ -29,6 +29,7 @@ import path from 'node:path';
 import {
   E2E_REQUIRED,
   WEB_ROOT,
+  hasLeanCargoDevProfile,
   isWarmDiskStaged,
   runInVM,
   startDevServer,
@@ -187,18 +188,20 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     assert.equal(catEdited.status?.status ?? catEdited.status, 0);
     assert.match(catEdited.output, /saved through webvm fs bus/);
 
-    // Stage G: the next user-facing cargo run must use the edited
-    // source, not the pre-baked binary's old output. CheerpX can take
-    // several minutes to finish a fresh Rust compile in CI, so this
-    // guard accepts either a completed run with the edited output or a
-    // timed-out command that has already entered Cargo's compile path.
-    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 45_000 });
-    if (rerunEdited.timedOut) {
-      assert.match(rerunEdited.output, /Compiling(?:\x1b\[[0-9;]*m)*\s+hello/, `edited cargo run did not recompile:\n${rerunEdited.output}`);
-      assert.doesNotMatch(rerunEdited.output, /Hello from rust-web-box!/, `edited cargo run reused old binary:\n${rerunEdited.output}`);
-    } else {
+    // Stage G: the next user-facing cargo run must complete with the
+    // edited source, not merely enter Cargo's compile path. Issue #31
+    // reproduced as a second real debug rebuild that sat in `Compiling`
+    // for minutes before CheerpX exited with code 71; accepting that
+    // timeout masked the regression. PR Pages builds may still stage the
+    // currently published disk-latest image, so only run this assertion
+    // when the disk advertises the issue #31 lean dev profile.
+    if (await hasLeanCargoDevProfile(page)) {
+      const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 180_000 });
+      assert.equal(rerunEdited.timedOut, false, `edited cargo run timed out before completing:\n${rerunEdited.output}`);
       assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);
       assert.match(rerunEdited.output, /saved through webvm fs bus/, `edited cargo run output:\n${rerunEdited.output}`);
+    } else {
+      console.warn('[rust-web-box e2e] skipping issue #31 repeated debug cargo run: staged warm disk lacks the lean dev profile');
     }
 
     // No CheerpException must have leaked into console.error during the

@@ -1,0 +1,42 @@
+       Fresh unicode-ident v1.0.22
+       Fresh proc-macro2 v1.0.103
+       Fresh utf8parse v0.2.2
+       Fresh anstyle v1.0.14
+       Fresh anstyle-query v1.1.5
+       Fresh quote v1.0.42
+       Fresh anstyle-parse v0.2.7
+       Fresh is_terminal_polyfill v1.70.2
+       Fresh colorchoice v1.0.5
+       Fresh syn v2.0.111
+       Fresh anstream v0.6.21
+       Fresh strsim v0.11.1
+       Fresh heck v0.5.0
+       Fresh dtor-proc-macro v0.0.5
+       Fresh clap_lex v1.1.0
+       Fresh thiserror-impl v1.0.69
+       Fresh dtor v0.0.6
+       Fresh clap_derive v4.5.55
+       Fresh serde_derive v1.0.228
+       Fresh clap_builder v4.5.60
+       Fresh serde_core v1.0.228
+       Fresh memchr v2.8.0
+       Fresh ctor-proc-macro v0.0.6
+       Fresh regex-syntax v0.8.10
+       Fresh clap v4.5.60
+       Fresh aho-corasick v1.1.4
+       Fresh ctor v0.4.3
+       Fresh thiserror v1.0.69
+       Fresh serde v1.0.228
+       Fresh lino-env v0.1.0
+       Fresh dotenvy v0.15.7
+       Fresh regex-automata v0.4.14
+       Fresh lino-arguments v0.3.0
+       Fresh regex v1.12.3
+       Fresh example-sum-package-name v0.11.0 (/tmp/gh-issue-solver-1778409422575)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+   Doc-tests example_sum_package_name
+     Running `/home/box/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustdoc --edition=2021 --crate-type lib --color auto --crate-name example_sum_package_name --test src/lib.rs --test-run-directory /tmp/gh-issue-solver-1778409422575 '--warn=clippy::pedantic' '--warn=clippy::nursery' '--warn=clippy::all' --forbid=unsafe_code '--allow=clippy::too_many_lines' '--allow=clippy::module_name_repetitions' '--allow=clippy::missing_panics_doc' '--allow=clippy::missing_errors_doc' --extern clap=/tmp/gh-issue-solver-1778409422575/target/debug/deps/libclap-f38ebaf997ae2065.rlib --extern example_sum_package_name=/tmp/gh-issue-solver-1778409422575/target/debug/deps/libexample_sum_package_name-7068948a0f982276.rlib --extern lino_arguments=/tmp/gh-issue-solver-1778409422575/target/debug/deps/liblino_arguments-eea31ecb02aaf58c.rlib --extern regex=/tmp/gh-issue-solver-1778409422575/target/debug/deps/libregex-be88561040ee64fd.rlib -L dependency=/tmp/gh-issue-solver-1778409422575/target/debug/deps -C embed-bitcode=no --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' --error-format human`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

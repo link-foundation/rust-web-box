@@ -1,0 +1,54 @@
+[    1828ms] [LOG] [rust-web-box][boot] vm phase loading-cheerpx @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1828ms] [LOG] [rust-web-box][boot] loading CheerpX @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1875ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=03141299-7b38-42c8-a117-5a38db5eae14:0
+[    2104ms] [LOG] [rust-web-box][boot] vm phase booting-linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    2104ms] [LOG] [rust-web-box][boot] CheerpX loaded; booting Linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    2380ms] [LOG] [rust-web-box][boot] vm phase attaching github disk @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    2543ms] [LOG] [rust-web-box][boot] vm phase attaching IndexedDB overlay @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    2675ms] [LOG] [rust-web-box][boot] vm phase attaching helper devices @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    2677ms] [LOG] [rust-web-box][boot] vm phase starting Linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    4788ms] [LOG] [rust-web-box][boot] VM booted with disk ./disk/rust-alpine.ext2 @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    4789ms] [LOG] [rust-web-box][boot] vm phase syncing-workspace @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    4789ms] [LOG] [rust-web-box][guest] stage guest script {name: shell-profile, devicePath: /rust-web-box-shell-profile.sh, guestPath: /data/rust-web-box-shell-profile.sh, cwd: /root, bytes: 1849} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    4790ms] [LOG] [rust-web-box][guest] run guest script {name: shell-profile, guestPath: /data/rust-web-box-shell-profile.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    8647ms] [LOG] [rust-web-box][guest] guest script complete {name: shell-profile} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    8658ms] [LOG] [rust-web-box][guest] stage guest script {name: workspace-prime, devicePath: /rust-web-box-workspace-prime.sh, guestPath: /data/rust-web-box-workspace-prime.sh, cwd: /root, bytes: 1747} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    8659ms] [LOG] [rust-web-box][guest] run guest script {name: workspace-prime, guestPath: /data/rust-web-box-workspace-prime.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[   10416ms] [LOG] [rust-web-box][guest] guest script complete {name: workspace-prime} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[   10427ms] [LOG] [rust-web-box][boot] vm phase ready @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[   80936ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80936ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80937ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80937ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80937ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80938ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80959ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80959ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   80960ms] [LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   83084ms] [LOG] [rust-web-box][guest] stage guest script {name: workspace-sync, devicePath: /rust-web-box-workspace-sync.sh, guestPath: /data/rust-web-box-workspace-sync.sh, cwd: /root, bytes: 1044} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[   83086ms] [LOG] [rust-web-box][guest] run guest script {name: workspace-sync, guestPath: /data/rust-web-box-workspace-sync.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[   83342ms] [LOG] [rust-web-box][guest] guest script complete {name: workspace-sync} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[   84149ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84149ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84149ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84150ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84150ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84150ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84168ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84168ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[   84168ms] [LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[  268763ms] [LOG] Unexpected exit CheerpException: Program exited with code 71
+    at ari (blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:1:65128)
+    at wasm://wasm/0074a58e:wasm-function[2523]:0xfcacb
+    at wasm://wasm/0074a58e:wasm-function[2524]:0xfcad1
+    at wasm://wasm/0074a58e:wasm-function[2525]:0xfcad8
+    at wasm://wasm/0074a58e:wasm-function[122]:0x6a9c
+    at wasm://wasm/0074a58e:wasm-function[402]:0x2294c
+    at wasm://wasm/0074a58e:wasm-function[381]:0x2072c
+    at wasm://wasm/0074a58e:wasm-function[3345]:0x174f1b
+    at wasm://wasm/0074a58e:wasm-function[3817]:0x1a1d34
+    at wasm://wasm/0074a58e:wasm-function[3774]:0x19794c @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[  268765ms] TypeError: e is not a function
+    at aTt (blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:1:57593)
+    at wasm://wasm/0074a58e:wasm-function[2518]:0xfc9fb
+    at MessagePort.VF (blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:1:59850)

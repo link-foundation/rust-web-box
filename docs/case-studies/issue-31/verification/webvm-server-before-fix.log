@@ -1,0 +1,277 @@
+TAP version 13
+# Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
+ok 1 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
+  ---
+  duration_ms: 8.988152
+  ...
+# Subtest: webvm-server: existing CRLF passed through, bare CR untouched
+ok 2 - webvm-server: existing CRLF passed through, bare CR untouched
+  ---
+  duration_ms: 6.011678
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# [rust-web-box] guest workspace sync failed: Error: guest write failed
+#     at Object.run (file:///tmp/gh-issue-solver-1778409422575/web/tests/webvm-server.test.mjs:429:15)
+#     at file:///tmp/gh-issue-solver-1778409422575/web/glue/webvm-server.js:237:19
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# Subtest: webvm-server: vt channel filtered (only stdout broadcast)
+ok 3 - webvm-server: vt channel filtered (only stdout broadcast)
+  ---
+  duration_ms: 5.997296
+  ...
+# Subtest: webvm-server: primes /workspace through a /data script, not terminal input
+ok 4 - webvm-server: primes /workspace through a /data script, not terminal input
+  ---
+  duration_ms: 1.509173
+  ...
+# Subtest: webvm-server: bash and guest scripts inherit the lean cargo dev profile
+not ok 5 - webvm-server: bash and guest scripts inherit the lean cargo dev profile
+  ---
+  duration_ms: 2.447155
+  location: '/tmp/gh-issue-solver-1778409422575/web/tests/webvm-server.test.mjs:332:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /export CARGO_PROFILE_DEV_INCREMENTAL=false/. Input:
+
+    'set -eu\n' +
+      "cat > '/root/.bash_profile' <<'RWB_PROFILE'\n" +
+      'export HOME=/root\n' +
+      'export TERM=xterm-256color\n' +
+      'export USER=root\n' +
+      'export SHELL=/bin/bash\n' +
+      'export LANG=C.UTF-8\n' +
+      'export CARGO_HOME=/root/.cargo\n' +
+      'export CARGO_INCREMENTAL=0\n' +
+      'export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n' +
+      'export PS1="root@rust-web-box:\\w# "\n' +
+      'cd /workspace 2>/dev/null || cd /root\n' +
+      '# rust-web-box: mirror small terminal-side workspace edits back to VS Code.\n' +
+      'export RWB_SYNC_MAX_FILE_BYTES="${RWB_SYNC_MAX_FILE_BYTES:-262144}"\n' +
+      '__rwb_sync_from_guest() {\n' +
+      '  [ "${RWB_SYNC_DISABLE:-0}" = "1" ] && return 0\n' +
+      '  [ -d /workspace ] || return 0\n' +
+      '  {\n' +
+      "    printf 'RWB_SYNC_V1\\n'\n" +
+      '    if [ -d /workspace/target ]; then\n' +
+      `      printf 'D\\t%s\\n' "$(printf '%s' /workspace/target | base64 | tr -d '\\n')"\n` +
+      '    fi\n' +
+      '    find /workspace -path /workspace/.git -prune -o -path /workspace/target -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do\n' +
+      '      [ "$path" = /workspace ] && continue\n' +
+      '      if [ -d "$path" ]; then\n' +
+      `        printf 'D\\t%s\\n' "$(printf '%s' "$path" | base64 | tr -d '\\n')"\n` +
+      '      elif [ -f "$path" ]; then\n' +
+      `        size=$(wc -c < "$path" 2>/dev/null | tr -d ' ')\n` +
+      '        if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then\n' +
+      `          printf 'F\\t%s\\t' "$(printf '%s' "$path" | base64 | tr -d '\\n')"\n` +
+      `          base64 < "$path" | tr -d '\\n'\n` +
+      "          printf '\\n'\n" +
+      '        else\n' +
+      '          printf \'S\\t%s\\t%s\\n\' "$(printf \'%s\' "$path" | base64 | tr -d \'\\n\')" "${size:-0}"\n' +
+      '        fi\n' +
+      '      fi\n' +
+      '    done\n' +
+      '  } | {\n' +
+      "    printf '\\033]777;rust-web-box-sync;'\n" +
+      "    base64 | tr -d '\\n'\n" +
+      "    printf '\\007'\n" +
+      '  }\n' +
+      '}\n' +
+      'if [ -n "${PROMPT_COMMAND:-}" ]; then\n' +
+      '  case "${PROMPT_COMMAND}" in\n' +
+      '    *__rwb_sync_from_guest*) ;;\n' +
+      '    *) PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}" ;;\n' +
+      '  esac\n' +
+      'else\n' +
+      '  PROMPT_COMMAND="__rwb_sync_from_guest"\n' +
+      'fi\n' +
+      'RWB_PROFILE\n'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    set -eu
+    cat > '/root/.bash_profile' <<'RWB_PROFILE'
+    export HOME=/root
+    export TERM=xterm-256color
+    export USER=root
+    export SHELL=/bin/bash
+    export LANG=C.UTF-8
+    export CARGO_HOME=/root/.cargo
+    export CARGO_INCREMENTAL=0
+    export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    export PS1="root@rust-web-box:\w# "
+    cd /workspace 2>/dev/null || cd /root
+    # rust-web-box: mirror small terminal-side workspace edits back to VS Code.
+    export RWB_SYNC_MAX_FILE_BYTES="${RWB_SYNC_MAX_FILE_BYTES:-262144}"
+    __rwb_sync_from_guest() {
+      [ "${RWB_SYNC_DISABLE:-0}" = "1" ] && return 0
+      [ -d /workspace ] || return 0
+      {
+        printf 'RWB_SYNC_V1\n'
+        if [ -d /workspace/target ]; then
+          printf 'D\t%s\n' "$(printf '%s' /workspace/target | base64 | tr -d '\n')"
+        fi
+        find /workspace -path /workspace/.git -prune -o -path /workspace/target -prune -o -print 2>/dev/null | sort | while IFS= read -r path; do
+          [ "$path" = /workspace ] && continue
+          if [ -d "$path" ]; then
+            printf 'D\t%s\n' "$(printf '%s' "$path" | base64 | tr -d '\n')"
+          elif [ -f "$path" ]; then
+            size=$(wc -c < "$path" 2>/dev/null | tr -d ' ')
+            if [ "${size:-0}" -le "${RWB_SYNC_MAX_FILE_BYTES:-262144}" ] 2>/dev/null; then
+              printf 'F\t%s\t' "$(printf '%s' "$path" | base64 | tr -d '\n')"
+              base64 < "$path" | tr -d '\n'
+              printf '\n'
+            else
+              printf 'S\t%s\t%s\n' "$(printf '%s' "$path" | base64 | tr -d '\n')" "${size:-0}"
+            fi
+          fi
+        done
+      } | {
+        printf '\033]777;rust-web-box-sync;'
+        base64 | tr -d '\n'
+        printf '\007'
+      }
+    }
+    if [ -n "${PROMPT_COMMAND:-}" ]; then
+      case "${PROMPT_COMMAND}" in
+        *__rwb_sync_from_guest*) ;;
+        *) PROMPT_COMMAND="__rwb_sync_from_guest;${PROMPT_COMMAND}" ;;
+      esac
+    else
+      PROMPT_COMMAND="__rwb_sync_from_guest"
+    fi
+    RWB_PROFILE
+
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1778409422575/web/tests/webvm-server.test.mjs:343:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: webvm-server: onPhase callback receives every emitted phase, including ready
+ok 6 - webvm-server: onPhase callback receives every emitted phase, including ready
+  ---
+  duration_ms: 0.417033
+  ...
+# Subtest: webvm-server: mirrors saved files through /data without typing into the terminal
+not ok 7 - webvm-server: mirrors saved files through /data without typing into the terminal
+  ---
+  duration_ms: 1.717514
+  location: '/tmp/gh-issue-solver-1778409422575/web/tests/webvm-server.test.mjs:392:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input was expected to not match the regular expression /rm -rf .*\.fingerprint/. Input:
+
+    "mkdir -p '/workspace/src'\n" +
+      "cat > '/workspace/src/main.rs' <<'RWB_EOF'\n" +
+      'fn main() { println!("saved"); }\n' +
+      '\n' +
+      'RWB_EOF\n' +
+      'if [ -d /workspace/target ]; then\n' +
+      '  rwb_max_mtime="$(date +%s 2>/dev/null || echo 0)"\n' +
+      '  rwb_target_mtime="$(find /workspace/target -type f -exec stat -c %Y {} \\; 2>/dev/null | sort -nr | head -n 1 || true)"\n' +
+      '  case "$rwb_target_mtime" in\n' +
+      '    ""|*[!0-9]*) ;;\n' +
+      '    *) [ "$rwb_target_mtime" -gt "$rwb_max_mtime" ] && rwb_max_mtime="$rwb_target_mtime" ;;\n' +
+      '  esac\n' +
+      '  rwb_next_mtime=$((rwb_max_mtime + 2))\n' +
+      `  touch -d "@$rwb_next_mtime" '/workspace/src/main.rs' 2>/dev/null || touch -m '/workspace/src/main.rs' 2>/dev/null || true\n` +
+      `  rwb_saved_mtime="$(stat -c %Y '/workspace/src/main.rs' 2>/dev/null || echo 0)"\n` +
+      '  case "$rwb_saved_mtime" in\n' +
+      '    ""|*[!0-9]*) rwb_saved_mtime=0 ;;\n' +
+      '  esac\n' +
+      '  if [ "$rwb_saved_mtime" -le "$rwb_max_mtime" ]; then\n' +
+      '    rm -rf /workspace/target/debug/.fingerprint /workspace/target/release/.fingerprint 2>/dev/null || true\n' +
+      '  fi\n' +
+      'fi\n' +
+      'unset rwb_max_mtime rwb_target_mtime rwb_next_mtime rwb_saved_mtime\n'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    mkdir -p '/workspace/src'
+    cat > '/workspace/src/main.rs' <<'RWB_EOF'
+    fn main() { println!("saved"); }
+
+    RWB_EOF
+    if [ -d /workspace/target ]; then
+      rwb_max_mtime="$(date +%s 2>/dev/null || echo 0)"
+      rwb_target_mtime="$(find /workspace/target -type f -exec stat -c %Y {} \; 2>/dev/null | sort -nr | head -n 1 || true)"
+      case "$rwb_target_mtime" in
+        ""|*[!0-9]*) ;;
+        *) [ "$rwb_target_mtime" -gt "$rwb_max_mtime" ] && rwb_max_mtime="$rwb_target_mtime" ;;
+      esac
+      rwb_next_mtime=$((rwb_max_mtime + 2))
+      touch -d "@$rwb_next_mtime" '/workspace/src/main.rs' 2>/dev/null || touch -m '/workspace/src/main.rs' 2>/dev/null || true
+      rwb_saved_mtime="$(stat -c %Y '/workspace/src/main.rs' 2>/dev/null || echo 0)"
+      case "$rwb_saved_mtime" in
+        ""|*[!0-9]*) rwb_saved_mtime=0 ;;
+      esac
+      if [ "$rwb_saved_mtime" -le "$rwb_max_mtime" ]; then
+        rm -rf /workspace/target/debug/.fingerprint /workspace/target/release/.fingerprint 2>/dev/null || true
+      fi
+    fi
+    unset rwb_max_mtime rwb_target_mtime rwb_next_mtime rwb_saved_mtime
+
+  operator: 'doesNotMatch'
+  stack: |-
+    TestContext.<anonymous> (file:///tmp/gh-issue-solver-1778409422575/web/tests/webvm-server.test.mjs:412:10)
+    async Test.run (node:internal/test_runner/test:797:9)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: webvm-server: failed guest save rejects and leaves JS workspace unchanged
+ok 8 - webvm-server: failed guest save rejects and leaves JS workspace unchanged
+  ---
+  duration_ms: 1.404998
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# Subtest: webvm-server: target readDirectory refreshes guest metadata on demand
+ok 9 - webvm-server: target readDirectory refreshes guest metadata on demand
+  ---
+  duration_ms: 6.044297
+  ...
+# Subtest: webvm-server: non-recursive empty directory delete uses guest rmdir
+ok 10 - webvm-server: non-recursive empty directory delete uses guest rmdir
+  ---
+  duration_ms: 0.705593
+  ...
+# Subtest: webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+ok 11 - webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+  ---
+  duration_ms: 0.279167
+  ...
+# Subtest: webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+ok 12 - webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+  ---
+  duration_ms: 0.345086
+  ...
+# [rust-web-box] workspace prime failed: Error: workspace prime timed out after 50ms (suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)
+#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1778409422575/web/glue/webvm-server.js:634:28)
+#     at listOnTimeout (node:internal/timers:581:17)
+#     at process.processTimers (node:internal/timers:519:7)
+# Subtest: webvm-server: bootTask reaches "ready" even when workspace prime hangs
+ok 13 - webvm-server: bootTask reaches "ready" even when workspace prime hangs
+  ---
+  duration_ms: 51.382111
+  ...
+# Subtest: webvm-server: makeChannelPair sanity
+ok 14 - webvm-server: makeChannelPair sanity
+  ---
+  duration_ms: 0.645965
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 12
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 30100.252997

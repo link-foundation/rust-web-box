@@ -329,6 +329,35 @@ test('webvm-server: primes /workspace through a /data script, not terminal input
   );
 });
 
+test('webvm-server: bash profile applies the lean cargo dev profile only on matching disks', async () => {
+  const { cx, state } = makeFakeCx();
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({ cx, busServer, workspace, dataDevice, status: {} });
+  await server.bootTask;
+
+  const profileScript = dataState.writes.find((w) => w.filename === '/rust-web-box-shell-profile.sh')?.contents ?? '';
+  assert.match(profileScript, /export CARGO_INCREMENTAL=0/);
+  assert.match(profileScript, /grep -Eq '.*debug.*=.*0.*' \/root\/\.cargo\/config\.toml/);
+  assert.match(profileScript, /grep -Eq '.*codegen-units.*=.*1.*' \/root\/\.cargo\/config\.toml/);
+  assert.match(profileScript, /export CARGO_PROFILE_DEV_DEBUG=0/);
+  assert.match(profileScript, /export CARGO_PROFILE_DEV_CODEGEN_UNITS=1/);
+  assert.match(profileScript, /export CARGO_PROFILE_DEV_INCREMENTAL=false/);
+
+  const bashCall = state.runCalls.find((c) => c.cmd === '/bin/bash');
+  assert.ok(bashCall, 'expected bash shell loop to start');
+  assert.ok(bashCall.opts.env.includes('CARGO_INCREMENTAL=0'));
+  assert.equal(bashCall.opts.env.includes('CARGO_PROFILE_DEV_DEBUG=0'), false);
+  assert.equal(bashCall.opts.env.includes('CARGO_PROFILE_DEV_CODEGEN_UNITS=1'), false);
+
+  const scriptCall = state.runCalls.find((c) => c.cmd === '/bin/sh');
+  assert.ok(scriptCall, 'expected a guest setup script');
+  assert.equal(scriptCall.opts.env.includes('CARGO_PROFILE_DEV_DEBUG=0'), false);
+  assert.equal(scriptCall.opts.env.includes('CARGO_PROFILE_DEV_CODEGEN_UNITS=1'), false);
+});
+
 test('webvm-server: onPhase callback receives every emitted phase, including ready', async () => {
   // Regression for issue #15: the e2e harness keys `vmPhase === 'ready'`
   // on `globalThis.__rustWebBox.vmPhase`, but the page-side shim only
@@ -382,7 +411,7 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   assert.match(dataState.writes[2].contents, /saved/);
   assert.match(dataState.writes[2].contents, /rwb_target_mtime=/);
   assert.match(dataState.writes[2].contents, /touch -d "@\$rwb_next_mtime" '\/workspace\/src\/main\.rs'/);
-  assert.match(dataState.writes[2].contents, /rm -rf \/workspace\/target\/debug\/\.fingerprint \/workspace\/target\/release\/\.fingerprint/);
+  assert.doesNotMatch(dataState.writes[2].contents, /rm -rf .*\.fingerprint/);
 });
 
 test('webvm-server: failed guest save rejects and leaves JS workspace unchanged', async () => {

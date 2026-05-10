@@ -1,0 +1,41 @@
+Total messages: 39 (Errors: 0, Warnings: 1)
+
+[LOG] [rust-web-box][boot] vm phase loading-cheerpx @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] loading CheerpX @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=03141299-7b38-42c8-a117-5a38db5eae14:0
+[LOG] [rust-web-box][boot] vm phase booting-linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] CheerpX loaded; booting Linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] vm phase attaching github disk @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] vm phase attaching IndexedDB overlay @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] vm phase attaching helper devices @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] vm phase starting Linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] VM booted with disk ./disk/rust-alpine.ext2 @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] vm phase syncing-workspace @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] stage guest script {name: shell-profile, devicePath: /rust-web-box-shell-profile.sh, guestPath: /data/rust-web-box-shell-profile.sh, cwd: /root, bytes: 1849} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] run guest script {name: shell-profile, guestPath: /data/rust-web-box-shell-profile.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] guest script complete {name: shell-profile} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] stage guest script {name: workspace-prime, devicePath: /rust-web-box-workspace-prime.sh, guestPath: /data/rust-web-box-workspace-prime.sh, cwd: /root, bytes: 1747} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] run guest script {name: workspace-prime, guestPath: /data/rust-web-box-workspace-prime.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] guest script complete {name: workspace-prime} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][boot] vm phase ready @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [103:103] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [rust-web-box][guest] stage guest script {name: workspace-sync, devicePath: /rust-web-box-workspace-sync.sh, guestPath: /data/rust-web-box-workspace-sync.sh, cwd: /root, bytes: 1044} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] run guest script {name: workspace-sync, guestPath: /data/rust-web-box-workspace-sync.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [rust-web-box][guest] guest script complete {name: workspace-sync} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0
+[LOG] [141:141] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/1054f365-c014-4744-8774-14272ebd083f:0

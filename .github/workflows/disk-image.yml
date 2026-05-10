@@ -29,6 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
       - name: Set up QEMU (for i386 builds)
         uses: docker/setup-qemu-action@v3
 
@@ -98,7 +102,50 @@ jobs:
               [[ "$cargo_output" == *"This binary was compiled inside CheerpX."* ]] \
                 || (echo "missing CheerpX output from cargo run $variant" && exit 1)
             done
+            printf '%s\n' \
+              "fn main() {" \
+              "    println!(\"edited smoke output from disk image\");" \
+              "}" \
+              > src/main.rs
+            edited_output=$(cargo run 2>&1) || {
+              status=$?
+              printf "%s\n" "$edited_output"
+              echo "edited cargo run failed inside disk smoke test"
+              exit "$status"
+            }
+            printf "%s\n" "$edited_output"
+            [[ "$edited_output" == *"edited smoke output from disk image"* ]] \
+              || (echo "edited cargo run did not use updated src/main.rs" && exit 1)
           '
+
+      - name: Build workbench and stage fresh disk chunks
+        run: |
+          node web/build/build-workbench.mjs
+          WARM_DISK_SOURCE_PATH=web/disk/rust-alpine.ext2 node web/build/stage-pages-disk.mjs
+
+      - name: Install browser-commander + Playwright
+        working-directory: web/tests
+        run: npm ci
+
+      - name: Install Playwright system deps
+        timeout-minutes: 5
+        working-directory: web/tests
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo -E npx playwright install-deps chromium
+
+      - name: Install Chromium browser for Playwright
+        timeout-minutes: 5
+        working-directory: web/tests
+        run: npx playwright install chromium
+
+      - name: Run local e2e against fresh disk image
+        working-directory: web/tests
+        env:
+          RUST_WEB_BOX_E2E: '1'
+          RUST_WEB_BOX_E2E_NO_SANDBOX: '1'
+          RUST_WEB_BOX_E2E_BOOT_MS: '180000'
+        run: node --test e2e/local-pages-e2e.test.mjs
 
       - name: Upload as workflow artifact
         uses: actions/upload-artifact@v5

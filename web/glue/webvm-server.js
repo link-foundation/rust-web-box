@@ -58,7 +58,21 @@ const BASH_ENV = [
   // PATH covers both Debian (/usr/bin) and Alpine (/usr/local/bin) layouts
   // plus rustup's $HOME/.cargo/bin.
   'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+  'CARGO_INCREMENTAL=0',
   'PS1=root@rust-web-box:\\w# ',
+];
+
+const LEAN_CARGO_DEV_PROFILE_SCRIPT = [
+  '__rwb_apply_cargo_profile() {',
+  '  [ -f /root/.cargo/config.toml ] || return 0',
+  "  grep -Eq '^[[:space:]]*debug[[:space:]]*=[[:space:]]*0[[:space:]]*$' /root/.cargo/config.toml || return 0",
+  "  grep -Eq '^[[:space:]]*codegen-units[[:space:]]*=[[:space:]]*1[[:space:]]*$' /root/.cargo/config.toml || return 0",
+  '  export CARGO_PROFILE_DEV_DEBUG=0',
+  '  export CARGO_PROFILE_DEV_CODEGEN_UNITS=1',
+  '  export CARGO_PROFILE_DEV_INCREMENTAL=false',
+  '}',
+  '__rwb_apply_cargo_profile',
+  'unset -f __rwb_apply_cargo_profile 2>/dev/null || true',
 ];
 
 /**
@@ -135,6 +149,7 @@ function buildShellProfileScript() {
     'export LANG=C.UTF-8',
     'export CARGO_HOME=/root/.cargo',
     'export CARGO_INCREMENTAL=0',
+    ...LEAN_CARGO_DEV_PROFILE_SCRIPT,
     'export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
     'export PS1="root@rust-web-box:\\w# "',
     'cd /workspace 2>/dev/null || cd /root',
@@ -167,15 +182,8 @@ function cargoFreshnessMtimeScript(path) {
     '  esac',
     '  rwb_next_mtime=$((rwb_max_mtime + 2))',
     `  touch -d "@$rwb_next_mtime" '${quotedPath}' 2>/dev/null || touch -m '${quotedPath}' 2>/dev/null || true`,
-    `  rwb_saved_mtime="$(stat -c %Y '${quotedPath}' 2>/dev/null || echo 0)"`,
-    '  case "$rwb_saved_mtime" in',
-    '    ""|*[!0-9]*) rwb_saved_mtime=0 ;;',
-    '  esac',
-    '  if [ "$rwb_saved_mtime" -le "$rwb_max_mtime" ]; then',
-    '    rm -rf /workspace/target/debug/.fingerprint /workspace/target/release/.fingerprint 2>/dev/null || true',
-    '  fi',
     'fi',
-    'unset rwb_max_mtime rwb_target_mtime rwb_next_mtime rwb_saved_mtime',
+    'unset rwb_max_mtime rwb_target_mtime rwb_next_mtime',
   ].join('\n');
 }
 
