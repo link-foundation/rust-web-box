@@ -410,6 +410,8 @@ test('webvm-server: mirrors saved files through /data without typing into the te
   assert.match(dataState.writes[2].contents, /cat > '\/workspace\/src\/main\.rs'/);
   assert.match(dataState.writes[2].contents, /saved/);
   assert.match(dataState.writes[2].contents, /find \/workspace\/target -exec touch -t 197001010000/);
+  assert.match(dataState.writes[2].contents, /for __rwb_profile in debug release/);
+  assert.match(dataState.writes[2].contents, /rm -f "\$__rwb_artifact"/);
   assert.match(dataState.writes[2].contents, /touch -m '\/workspace\/src\/main\.rs'/);
   assert.doesNotMatch(dataState.writes[2].contents, /rm -rf .*\.fingerprint/);
 });

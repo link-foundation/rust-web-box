@@ -172,12 +172,26 @@ function cargoFreshnessMtimeScript(path) {
     // The warm disk can contain target artifacts whose mtimes are ahead
     // of CheerpX's current clock. Mark existing target metadata old
     // after a browser save so Cargo rebuilds instead of reusing the
-    // prebaked binary. Do not delete fingerprints here: deleting files
-    // forces fresh inode allocation on CheerpX's writable overlay, which
-    // is the failure mode this path is avoiding.
+    // prebaked binary.
     'if [ -d /workspace/target ]; then',
     '  find /workspace/target -exec touch -t 197001010000 {} \\; 2>/dev/null || true',
     'fi',
+    // CheerpX guest clocks and ext2 mtimes are not reliable enough for
+    // Cargo's freshness checks by themselves. Remove only the final
+    // top-level executable artifacts so the next `cargo run` goes through
+    // Cargo's normal rebuild path without deleting the fingerprint tree.
+    'for __rwb_profile in debug release; do',
+    '  __rwb_dir="/workspace/target/$__rwb_profile"',
+    '  [ -d "$__rwb_dir" ] || continue',
+    '  for __rwb_artifact in "$__rwb_dir"/*; do',
+    '    [ -f "$__rwb_artifact" ] || continue',
+    '    case "$__rwb_artifact" in',
+    '      *.d|*.rlib|*.rmeta|*.so|*.a|*.o|*.wasm) continue ;;',
+    '    esac',
+    '    rm -f "$__rwb_artifact" 2>/dev/null || true',
+    '  done',
+    'done',
+    'unset __rwb_profile __rwb_dir __rwb_artifact 2>/dev/null || true',
     `touch -m '${quotedPath}' 2>/dev/null || true`,
   ].join('\n');
 }
