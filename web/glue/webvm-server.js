@@ -170,20 +170,15 @@ function cargoFreshnessMtimeScript(path) {
   const quotedPath = shellQuote(path);
   return [
     // The warm disk can contain target artifacts whose mtimes are ahead
-    // of CheerpX's current clock. Make the edited Cargo input newer than
-    // the target tree so Cargo rebuilds instead of reusing the prebaked
-    // binary after a browser save.
+    // of CheerpX's current clock. Mark existing target metadata old
+    // after a browser save so Cargo rebuilds instead of reusing the
+    // prebaked binary. Do not delete fingerprints here: deleting files
+    // forces fresh inode allocation on CheerpX's writable overlay, which
+    // is the failure mode this path is avoiding.
     'if [ -d /workspace/target ]; then',
-    '  rwb_max_mtime="$(date +%s 2>/dev/null || echo 0)"',
-    '  rwb_target_mtime="$(find /workspace/target -type f -exec stat -c %Y {} \\; 2>/dev/null | sort -nr | head -n 1 || true)"',
-    '  case "$rwb_target_mtime" in',
-    '    ""|*[!0-9]*) ;;',
-    '    *) [ "$rwb_target_mtime" -gt "$rwb_max_mtime" ] && rwb_max_mtime="$rwb_target_mtime" ;;',
-    '  esac',
-    '  rwb_next_mtime=$((rwb_max_mtime + 2))',
-    `  touch -d "@$rwb_next_mtime" '${quotedPath}' 2>/dev/null || touch -m '${quotedPath}' 2>/dev/null || true`,
+    '  find /workspace/target -exec touch -t 197001010000 {} \\; 2>/dev/null || true',
     'fi',
-    'unset rwb_max_mtime rwb_target_mtime rwb_next_mtime',
+    `touch -m '${quotedPath}' 2>/dev/null || true`,
   ].join('\n');
 }
 

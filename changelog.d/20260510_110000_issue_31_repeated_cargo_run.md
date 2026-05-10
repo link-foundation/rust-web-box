@@ -4,6 +4,7 @@
 - Tightened browser e2e coverage so fixed disks must complete the edited second `cargo run` and print the edited output instead of accepting a compile-path timeout.
 - Preserved writable filesystem headroom in the minimized warm disk so edited rebuilds have space for fresh debug artifacts.
 - Kept the disk-image smoke test's edited rebuild isolated to a disposable image copy so staged Pages chunks still contain the default sample project.
+- Forced Cargo freshness after browser saves by aging existing target metadata instead of relying on CheerpX's guest clock or deleting fingerprint files.
 
 ## Changed
 
