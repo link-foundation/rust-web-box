@@ -42,6 +42,7 @@ The failed runtime-only probe is important: setting lean dev-profile environment
 ## Fix
 
 - `web/disk/Dockerfile.disk` now writes `[profile.dev] incremental = false`, `debug = 0`, and `codegen-units = 1`, exports matching env in `/root/.bash_profile`, and pre-bakes debug/release artifacts under those settings.
+- `web/disk/build.sh` still minimizes the ext2 image for upload, but grows it back by a small writable reserve so edited rebuilds have filesystem headroom.
 - `web/glue/webvm-server.js` writes a guarded bash profile. It enables `CARGO_PROFILE_DEV_*` only when `/root/.cargo/config.toml` declares the matching lean profile, so old published disks are not invalidated by new page JavaScript.
 - `web/tests/helpers/cheerpx-page-harness.mjs` uses the same guard for direct e2e `cx.run` commands.
 - `web/tests/e2e/*` now require the edited `cargo run` to complete and print the edited output when the staged disk has the lean profile.

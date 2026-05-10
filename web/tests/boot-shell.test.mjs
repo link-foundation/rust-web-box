@@ -257,6 +257,9 @@ test('boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world', a
 
   const build = await read('disk/build.sh');
   assert.match(build, /resize2fs -M "\$IMG"/);
+  assert.match(build, /IMG_FREE_MB/);
+  assert.match(build, /reserving \${FREE_MB} MiB writable filesystem space/);
+  assert.match(build, /resize2fs "\$IMG"/);
 });
 
 test('boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run output', async () => {
@@ -269,6 +272,7 @@ test('boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run ou
   assert.match(wf, /cargo run --release/);
   assert.match(wf, /Hello from rust-web-box!/);
   assert.match(wf, /This binary was compiled inside CheerpX\./);
+  assert.match(wf, /edited smoke output from disk image/);
   assert.doesNotMatch(wf, /rust-web-box-cargo-run\.out/);
 });
 
