@@ -1,0 +1,47 @@
+[       4ms] [LOG] %c INFO color: #33f [lifecycle] onBeforeUnload triggered and handled with veto support @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[     106ms] [LOG] %c  ERR color: #f33 Unable to write file 'vscode-log:/20260510T104353/window.log' (Error: IndexedDB database 'vscode-web-db' is closed.): Error: Unable to write file 'vscode-log:/20260510T104353/window.log' (Error: IndexedDB database 'vscode-web-db' is closed.)
+    at r.writeFile (https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:659:17217)
+    at async w.flush (https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/workbench.web.main.js:659:30816) @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[     861ms] [LOG] [rust-web-box][boot] vm phase loading-cheerpx @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[     861ms] [LOG] [rust-web-box][boot] loading CheerpX @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1046ms] [LOG] [rust-web-box][boot] vm phase booting-linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1047ms] [LOG] [rust-web-box][boot] CheerpX loaded; booting Linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1100ms] [LOG] [rust-web-box][boot] vm phase attaching github disk @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1158ms] [LOG] [rust-web-box][boot] vm phase attaching IndexedDB overlay @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1163ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://link-foundation.github.io/rust-web-box/vscode-web/out/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html?vscode-coi=3&vscodeWebWorkerExtHostId=888c8511-b61a-4a31-8606-cdb5db161db5:0
+[    1240ms] [LOG] [rust-web-box][boot] vm phase attaching helper devices @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1240ms] [LOG] [rust-web-box][boot] vm phase starting Linux @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1891ms] [LOG] [rust-web-box][boot] VM booted with disk ./disk/rust-alpine.ext2 @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1893ms] [LOG] [rust-web-box][boot] vm phase syncing-workspace @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1893ms] [LOG] [rust-web-box][guest] stage guest script {name: shell-profile, devicePath: /rust-web-box-shell-profile.sh, guestPath: /data/rust-web-box-shell-profile.sh, cwd: /root, bytes: 1849} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    1894ms] [LOG] [rust-web-box][guest] run guest script {name: shell-profile, guestPath: /data/rust-web-box-shell-profile.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    3499ms] [LOG] [rust-web-box][guest] guest script complete {name: shell-profile} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    3510ms] [LOG] [rust-web-box][guest] stage guest script {name: workspace-prime, devicePath: /rust-web-box-workspace-prime.sh, guestPath: /data/rust-web-box-workspace-prime.sh, cwd: /root, bytes: 1791} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    3511ms] [LOG] [rust-web-box][guest] run guest script {name: workspace-prime, guestPath: /data/rust-web-box-workspace-prime.sh, cwd: /root} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    4162ms] [LOG] [rust-web-box][guest] guest script complete {name: workspace-prime} @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    4170ms] [WARNING] [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true) @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[    4170ms] [LOG] [rust-web-box][boot] vm phase ready @ https://link-foundation.github.io/rust-web-box/glue/console-filter.js:65
+[   30514ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30515ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30515ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30516ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30516ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30516ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30546ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30546ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30546ms] [LOG] [22:22] TODO: Advisory locking is only stubbed @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30650ms] [LOG] Unexpected exit CheerpException: Program exited with code 71
+    at ari (blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:1:65128)
+    at wasm://wasm/0074a58e:wasm-function[2523]:0xfcacb
+    at wasm://wasm/0074a58e:wasm-function[2524]:0xfcad1
+    at wasm://wasm/0074a58e:wasm-function[2525]:0xfcad8
+    at wasm://wasm/0074a58e:wasm-function[122]:0x6a9c
+    at wasm://wasm/0074a58e:wasm-function[402]:0x2294c
+    at wasm://wasm/0074a58e:wasm-function[3362]:0x17685a
+    at wasm://wasm/0074a58e:wasm-function[1307]:0x862bf
+    at wasm://wasm/0074a58e:wasm-function[3831]:0x1a4141
+    at wasm://wasm/0074a58e:wasm-function[3774]:0x197145 @ blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:0
+[   30651ms] TypeError: e is not a function
+    at aTt (blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:1:57593)
+    at wasm://wasm/0074a58e:wasm-function[2518]:0xfc9fb
+    at MessagePort.VF (blob:https://link-foundation.github.io/f9553119-f8c2-4ec9-a711-c26cc1b07e5c:1:59850)

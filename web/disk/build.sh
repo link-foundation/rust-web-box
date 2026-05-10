@@ -15,6 +15,7 @@
 #
 # Environment variables:
 #   IMG_SIZE_MB      ext2 image size in MiB (default 1024)
+#   IMG_FREE_MB      free MiB preserved after shrinking (default 128)
 #   IMG_NAME         output basename (default rust-alpine.ext2)
 #   PLATFORM         buildx --platform value (default linux/386)
 
@@ -25,6 +26,7 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 IMG_NAME="${IMG_NAME:-rust-alpine.ext2}"
 IMG="$HERE/$IMG_NAME"
 SIZE_MB="${IMG_SIZE_MB:-1024}"
+FREE_MB="${IMG_FREE_MB:-128}"
 PLATFORM="${PLATFORM:-linux/386}"
 
 echo "==> building docker image (rust-web-box-disk, $PLATFORM)"
@@ -55,10 +57,19 @@ sudo umount "$MOUNT"
 trap - EXIT
 
 # Shrink the image to the minimum filesystem size before upload. Pages
-# later stages this file as raw chunks, so sparse free space would become
-# real artifact bytes if we left the initial allocation intact.
+# later stages this file as raw chunks, so sparse free space becomes real
+# artifact bytes if we leave the initial allocation intact. After the
+# shrink, grow by a small reserve so edited `cargo run` has room to write
+# fresh debug artifacts inside the guest filesystem.
 e2fsck -fy "$IMG" >/dev/null || true
 resize2fs -M "$IMG" >/dev/null
 e2fsck -fy "$IMG" >/dev/null || true
+if [ "$FREE_MB" -gt 0 ]; then
+  echo "==> reserving ${FREE_MB} MiB writable filesystem space"
+  current_bytes="$(stat -c %s "$IMG")"
+  truncate -s "$((current_bytes + FREE_MB * 1024 * 1024))" "$IMG"
+  resize2fs "$IMG" >/dev/null
+  e2fsck -fy "$IMG" >/dev/null || true
+fi
 
 echo "==> done: $IMG ($(du -h "$IMG" | cut -f1))"

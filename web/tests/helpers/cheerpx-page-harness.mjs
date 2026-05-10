@@ -435,8 +435,21 @@ export async function runInVM(page, command, { timeoutMs = 60_000 } = {}) {
     // it with a timeout so a wedged probe surfaces as a clear failure
     // rather than the test runner's overall timeout.
     const TIMEOUT = Symbol('runInVM-timeout');
+    const guardedCommand = [
+      '__rwb_apply_cargo_profile() {',
+      '  [ -f /root/.cargo/config.toml ] || return 0',
+      "  grep -Eq '^[[:space:]]*debug[[:space:]]*=[[:space:]]*0[[:space:]]*$' /root/.cargo/config.toml || return 0",
+      "  grep -Eq '^[[:space:]]*codegen-units[[:space:]]*=[[:space:]]*1[[:space:]]*$' /root/.cargo/config.toml || return 0",
+      '  export CARGO_PROFILE_DEV_DEBUG=0',
+      '  export CARGO_PROFILE_DEV_CODEGEN_UNITS=1',
+      '  export CARGO_PROFILE_DEV_INCREMENTAL=false',
+      '}',
+      '__rwb_apply_cargo_profile',
+      'unset -f __rwb_apply_cargo_profile 2>/dev/null || true',
+      command,
+    ].join('\n');
     const winner = await Promise.race([
-      cx.run('/bin/sh', ['-c', command], {
+      cx.run('/bin/sh', ['-c', guardedCommand], {
         // Match Dockerfile.disk's /root/.bash_profile: include
         // /root/.cargo/bin (rustup-managed toolchain) and disable
         // incremental builds (issue #17 — fresh fingerprint inodes
@@ -458,6 +471,18 @@ export async function runInVM(page, command, { timeoutMs = 60_000 } = {}) {
     }
     return { status: winner, output: chunks.join(''), timedOut: false };
   }, { command, timeoutMs });
+}
+
+export async function hasLeanCargoDevProfile(page) {
+  const result = await runInVM(
+    page,
+    [
+      "grep -Eq '^[[:space:]]*debug[[:space:]]*=[[:space:]]*0[[:space:]]*$' /root/.cargo/config.toml",
+      "grep -Eq '^[[:space:]]*codegen-units[[:space:]]*=[[:space:]]*1[[:space:]]*$' /root/.cargo/config.toml",
+    ].join(' && '),
+    { timeoutMs: 10_000 },
+  );
+  return (result.status?.status ?? result.status) === 0;
 }
 
 export { WEB_ROOT, REPO_ROOT };

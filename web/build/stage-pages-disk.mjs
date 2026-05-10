@@ -130,6 +130,25 @@ async function main() {
   const required = process.env.STAGE_WARM_DISK_REQUIRED !== '0';
 
   const manifest = JSON.parse(await fs.readFile(MANIFEST_PATH, 'utf8'));
+  const localSourcePath = process.env.WARM_DISK_SOURCE_PATH;
+  if (localSourcePath) {
+    const result = await chunkDiskImage(localSourcePath, {
+      outDir: DISK_DIR,
+      imageName: DEFAULT_IMAGE_NAME,
+      chunkSize: DEFAULT_CHUNK_SIZE,
+    });
+    const stagedManifest = stageManifestForGitHubDevice(manifest, {
+      imageName: DEFAULT_IMAGE_NAME,
+      sourceUrl: `file://${path.resolve(localSourcePath)}`,
+      chunkSize: DEFAULT_CHUNK_SIZE,
+    });
+    await fs.writeFile(MANIFEST_PATH, `${JSON.stringify(stagedManifest, null, 2)}\n`, 'utf8');
+    logger.log(
+      `[disk] staged local ${result.byteLength} bytes as ${result.chunkCount} chunks under web/disk/`,
+    );
+    return;
+  }
+
   const sourceUrl =
     process.env.WARM_DISK_SOURCE_URL ||
     manifest?.warm?.source_release_url ||

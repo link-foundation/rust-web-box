@@ -58,7 +58,21 @@ const BASH_ENV = [
   // PATH covers both Debian (/usr/bin) and Alpine (/usr/local/bin) layouts
   // plus rustup's $HOME/.cargo/bin.
   'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+  'CARGO_INCREMENTAL=0',
   'PS1=root@rust-web-box:\\w# ',
+];
+
+const LEAN_CARGO_DEV_PROFILE_SCRIPT = [
+  '__rwb_apply_cargo_profile() {',
+  '  [ -f /root/.cargo/config.toml ] || return 0',
+  "  grep -Eq '^[[:space:]]*debug[[:space:]]*=[[:space:]]*0[[:space:]]*$' /root/.cargo/config.toml || return 0",
+  "  grep -Eq '^[[:space:]]*codegen-units[[:space:]]*=[[:space:]]*1[[:space:]]*$' /root/.cargo/config.toml || return 0",
+  '  export CARGO_PROFILE_DEV_DEBUG=0',
+  '  export CARGO_PROFILE_DEV_CODEGEN_UNITS=1',
+  '  export CARGO_PROFILE_DEV_INCREMENTAL=false',
+  '}',
+  '__rwb_apply_cargo_profile',
+  'unset -f __rwb_apply_cargo_profile 2>/dev/null || true',
 ];
 
 /**
@@ -135,6 +149,7 @@ function buildShellProfileScript() {
     'export LANG=C.UTF-8',
     'export CARGO_HOME=/root/.cargo',
     'export CARGO_INCREMENTAL=0',
+    ...LEAN_CARGO_DEV_PROFILE_SCRIPT,
     'export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
     'export PS1="root@rust-web-box:\\w# "',
     'cd /workspace 2>/dev/null || cd /root',
@@ -155,27 +170,27 @@ function cargoFreshnessMtimeScript(path) {
   const quotedPath = shellQuote(path);
   return [
     // The warm disk can contain target artifacts whose mtimes are ahead
-    // of CheerpX's current clock. Make the edited Cargo input newer than
-    // the target tree so Cargo rebuilds instead of reusing the prebaked
-    // binary after a browser save.
+    // of CheerpX's current clock. Mark existing target metadata old
+    // after a browser save so Cargo rebuilds instead of reusing the
+    // prebaked binary.
     'if [ -d /workspace/target ]; then',
-    '  rwb_max_mtime="$(date +%s 2>/dev/null || echo 0)"',
-    '  rwb_target_mtime="$(find /workspace/target -type f -exec stat -c %Y {} \\; 2>/dev/null | sort -nr | head -n 1 || true)"',
-    '  case "$rwb_target_mtime" in',
-    '    ""|*[!0-9]*) ;;',
-    '    *) [ "$rwb_target_mtime" -gt "$rwb_max_mtime" ] && rwb_max_mtime="$rwb_target_mtime" ;;',
-    '  esac',
-    '  rwb_next_mtime=$((rwb_max_mtime + 2))',
-    `  touch -d "@$rwb_next_mtime" '${quotedPath}' 2>/dev/null || touch -m '${quotedPath}' 2>/dev/null || true`,
-    `  rwb_saved_mtime="$(stat -c %Y '${quotedPath}' 2>/dev/null || echo 0)"`,
-    '  case "$rwb_saved_mtime" in',
-    '    ""|*[!0-9]*) rwb_saved_mtime=0 ;;',
-    '  esac',
-    '  if [ "$rwb_saved_mtime" -le "$rwb_max_mtime" ]; then',
-    '    rm -rf /workspace/target/debug/.fingerprint /workspace/target/release/.fingerprint 2>/dev/null || true',
-    '  fi',
+    '  find /workspace/target -exec touch -t 197001010000 {} \\; 2>/dev/null || true',
     'fi',
-    'unset rwb_max_mtime rwb_target_mtime rwb_next_mtime rwb_saved_mtime',
+    // CheerpX lower-layer deletes can leave pre-baked files visible, and
+    // guest clocks/mtimes are not reliable enough by themselves. Mark
+    // Cargo's text fingerprint hashes stale while leaving binary dep-info
+    // files intact, so Cargo's dirty check can safely rebuild.
+    'for __rwb_fp_dir in /workspace/target/debug/.fingerprint/* /workspace/target/release/.fingerprint/*; do',
+    '  [ -d "$__rwb_fp_dir" ] || continue',
+    '  for __rwb_marker in "$__rwb_fp_dir"/bin-* "$__rwb_fp_dir"/lib-* "$__rwb_fp_dir"/test-* "$__rwb_fp_dir"/bench-* "$__rwb_fp_dir"/example-* "$__rwb_fp_dir"/build-script-*; do',
+    '    [ -f "$__rwb_marker" ] || continue',
+    '    case "$__rwb_marker" in *.json|*/dep-*|*/invoked.timestamp) continue ;; esac',
+    "    printf '%s' '0000000000000000' > \"$__rwb_marker\" 2>/dev/null || true",
+    '    touch -t 197001010000 "$__rwb_marker" 2>/dev/null || true',
+    '  done',
+    'done',
+    'unset __rwb_fp_dir __rwb_marker 2>/dev/null || true',
+    `touch -m '${quotedPath}' 2>/dev/null || true`,
   ].join('\n');
 }
 

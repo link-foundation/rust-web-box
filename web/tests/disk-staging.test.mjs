@@ -74,6 +74,33 @@ test('stage-pages-disk: removes stale chunks before writing a new image', async 
   }
 });
 
+test('stage-pages-disk: keeps a local source image when source lives in output directory', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'rust-web-box-disk-'));
+  try {
+    const source = path.join(dir, 'rust-alpine.ext2');
+    await fs.writeFile(source, Buffer.from('local-image'));
+    await fs.writeFile(path.join(dir, 'rust-alpine.ext2.c999999.txt'), 'stale');
+
+    await chunkDiskImage(source, {
+      outDir: dir,
+      imageName: 'rust-alpine.ext2',
+      chunkSize: 5,
+    });
+
+    assert.equal(await fs.readFile(source, 'utf8'), 'local-image');
+    const files = await fs.readdir(dir);
+    assert.deepEqual(files.sort(), [
+      'rust-alpine.ext2',
+      'rust-alpine.ext2.c000000.txt',
+      'rust-alpine.ext2.c000001.txt',
+      'rust-alpine.ext2.c000002.txt',
+      'rust-alpine.ext2.meta',
+    ]);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('stage-pages-disk: manifest warm entry is converted to same-origin GitHubDevice layout', () => {
   const staged = stageManifestForGitHubDevice({
     default: { kind: 'cloud', url: 'wss://disks.webvm.io/fallback.ext2' },

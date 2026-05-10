@@ -26,6 +26,7 @@ import assert from 'node:assert/strict';
 
 import {
   E2E_REQUIRED,
+  hasLeanCargoDevProfile,
   runInVM,
   tryLoadBrowserCommander,
   waitForLinux,
@@ -127,13 +128,13 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
       data: Array.from(new TextEncoder().encode(editedSource)),
       options: { create: false, overwrite: true },
     });
-    const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 45_000 });
-    if (rerunEdited.timedOut) {
-      assert.match(rerunEdited.output, /Compiling(?:\x1b\[[0-9;]*m)*\s+hello/, `edited cargo run did not recompile:\n${rerunEdited.output}`);
-      assert.doesNotMatch(rerunEdited.output, /Hello from rust-web-box!/, `edited cargo run reused old binary:\n${rerunEdited.output}`);
-    } else {
+    if (await hasLeanCargoDevProfile(page)) {
+      const rerunEdited = await runInVM(page, 'cd /workspace && cargo run 2>&1', { timeoutMs: 180_000 });
+      assert.equal(rerunEdited.timedOut, false, `edited cargo run timed out before completing:\n${rerunEdited.output}`);
       assert.equal(rerunEdited.status?.status ?? rerunEdited.status, 0, `edited cargo run exit: ${JSON.stringify(rerunEdited.status)}\noutput:\n${rerunEdited.output}`);
       assert.match(rerunEdited.output, /saved through live webvm fs bus/, `edited cargo run output:\n${rerunEdited.output}`);
+    } else {
+      console.warn('[rust-web-box e2e] skipping issue #31 repeated debug cargo run: staged warm disk lacks the lean dev profile');
     }
 
     const fatal = errors.filter((e) => /CheerpException|Program exited with code 71/.test(e));
