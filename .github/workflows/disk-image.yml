@@ -50,11 +50,14 @@ jobs:
       - name: Smoke-test the image (mount + cargo run)
         run: |
           set -euo pipefail
+          SMOKE_IMG=$(mktemp --suffix=.ext2)
+          cp web/disk/rust-alpine.ext2 "$SMOKE_IMG"
           MNT=$(mktemp -d)
-          sudo mount -o loop web/disk/rust-alpine.ext2 "$MNT"
+          sudo mount -o loop "$SMOKE_IMG" "$MNT"
           cleanup() {
             sudo umount "$MNT" || true
             rmdir "$MNT" || true
+            rm -f "$SMOKE_IMG"
           }
           trap cleanup EXIT
           ls -la "$MNT"
