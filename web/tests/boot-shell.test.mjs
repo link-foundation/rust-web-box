@@ -270,8 +270,10 @@ test('boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run ou
   assert.match(wf, /tree --version/);
   assert.match(wf, /cargo --version/);
   assert.match(wf, /cargo run --release/);
-  assert.match(wf, /Hello from rust-web-box!/);
-  assert.match(wf, /This binary was compiled inside CheerpX\./);
+  // Issue #33: the prebuilt program is the canonical cargo new output.
+  assert.match(wf, /Hello, world!/);
+  assert.doesNotMatch(wf, /This binary was compiled inside CheerpX/);
+  assert.doesNotMatch(wf, /Hello from rust-web-box/);
   assert.match(wf, /cp web\/disk\/rust-alpine\.ext2 "\$SMOKE_IMG"/);
   assert.match(wf, /sudo mount -o loop "\$SMOKE_IMG" "\$MNT"/);
   assert.match(wf, /edited smoke output from disk image/);

@@ -146,7 +146,7 @@ RUN mkdir -p /root/.cargo && \
 RUN mkdir -p /workspace/src && \
     printf '[package]\nname = "hello"\nversion = "0.1.0"\nedition = "2021"\n\n[[bin]]\nname = "hello"\npath = "src/main.rs"\n\n[dependencies]\n' \
       > /workspace/Cargo.toml && \
-    printf 'fn main() {\n    println!("Hello from rust-web-box!");\n    println!("This binary was compiled inside CheerpX.");\n}\n' \
+    printf 'fn main() {\n    println!("Hello, world!");\n}\n' \
       > /workspace/src/main.rs && \
     cd /workspace && \
     cargo build --release && \

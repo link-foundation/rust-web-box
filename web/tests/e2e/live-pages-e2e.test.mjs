@@ -26,6 +26,7 @@ import assert from 'node:assert/strict';
 
 import {
   E2E_REQUIRED,
+  firstSourceGreeting,
   hasLeanCargoDevProfile,
   runInVM,
   tryLoadBrowserCommander,
@@ -92,7 +93,7 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
 
     const hello = await runInVM(page, '/workspace/target/release/hello');
     assert.equal(hello.status?.status ?? hello.status, 0);
-    assert.match(hello.output, /Hello from rust-web-box!/);
+    assert.match(hello.output, /Hello/, `prebuilt binary output:\n${hello.output}`);
 
     // Issue #17 regression guard: `cargo run --release` was the user-
     // facing operation that broke on the live site (CheerpException 71
@@ -104,8 +105,20 @@ test('live e2e: the deployed Pages site boots and runs `tree --version`', async 
     const cargoRun = await runInVM(page, 'cd /workspace && cargo run --release 2>&1', { timeoutMs: 120_000 });
     assert.equal(cargoRun.timedOut, false, `cargo run --release timed out — likely OverlayDevice wedge: ${cargoRun.output}`);
     assert.equal(cargoRun.status?.status ?? cargoRun.status, 0, `cargo run exit: ${JSON.stringify(cargoRun.status)}\noutput:\n${cargoRun.output}`);
-    assert.match(cargoRun.output, /Hello from rust-web-box!/, `cargo run output:\n${cargoRun.output}`);
+    assert.match(cargoRun.output, /Hello/, `cargo run output:\n${cargoRun.output}`);
     assert.match(cargoRun.output, /Finished/, `cargo run did not print Finished:\n${cargoRun.output}`);
+
+    // Anti-fake proof (issue #33): the printed greeting must equal the
+    // literal in the source on disk. Asserted only on a disk built from
+    // the current source (lean dev profile present); a previously
+    // published live disk may predate the plain-seed change.
+    if (await hasLeanCargoDevProfile(page)) {
+      const greeting = await firstSourceGreeting(page);
+      assert.equal(greeting, 'Hello, world!', `unexpected seed greeting: ${JSON.stringify(greeting)}`);
+      assert.ok(hello.output.includes(greeting), `prebuilt binary did not print source greeting:\n${hello.output}`);
+      assert.ok(cargoRun.output.includes(greeting), `cargo run did not print source greeting:\n${cargoRun.output}`);
+      assert.doesNotMatch(cargoRun.output, /Compiled by Rust|compiled inside CheerpX/);
+    }
 
     const targetRoot = await requestWorkbenchBus(page, 'fs.readDir', {
       path: '/workspace/target',

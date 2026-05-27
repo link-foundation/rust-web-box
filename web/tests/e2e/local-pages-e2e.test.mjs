@@ -29,6 +29,7 @@ import path from 'node:path';
 import {
   E2E_REQUIRED,
   WEB_ROOT,
+  firstSourceGreeting,
   hasLeanCargoDevProfile,
   isWarmDiskStaged,
   runInVM,
@@ -137,10 +138,12 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
 
     // Stage C: pre-built `cargo run` artifact. The disk image bakes a
     // release binary so we can verify the *execution* path without
-    // waiting on a build.
+    // waiting on a build. The exact greeting is asserted against the
+    // source on disk below (issue #33) — here we only require that the
+    // prebuilt binary actually executes and prints its hello line.
     const hello = await runInVM(page, '/workspace/target/release/hello');
     assert.equal(hello.status?.status ?? hello.status, 0);
-    assert.match(hello.output, /Hello from rust-web-box!/);
+    assert.match(hello.output, /Hello/, `prebuilt binary output:\n${hello.output}`);
 
     // Stage D: end-to-end `cargo run --release` (issue #17). This is
     // the operation that actually broke on the live site — running the
@@ -153,8 +156,24 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
     const cargoRun = await runInVM(page, 'cd /workspace && cargo run --release 2>&1', { timeoutMs: 120_000 });
     assert.equal(cargoRun.timedOut, false, `cargo run --release timed out — likely OverlayDevice wedge: ${cargoRun.output}`);
     assert.equal(cargoRun.status?.status ?? cargoRun.status, 0, `cargo run exit: ${JSON.stringify(cargoRun.status)}\noutput:\n${cargoRun.output}`);
-    assert.match(cargoRun.output, /Hello from rust-web-box!/, `cargo run output:\n${cargoRun.output}`);
+    assert.match(cargoRun.output, /Hello/, `cargo run output:\n${cargoRun.output}`);
     assert.match(cargoRun.output, /Finished/, `cargo run did not print Finished:\n${cargoRun.output}`);
+
+    // Stage C/D anti-fake proof (issue #33): the greeting the binary and
+    // `cargo run` print must be exactly the literal in the source on
+    // disk — not an injected/hardcoded string. We assert this only on a
+    // disk built from the current source (lean dev profile present); a PR
+    // Pages build may still stage the previously published disk whose
+    // prebuilt binary predates the issue #33 plain-seed change.
+    if (await hasLeanCargoDevProfile(page)) {
+      const greeting = await firstSourceGreeting(page);
+      assert.equal(greeting, 'Hello, world!', `unexpected seed greeting: ${JSON.stringify(greeting)}`);
+      assert.ok(hello.output.includes(greeting), `prebuilt binary did not print source greeting:\n${hello.output}`);
+      assert.ok(cargoRun.output.includes(greeting), `cargo run did not print source greeting:\n${cargoRun.output}`);
+      // The canonical cargo new program prints nothing else (issue #33):
+      // no "rust-web-box" / "CheerpX" branding on every command.
+      assert.doesNotMatch(cargoRun.output, /Compiled by Rust|compiled inside CheerpX/);
+    }
 
     // Stage E: expanding target/ in the Explorer calls fs.readDir. That
     // should refresh target metadata from the guest on demand, without

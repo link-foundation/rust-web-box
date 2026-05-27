@@ -39,14 +39,15 @@ const SEED_FILES = {
       '[dependencies]',
       '',
     ].join('\n'),
+  // Canonical `cargo new` entry point: no branding, no extra output.
+  // Byte-for-byte identical to the prebuilt binary's source in
+  // web/disk/Dockerfile.disk, so the first `cargo run` (which reuses the
+  // prebuilt artifact) prints exactly the same thing as every run after
+  // an edit-and-recompile. This is what makes it "1 to 1 to real deal".
   '/workspace/src/main.rs':
     [
-      '// Entry point built by `cargo run` from /workspace.',
-      '// Edit and save; changes mirror into the VM on every save.',
-      '',
       'fn main() {',
-      '    println!("Hello from rust-web-box!");',
-      '    println!("Compiled by Rust inside the browser via CheerpX.");',
+      '    println!("Hello, world!");',
       '}',
       '',
     ].join('\n'),
@@ -171,6 +172,21 @@ const PREVIOUS_SEED_FILES = {
       '  "files.autoSave": "afterDelay",',
       '  "editor.formatOnSave": false,',
       '  "rust-analyzer.checkOnSave": false',
+      '}',
+      '',
+    ].join('\n'),
+  // The previous default entry point printed branding lines on every
+  // `cargo run` (issue #33). Pin its exact bytes so an untouched copy
+  // gets migrated to the plain `cargo new` program; edited copies are
+  // left alone by replaceIfUnchanged().
+  '/workspace/src/main.rs':
+    [
+      '// Entry point built by `cargo run` from /workspace.',
+      '// Edit and save; changes mirror into the VM on every save.',
+      '',
+      'fn main() {',
+      '    println!("Hello from rust-web-box!");',
+      '    println!("Compiled by Rust inside the browser via CheerpX.");',
       '}',
       '',
     ].join('\n'),
@@ -344,6 +360,14 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
         '/workspace/.vscode/settings.json',
         PREVIOUS_SEED_FILES['/workspace/.vscode/settings.json'],
         seed['/workspace/.vscode/settings.json'],
+      );
+    }
+    // Drop the old branded main.rs (issue #33) for untouched workspaces.
+    if (seed['/workspace/src/main.rs']) {
+      await replaceIfUnchanged(
+        '/workspace/src/main.rs',
+        PREVIOUS_SEED_FILES['/workspace/src/main.rs'],
+        seed['/workspace/src/main.rs'],
       );
     }
   }
