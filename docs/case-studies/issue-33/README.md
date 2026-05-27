@@ -159,10 +159,15 @@ There are two findings, only one of which is a defect:
 - **`web/tests/e2e/local-pages-e2e.test.mjs` and `live-pages-e2e.test.mjs`** — Stage
   C/D no longer hardcode the branded greeting (which would break against the still
   branded published disk during the version-skew window). They assert the binary and
-  `cargo run` print *a* hello line, and — only on a disk built from the current
-  source (`hasLeanCargoDevProfile`) — assert that the printed greeting is exactly the
-  literal in the source on disk (`Hello, world!`) with no branding. This is a
-  stronger anti-fake proof: the output must match the real source, not a constant.
+  `cargo run` print *a* hello line, and — only on a disk whose prebuilt binary is
+  already the plain program — assert that the printed greeting is exactly the literal
+  in the source on disk (`Hello, world!`) with no branding. The discriminator is the
+  **prebuilt binary's own output** (`/workspace/target/release/hello`), which is baked
+  into the disk and is unaffected by the boot-time workspace prime or CheerpX's guest
+  clock — so it reliably distinguishes the issue #33 plain-seed disk from the older
+  published disk, which still carries the lean dev profile from issue #31 and would
+  otherwise be misdetected. This is a stronger anti-fake proof: the output must match
+  the real source, not a constant.
 
 No upstream issue was filed: the CheerpX/webvm runtime behaves correctly here; the
 defect was entirely in this repository's seed/disk content.
