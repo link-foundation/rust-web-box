@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: migration: untouched branded main.rs becomes plain cargo new (issue \#33)
+ok 1 - migration: untouched branded main.rs becomes plain cargo new (issue \#33)
+  ---
+  duration_ms: 10.749327
+  ...
+# Subtest: migration: user-edited main.rs is left untouched (issue \#33)
+ok 2 - migration: user-edited main.rs is left untouched (issue \#33)
+  ---
+  duration_ms: 5.573585
+  ...
+# Subtest: migration: a fresh (empty) store gets the plain seed (issue \#33)
+ok 3 - migration: a fresh (empty) store gets the plain seed (issue \#33)
+  ---
+  duration_ms: 15.254946
+  ...
+# Subtest: workspace-fs: normalize() canonicalises paths
+ok 4 - workspace-fs: normalize() canonicalises paths
+  ---
+  duration_ms: 2.307526
+  ...
+# Subtest: workspace-fs: seed includes src/main.rs at /workspace level
+ok 5 - workspace-fs: seed includes src/main.rs at /workspace level
+  ---
+  duration_ms: 0.262273
+  ...
+# Subtest: workspace-fs: seed main.rs carries no CheerpX/rust-web-box branding (issue \#33)
+ok 6 - workspace-fs: seed main.rs carries no CheerpX/rust-web-box branding (issue \#33)
+  ---
+  duration_ms: 0.156333
+  ...
+# Subtest: workspace-fs: seed contains a buildable Cargo project at /workspace root
+ok 7 - workspace-fs: seed contains a buildable Cargo project at /workspace root
+  ---
+  duration_ms: 0.131847
+  ...
+# Subtest: workspace-fs: default cargo task runs from /workspace root
+ok 8 - workspace-fs: default cargo task runs from /workspace root
+  ---
+  duration_ms: 0.187709
+  ...
+# Subtest: workspace-fs: file/dir type constants are stable
+ok 9 - workspace-fs: file/dir type constants are stable
+  ---
+  duration_ms: 0.111236
+  ...
+# Subtest: workspace-fs: seed paths all begin with /workspace
+ok 10 - workspace-fs: seed paths all begin with /workspace
+  ---
+  duration_ms: 0.208301
+  ...
+# Subtest: workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+ok 11 - workspace-fs: seed includes .vscode/{settings,tasks,launch}.json (issue \#5)
+  ---
+  duration_ms: 0.349551
+  ...
+# Subtest: workspace-fs: default settings keep manual save dirty indicators visible
+ok 12 - workspace-fs: default settings keep manual save dirty indicators visible
+  ---
+  duration_ms: 0.256323
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 80.346141

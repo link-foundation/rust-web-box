@@ -1,0 +1,52 @@
+Terminal transcript from the issue #33 report (link-foundation.github.io/rust-web-box).
+Annotations in [] are added for the case study; they were not in the original.
+
+rust-web-box — in-browser Rust sandbox
+Powered by CheerpX (leaningtech/webvm) and VS Code Web.
+
+[rust-web-box] Booting Linux VM… ............
+[rust-web-box] Linux VM ready ✓
+[rust-web-box] disk: ./disk/rust-alpine.ext2
+[rust-web-box] Workspace mirrored to /workspace — try `cargo run`.
+
+root@rust-web-box:/workspace# cargo run
+    Finished `dev` profile [unoptimized] target(s) in 32.81s     [<- reused PREBUILT disk binary; no "Compiling" line]
+     Running `target/debug/hello`
+Hello from rust-web-box!
+This binary was compiled inside CheerpX.                          [<- Dockerfile.disk prebuilt binary's 2nd println]
+root@rust-web-box:/workspace# cargo run
+   Compiling hello v0.1.0 (/workspace)                            [<- user edited main.rs -> REAL rebuild]
+    Finished `dev` profile [unoptimized] target(s) in 8m 19s
+     Running `target/debug/hello`
+Hello from rust-web-box! 2                                        [<- user-added " 2": proves real compile]
+Compiled by Rust inside the browser via CheerpX.                 [<- JS-seed main.rs's 2nd println (DIFFERENT text!)]
+root@rust-web-box:/workspace# cargo run
+   Compiling hello v0.1.0 (/workspace)
+    Finished `dev` profile [unoptimized] target(s) in 2.07s
+     Running `target/debug/hello`
+Hello from rust-web-box! 3                                        [<- user-added " 3"]
+Compiled by Rust inside the browser via CheerpX.
+root@rust-web-box:/workspace# cargo run
+   Compiling hello v0.1.0 (/workspace)
+    Finished `dev` profile [unoptimized] target(s) in 2.02s
+     Running `target/debug/hello`
+Hello from rust-web-box! 5                                        [<- user-added " 5"]
+Compiled by Rust inside the browser via CheerpX.
+root@rust-web-box:/workspace#
+
+KEY OBSERVATIONS
+================
+1. The build is REAL, not faked:
+   - "Compiling hello v0.1.0 (/workspace)" appears on every run after an edit.
+   - Wall-clock build times vary (32.81s, 8m 19s, 2.07s, 2.02s) — characteristic
+     of a real rustc invocation inside CheerpX, not a canned string.
+   - The reporter's own edits ("! 2", "! 3", "! 5") show up in stdout, which is
+     only possible if the source is actually recompiled and the binary actually run.
+
+2. The smell that triggered the report — the branding lines:
+   - First run prints  : "This binary was compiled inside CheerpX."
+   - Edited runs print : "Compiled by Rust inside the browser via CheerpX."
+   Two DIFFERENT marketing-style lines for the same project. The first comes from
+   the prebuilt binary baked by web/disk/Dockerfile.disk; the later ones come from
+   the JS workspace seed in web/glue/workspace-fs.js. They were never the same.
+   That divergence is what made the output "look like something we added in code."

@@ -485,4 +485,23 @@ export async function hasLeanCargoDevProfile(page) {
   return (result.status?.status ?? result.status) === 0;
 }
 
+// Read the program's first `println!` literal straight from the guest's
+// /workspace/src/main.rs. The e2e suite uses this to assert that the
+// terminal output is genuinely produced by the source on disk rather
+// than any hardcoded string — and to stay version-independent across the
+// version-skew window where a PR Pages build may stage the previously
+// published disk image (issue #33). Returns null when no println is found.
+export async function firstSourceGreeting(page) {
+  const cat = await runInVM(page, 'cat /workspace/src/main.rs');
+  if ((cat.status?.status ?? cat.status) !== 0) return null;
+  const m = cat.output.match(/println!\(\s*"((?:[^"\\]|\\.)*)"/);
+  if (!m) return null;
+  // Decode the handful of escapes a hello-world greeting can contain.
+  return m[1]
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\');
+}
+
 export { WEB_ROOT, REPO_ROOT };

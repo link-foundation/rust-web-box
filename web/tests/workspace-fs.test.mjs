@@ -29,11 +29,23 @@ test('workspace-fs: seed includes src/main.rs at /workspace level', () => {
     DEFAULT_SEED['/workspace/src/main.rs'],
     'expected /workspace/src/main.rs in default seed',
   );
+  // Issue #33: the seed is the canonical `cargo new` program — plain
+  // "Hello, world!", no branding lines on every run.
   assert.match(
     DEFAULT_SEED['/workspace/src/main.rs'],
-    /Hello from rust-web-box/,
+    /Hello, world!/,
   );
   assert.match(DEFAULT_SEED['/workspace/src/main.rs'], /fn main/);
+});
+
+test('workspace-fs: seed main.rs carries no CheerpX/rust-web-box branding (issue #33)', () => {
+  const src = DEFAULT_SEED['/workspace/src/main.rs'];
+  assert.doesNotMatch(src, /rust-web-box/);
+  assert.doesNotMatch(src, /CheerpX/);
+  assert.doesNotMatch(src, /Compiled by Rust/);
+  // It is byte-for-byte the standard cargo new template so the first
+  // (prebuilt) run matches every post-edit recompile.
+  assert.equal(src, 'fn main() {\n    println!("Hello, world!");\n}\n');
 });
 
 test('workspace-fs: seed contains a buildable Cargo project at /workspace root', () => {
