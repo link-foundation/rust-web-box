@@ -46,7 +46,13 @@ const VSCODE_WEB_VERSION = '1.91.1';
 // syncing-workspace…" and made `cargo run` / `tree` impossible. Issue #15
 // reproduces this on the deployed Pages site; the fix is verified end-to-end
 // in `web/tests/live-pages-e2e.test.mjs`.
-const CHEERPX_VERSION = '1.3.0';
+//
+// Bumped 1.3.0 → 1.3.3 for issue #37: always track the latest published
+// CheerpX (1.3.1 silences a non-fatal log, 1.3.2 fixes llseek arg
+// validation, 1.3.3 stops erroring on inet SO_RCVBUF). Note the
+// OverlayDevice fresh-inode 'a1' wedge is NOT fixed in any 1.3.x release,
+// so the warm-disk / skipPrime / timeout / HISTFILE mitigations stay.
+const CHEERPX_VERSION = '1.3.3';
 
 // ---------------------------------------------------------------------------
 

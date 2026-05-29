@@ -252,7 +252,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
   // heredocs. We expose this for e2e tests that need a deterministic boot
   // against the *currently published* disk image, before that image
   // republishes with the new pre-baked seed paths. See the comment above
-  // `skipPrime` in webvm-server.js for the underlying CheerpX 1.3.0 bug.
+  // `skipPrime` in webvm-server.js for the underlying CheerpX 1.3.x bug.
   const skipPrime = (() => {
     try {
       if (globalThis.__RUST_WEB_BOX_SKIP_PRIME === true) return true;

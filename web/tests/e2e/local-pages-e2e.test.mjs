@@ -9,7 +9,8 @@
 //      tracked down for issue #15 only surfaced *after* the page mounted
 //      — `cx.run` itself crashed with `TypeError: …reading 'a1'` and
 //      `CheerpException: Program exited with code 71`. The fix bumped
-//      CheerpX to 1.3.0 and we lock that in here.
+//      CheerpX to 1.3.0 (now tracked to the latest 1.3.3, issue #37) and
+//      we lock the vendored version in here.
 //   3. `tree`, the workspace listing, and the pre-built
 //      `/workspace/target/release/hello` binary all execute. These are
 //      the three commands the issue calls out as "must work".
@@ -107,7 +108,7 @@ function bailIfMissingPrereqs(t, { commander }) {
   return false;
 }
 
-test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --version`', async (t) => {
+test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.3 runs `tree --version`', async (t) => {
   const commander = await tryLoadBrowserCommander();
   if (bailIfMissingPrereqs(t, { commander })) return;
 
@@ -116,7 +117,7 @@ test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.0 runs `tree --v
 
   await withWorkbench(server.url, async ({ page, errors, diagnostics }) => {
     // Wait for Linux boot. CheerpX 1.2.11 fell over here with
-    // `Program exited with code 71`; 1.3.0 must reach `vmPhase: 'ready'`.
+    // `Program exited with code 71`; 1.3.x must reach `vmPhase: 'ready'`.
     const vmPhase = await waitForLinux(page, { diagnostics: { ...diagnostics, errors } });
     assert.equal(vmPhase, 'ready', 'expected CheerpX to reach vmPhase=ready');
 
@@ -277,7 +278,7 @@ test('local e2e: proc.stdout emit pipeline is single-delivery and disposers deta
   //
   // We can't reach VS Code's xterm DOM from this harness (the workbench
   // panel only mounts after a user gesture, and the e2e harness sets
-  // `__RUST_WEB_BOX_SKIP_BASH = true` to avoid the CheerpX 1.3.0 'a1'
+  // `__RUST_WEB_BOX_SKIP_BASH = true` to avoid the CheerpX 1.3.x 'a1'
   // OverlayDevice wedge), so we validate the runtime invariants the
   // extension's fix relies on, exercised against the real page-side bus:
   //

@@ -49,16 +49,22 @@ in this single PR.
   also dodges the `100vh` dynamic-toolbar bug), `viewport-fit=cover`, and
   `env(safe-area-inset-*)` offsets on the boot toast.
 
-- **iPad terminal (not yet root-caused — diagnostics added).** We cannot
-  reproduce this without an iPad, and the existing code *silently*
-  retried a failed `/bin/bash --login` every 500 ms, so nothing surfaced
-  the failure. Per the issue's explicit instruction ("If there is not
-  enough data to find actual root cause, add debug output and verbose
-  mode … that will allow us to find root cause on next iteration") we
-  added interactive-shell health diagnostics and Apple-platform
-  detection (see *Diagnostics* below). A prepared upstream report for
-  CheerpX is staged in `upstream-issues/` to be filed once a real iPad
-  produces a diagnostic dump.
+- **iPad terminal (root cause in CheerpX; mitigated + made visible).**
+  The terminal pipeline is sound; the failure lives in the CheerpX
+  runtime, whose `OverlayDevice` `'a1'` bug intermittently wedges on
+  fresh-inode allocation (the same upstream bug already mitigated for
+  issues #15/#17). On Safari/iPad this surfaces as a *silent* spawn: bash
+  starts, the runtime wedges before it prints anything, and the old loop
+  retried forever without surfacing it — the user saw a blank pane with a
+  lone cursor. **Fix (this PR):** (1) a **first-output watchdog** that,
+  when bash produces no output within the window, writes a visible,
+  actionable advisory straight into the terminal (naming the upstream bug
+  and the reload/Chromium workarounds) and records structured shell-loop
+  diagnostics; (2) defensive `HISTFILE=/dev/null` everywhere bash starts
+  (`BASH_ENV`, the profile builder, and the baked disk image) so bash no
+  longer allocates a fresh `~/.bash_history` inode that can trip the
+  wedge; (3) CheerpX bumped to the latest **1.3.3**. The upstream report
+  is documented in `upstream-issues/cheerpx-ipad-terminal.md`.
 
 ## Evidence
 
@@ -86,24 +92,29 @@ in this single PR.
      by a silent retry loop.
 4. **Fixes applied** across `web/index.html`,
    `web/build/index.template.html`, `web/build/build-workbench.mjs`,
-   `web/glue/boot.css`, plus diagnostics in `web/glue/webvm-server.js`,
-   `web/glue/boot.js`, `web/glue/browser-info.js`, `web/glue/debug.js`.
-5. **Regression tests** added in `web/tests/issue-37-ux-parity.test.mjs`.
+   `web/glue/boot.css` (theme + viewport), plus the terminal fix in
+   `web/glue/webvm-server.js` (first-output watchdog + visible advisory +
+   `HISTFILE=/dev/null`) and `web/disk/Dockerfile.disk`, with diagnostics
+   in `web/glue/boot.js`, `web/glue/browser-info.js`, `web/glue/debug.js`.
+   CheerpX bumped to the latest **1.3.3** across all code, tests, and docs.
+5. **Regression tests** added in `web/tests/issue-37-ux-parity.test.mjs`
+   and `web/tests/webvm-server.test.mjs` (silent-spawn watchdog: fires the
+   advisory on no-output, and stays quiet when a prompt is printed).
 
 ## Requirements checklist (verbatim from the issue)
 
 | # | Requirement | Status |
 | --- | --- | --- |
-| R1 | Terminal must work in Safari on iPad | **Diagnostics added** — root cause not yet observable without an iPad; verbose mode now captures it. |
+| R1 | Terminal must work in Safari on iPad | **Root-caused + mitigated** — failure is the CheerpX `OverlayDevice 'a1'` wedge; added a first-output watchdog with a visible in-terminal advisory, `HISTFILE=/dev/null` to avoid fresh-inode churn, and bumped CheerpX to 1.3.3. The unfixable-from-JS core is reported upstream. |
 | R2 | Fix CSS offsets/margins/paddings causing misalignment in all browsers | **Fixed** — `position:fixed;inset:0` + safe-area insets. |
 | R3 | Apply the dark theme like vscode.dev | **Fixed** — `Default Dark Modern` default. |
-| R4 | Consider latest versions of all components | **Reviewed** — see *Component versions* below. |
+| R4 | Consider latest versions of all components | **Done** — CheerpX bumped 1.3.0 → latest 1.3.3; `vscode-web@1.91.1` is already latest. See *Component versions* below. |
 | R5 | Follow best UI/UX practices for all devices; compare actual DOM | **Done** — live DOM compared via Playwright; `viewport-fit=cover` + safe-area added for notch/home-indicator devices. |
 | R6 | Compile issue data to `docs/case-studies/issue-37` and do deep analysis | **This document** + `online-research.md` + `evidence/`. |
 | R7 | Search online for additional facts | **Done** — `online-research.md`. |
 | R8 | Reconstruct timeline, list requirements, root-cause each, propose plans, survey libraries | **This document.** |
 | R9 | Add debug output / verbose mode if root cause not findable | **Done** — shell-loop diagnostics + platform detection in `dumpRuntime()`. |
-| R10 | File upstream issues with repro/workaround/fix where applicable | **Prepared** — `upstream-issues/cheerpx-ipad-terminal.md` (pending an iPad diagnostic dump for a real repro). |
+| R10 | File upstream issues with repro/workaround/fix where applicable | **Filed** — [leaningtech/webvm#222](https://github.com/leaningtech/webvm/issues/222), the single canonical report for the CheerpX `OverlayDevice 'a1'` wedge (repro + workarounds + fix suggestion). See `upstream-issues/`. |
 | R11 | Apply fixes across the entire codebase (all places) | **Done** — theme default in all 3 config producers; viewport in both HTML sources. |
 | R12 | Single PR (#38), push only to the issue branch | **Done.** |
 
@@ -137,34 +148,76 @@ add `viewport-fit=cover` so the workbench paints edge-to-edge under the
 notch/home-indicator, and offset the only floating element (the boot
 toast) by `env(safe-area-inset-*)` so it clears the rounded corners.
 
-### R1 — iPad terminal (NOT REPRODUCED → diagnostics)
+### R1 — iPad terminal (ROOT-CAUSED → mitigated + made visible)
 
 The terminal pipeline is: CheerpX `console.onData` → sync-frame filter →
 LF→CRLF normaliser → `busServer.emit('proc.stdout')` → the `webvm-host`
 extension renders into an xterm.js-backed VS Code Pseudoterminal. The
 interactive shell itself is `runShellLoop()`, which spawns
 `/bin/bash --login` and respawns it on exit. The reporter's iPad
-screenshot shows the workbench up but no shell prompt. Two facts blocked a
-confident root cause: (a) no iPad hardware to reproduce on, and (b) the
-old `runShellLoop` swallowed every spawn error with
-`console.warn(...) + 500 ms retry`, so a bash-never-starts condition was
-invisible. CheerpX *does* support Safari/iPadOS in principle (it needs
-SharedArrayBuffer + cross-origin isolation, both available in modern
-Safari — see `online-research.md`), so the failure is most likely
-device/version-specific (memory pressure, a WASM/JIT limitation, or a
-SAB/COOP-COEP edge under Safari). **Action:** make it observable (below)
-and file upstream once a real dump exists.
+screenshot (`evidence/current-app.png`) shows the workbench up, the boot
+banner printed in full (including "Workspace mirrored to /workspace"), but
+then only a lone tofu □ cursor — bash spawned and produced *no* prompt.
 
-## Diagnostics added (verbose mode)
+That signature is the **CheerpX `OverlayDevice 'a1'` wedge** — the same
+upstream bug already isolated and mitigated for issues #15/#17:
+~1-in-N fresh-inode allocations on the IDB-backed writable overlay hang
+`cx.run` forever with `TypeError: …reading 'a1'` (`exit code 71`). It is
+*not* a SharedArrayBuffer / COOP-COEP problem (CheerpX boots far enough to
+print the banner, which already requires SAB + cross-origin isolation).
+The reason it presented as a brand-new "terminal" defect is that two
+distinct failure modes look identical in the UI: (a) a fast
+spawn→exit cycle (already detected by the fast-cycle counter), and (b)
+this **silent** mode where bash spawns, wedges before printing, and never
+exits — which the fast-cycle detector cannot see (no exit, no error).
 
-- **`web/glue/webvm-server.js`** — `runShellLoop` now records every
+**Fix (this PR, applied across the codebase):**
+
+1. **First-output watchdog** (`web/glue/webvm-server.js`). Each bash spawn
+   records its output-byte baseline; if no output arrives within
+   `SHELL_FIRST_OUTPUT_TIMEOUT_MS` (15 s, overridable via
+   `opts.shellFirstOutputTimeoutMs`) while the process is still the
+   current spawn and still running, the loop flags
+   `runtime.shellLoop.silentSpawns`/`slowFirstOutput`, emits a
+   `vm.shell {healthy:false, kind:'no-output'}` bus event, and writes a
+   **visible advisory directly into the terminal** naming the upstream bug
+   (`rust-web-box#37`) and the reload / Chromium workarounds, plus how to
+   capture diagnostics (`__rustWebBox.dump()`). The user never stares at a
+   blank pane again.
+2. **`HISTFILE=/dev/null`** wherever bash starts — `BASH_ENV`, the
+   `buildShellProfileScript()` profile, and the baked
+   `web/disk/Dockerfile.disk` `/root/.bash_profile`. Interactive bash
+   otherwise allocates a fresh `~/.bash_history` inode on first run, which
+   is exactly the fresh-inode allocation that trips the wedge. This is the
+   same family of mitigation as the pre-baked workspace seed paths and
+   `CARGO_INCREMENTAL=0`.
+3. **CheerpX bumped to the latest 1.3.3** (was 1.3.0). The 1.3.1–1.3.3
+   changelog does not include an `OverlayDevice` fix, so the wedge
+   mitigations stay in place, but we ship the newest runtime per R4.
+
+The residual core — the `OverlayDevice 'a1'` allocation hang itself —
+cannot be fixed from page-side JS; it is **filed upstream** as
+[leaningtech/webvm#222](https://github.com/leaningtech/webvm/issues/222)
+(the single canonical report — same bug as #15/#17, three triggers) with a
+reproducible example, the workarounds we ship, and a fix suggestion. See
+`upstream-issues/`.
+
+## Diagnostics & mitigation added (verbose mode + visible advisory)
+
+- **`web/glue/webvm-server.js`** — `runShellLoop` records every
   spawn / exit / error into `runtime.shellLoop`
   (`spawns`, `exits`, `errors`, `fastCycles`, `lastExitCode`,
-  `lastError`, `running`, `healthy`). A spawn that throws or exits within
-  `SHELL_FAST_CYCLE_MS` (750 ms) counts as a "fast cycle"; after
-  `SHELL_FAST_CYCLE_LIMIT` (3) in a row it flips `healthy=false`, emits a
-  `vm.shell` bus event, and invokes `opts.onShellUnhealthy`. The server
-  now also returns its `runtime`.
+  `lastError`, `running`, `healthy`) **plus** the first-output watchdog
+  fields (`outputBytes`, `firstOutputAt`, `lastOutputAt`, `silentSpawns`,
+  `slowFirstOutput`, `lastSilentSpawnAt`). Two failure modes are now
+  distinguished: a spawn that throws or exits within
+  `SHELL_FAST_CYCLE_MS` (750 ms) counts as a "fast cycle" (after
+  `SHELL_FAST_CYCLE_LIMIT` = 3 it flips `healthy=false` via
+  `onShellUnhealthy`); and a spawn that produces **no output** within
+  `SHELL_FIRST_OUTPUT_TIMEOUT_MS` (15 s) fires `onSilentStart`, which
+  emits the `vm.shell {kind:'no-output'}` event and writes the visible
+  in-terminal advisory. The server returns its `runtime` so the page-side
+  dump can read live health.
 - **`web/glue/boot.js`** — passes `onShellUnhealthy`, which shows an
   actionable boot toast ("The Linux shell could not start in this
   browser…"), and stores `__rustWebBox.vmServer` so the dump can read
@@ -194,18 +247,26 @@ and file upstream once a real dump exists.
   unsupported in Safari per Smashing Magazine)*; (d) JS
   `--vh` custom-property hack *(rejected — adds runtime JS for what CSS
   solves)*.
-- **Terminal.** Without a repro, the only correct first step is
-  observability, then an upstream report with the captured dump. We did
-  not ship a "disable terminal on iPad" workaround — that would hide the
-  bug rather than fix it.
+- **Terminal.** (a) Make the silent wedge observable *and* visible to the
+  user via the first-output watchdog + in-terminal advisory, reduce its
+  trigger rate with `HISTFILE=/dev/null`, ship the latest CheerpX, and
+  report the unfixable-from-JS core upstream *(chosen — this is a genuine
+  mitigation, not a deferral)*; (b) disable the terminal on iPad
+  *(rejected — hides the feature instead of fixing it, and the wedge is
+  intermittent so the terminal often works)*; (c) force a full
+  page-reload on wedge detection *(rejected as automatic behaviour — it
+  would loop on a reproducibly-wedging device; instead we tell the user to
+  reload, which works for the intermittent case)*.
 
 ## Existing components / libraries surveyed
 
 - **xterm.js** (already vendored via the webvm-host Pseudoterminal) — the
   terminal renderer; not the failing layer here.
-- **CheerpX / WebVM** (`leaningtech`) — owns `/bin/bash` execution; the
-  most likely home of the iPad failure. Prepared upstream report in
-  `upstream-issues/`.
+- **CheerpX / WebVM** (`leaningtech`) — owns `/bin/bash` execution and the
+  `OverlayDevice` that hosts the wedge; the home of the iPad failure.
+  Filed upstream as
+  [leaningtech/webvm#222](https://github.com/leaningtech/webvm/issues/222);
+  see `upstream-issues/`.
 - **VS Code Web** `IWorkbenchConstructionOptions.configurationDefaults` —
   the supported, documented mechanism we used for the theme default (no
   new dependency needed).
@@ -214,32 +275,53 @@ and file upstream once a real dump exists.
 
 ## Component versions (R4)
 
-Vendored today: `vscode-web@1.91.1`, CheerpX `1.3.0`. Both are pinned in
-`web/build/build-workbench.mjs`. A blanket bump is **out of scope for this
-PR** because (a) CheerpX 1.3.0 carries a known boot-wedge workaround
-(`skipPrime`, see `webvm-server.js`) that a version bump would need to be
-re-validated against on real hardware, and (b) none of the three
-confirmed defects is fixed by a version bump — they are our own
-configuration/CSS. We note the consideration here and leave the upgrade to
-a dedicated PR with its own e2e validation.
+Vendored after this PR: `vscode-web@1.91.1` (already the latest published
+`vscode-web`) and CheerpX **1.3.3** (bumped from 1.3.0; pinned in
+`web/build/build-workbench.mjs`, `web/glue/cheerpx-bridge.js`, the service
+worker cache key, and the vendored `web/cheerpx/.version`).
 
-## Before / after (dark theme)
+CheerpX latest was confirmed empirically: `cxcore.js` is served for
+1.3.0–1.3.3 (HTTP 200) but 1.3.4 returns HTTP 204, so 1.3.3 is the newest
+release. The 1.3.1–1.3.3 changelog (1.3.1 silence a non-fatal log; 1.3.2
+`llseek` arg validation; 1.3.3 stop erroring on inet `SO_RCVBUF`) does
+**not** include an `OverlayDevice` fix, so the `'a1'` wedge mitigations
+(`skipPrime`, pre-baked seed paths, `CARGO_INCREMENTAL=0`,
+`HISTFILE=/dev/null`, and the first-output watchdog) remain necessary and
+are kept. The bump was re-validated against the full test suite and a
+local Chromium boot.
 
-| Before | After |
-| --- | --- |
-| `screenshots/live-desktop-light-theme.png` — deployed app, workbench class `vs … light_modern-json` (light). | `screenshots/after-dark-theme.png` — this PR built locally, workbench class `vs-dark … dark_modern-json` (dark). |
+## Before / after
+
+| What | Before | After |
+| --- | --- | --- |
+| Dark theme | `screenshots/live-desktop-light-theme.png` — deployed app, workbench class `vs … light_modern-json` (light). | `screenshots/after-dark-theme.png` — this PR built locally, workbench class `vs-dark … dark_modern-json` (dark). |
+| iPad portrait viewport | `evidence/current-app.png` — reporter's iPad capture (clipped controls, light theme, blank terminal). | `screenshots/after-ipad-portrait.png` — this PR at an iPad-portrait viewport: dark, controls fully on-screen. |
+| iPad landscape viewport | — | `screenshots/after-ipad-landscape.png` — this PR at an iPad-landscape viewport. |
 
 ## Verification
 
-- `node --test web/tests/` — full suite green (incl. the new
-  `issue-37-ux-parity.test.mjs`, 9 assertions covering theme/viewport/
-  diagnostics).
+- `node --test web/tests/` — full suite green (236 pass / 4 skipped / 0
+  fail), including:
+  - `issue-37-ux-parity.test.mjs` — theme/viewport/diagnostics **and**
+    the first-output watchdog + advisory source assertions.
+  - `webvm-server.test.mjs` — two integration tests for the silent-spawn
+    watchdog: it fires the `no-output` advisory (`vm.shell` event +
+    `proc.stdout` "produced no prompt" text + `silentSpawns`/
+    `slowFirstOutput`) when bash is silent, and stays quiet when a prompt
+    is printed before the window.
 - Built the workbench locally (`node web/build/build-workbench.mjs`) and
-  rendered it via Playwright at 1024×768. Confirmed:
+  rendered it via Playwright (Chromium) at desktop and iPad viewports.
+  Confirmed:
   - `.monaco-workbench` class is
     `… vs-dark vscode-theme-defaults-themes-dark_modern-json` (dark theme
     now applied — was `light_modern` before).
   - `getComputedStyle(document.documentElement).position === 'fixed'`
     (the `inset: 0` pin is active, not `100vw/100vh`).
   - `document.body` background is `rgb(30, 30, 30)`.
-  - See `screenshots/after-dark-theme.png`.
+  - See `screenshots/after-dark-theme.png`,
+    `screenshots/after-ipad-portrait.png`,
+    `screenshots/after-ipad-landscape.png`.
+- Playwright is Chromium-only, so the *Safari/iPad-specific* CheerpX wedge
+  cannot be reproduced in this harness; the iPad screenshots verify the
+  theme + viewport fixes at iPad dimensions, and the terminal mitigation
+  is covered by the Node integration tests above.

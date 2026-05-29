@@ -10,10 +10,13 @@
 //      wider than the visible viewport, so `overflow: hidden` clipped the
 //      title-bar / panel controls. Fixed with `position: fixed; inset: 0`
 //      plus `viewport-fit=cover` + safe-area insets.
-//   3. The interactive shell could die silently on a device where bash
-//      never starts (the iPad terminal symptom). We added shell-loop
-//      health diagnostics + Safari/iPad detection so the failure is
-//      observable via `__rustWebBox.dump()` next iteration.
+//   3. The interactive shell could hang silently on a device where bash
+//      spawns but never prints a prompt (the iPad-Safari terminal
+//      symptom). We added a first-output watchdog that, when no output
+//      arrives within the window, writes a visible, actionable advisory
+//      straight into the terminal AND records structured shell-loop
+//      health diagnostics (readable via `__rustWebBox.dump()`), backed by
+//      Safari/iPad detection.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -86,6 +89,23 @@ test('issue-37: webvm-server records interactive-shell health diagnostics', asyn
   assert.match(srv, /onShellUnhealthy/);
   // It must expose the runtime so dumpRuntime() can read it.
   assert.match(srv, /runtime,/);
+});
+
+test('issue-37: webvm-server arms a first-output watchdog and writes a terminal advisory', async () => {
+  const srv = await read('glue/webvm-server.js');
+  // The silent-spawn watchdog must exist and be wired into the loop.
+  assert.match(srv, /SHELL_FIRST_OUTPUT_TIMEOUT_MS/);
+  assert.match(srv, /armFirstOutputWatchdog/);
+  assert.match(srv, /onSilentStart/);
+  // It tracks output so a real prompt clears the watchdog (no false alarm).
+  assert.match(srv, /outputBytes/);
+  assert.match(srv, /silentSpawns/);
+  assert.match(srv, /slowFirstOutput/);
+  // And it surfaces a visible, actionable advisory in the terminal that
+  // names the upstream issue so the failure is never an invisible blank pane.
+  assert.match(srv, /produced no prompt/);
+  assert.match(srv, /rust-web-box#37/);
+  assert.match(srv, /__rustWebBox\.dump\(\)/);
 });
 
 test('issue-37: boot.js surfaces an unhealthy shell as a toast', async () => {

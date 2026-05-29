@@ -309,7 +309,7 @@ export async function withWorkbench(url, body, {
         return origPost.call(this, data);
       };
     }
-    // CheerpX 1.3.0 has a flaky OverlayDevice bug: writing a brand-new
+    // CheerpX 1.3.x has a flaky OverlayDevice bug: writing a brand-new
     // inode under /workspace can fire `TypeError: …reading 'a1'`,
     // `Program exited with code 71`, and wedge the runtime so every
     // subsequent `cx.run` errors with `function signature mismatch`.
@@ -430,7 +430,7 @@ export async function runInVM(page, command, { timeoutMs = 60_000 } = {}) {
       chunks.push(decoder.decode(view, { stream: true }));
     };
     cx.setCustomConsole(writer, 80, 24);
-    // CheerpX 1.3.0 has a flaky 'a1' bug where cx.run can hang forever
+    // CheerpX 1.3.x has a flaky 'a1' bug where cx.run can hang forever
     // after a runtime crash (the JS-level promise never settles). Race
     // it with a timeout so a wedged probe surfaces as a clear failure
     // rather than the test runner's overall timeout.
@@ -453,7 +453,7 @@ export async function runInVM(page, command, { timeoutMs = 60_000 } = {}) {
         // Match Dockerfile.disk's /root/.bash_profile: include
         // /root/.cargo/bin (rustup-managed toolchain) and disable
         // incremental builds (issue #17 — fresh fingerprint inodes
-        // trip the CheerpX 1.3.0 OverlayDevice 'a1' wedge).
+        // trip the CheerpX 1.3.x OverlayDevice 'a1' wedge).
         env: [
           'HOME=/root',
           'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',

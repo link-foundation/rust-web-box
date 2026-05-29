@@ -60,6 +60,10 @@ const BASH_ENV = [
   'PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
   'CARGO_INCREMENTAL=0',
   'PS1=root@rust-web-box:\\w# ',
+  // Keep bash from allocating a brand-new ~/.bash_history inode on the
+  // CheerpX OverlayDevice — fresh-inode allocation is what trips the
+  // 'a1' wedge (issue #37). Writing to /dev/null reuses an existing inode.
+  'HISTFILE=/dev/null',
 ];
 
 const LEAN_CARGO_DEV_PROFILE_SCRIPT = [
@@ -84,6 +88,18 @@ const LEAN_CARGO_DEV_PROFILE_SCRIPT = [
 const SHELL_FAST_CYCLE_MS = 750;
 const SHELL_FAST_CYCLE_LIMIT = 3;
 
+// The *other* iPad-Safari failure mode (issue #37): bash spawns and does
+// NOT die — it just never produces any visible output, so the terminal
+// shows a lone cursor and no `root@rust-web-box:/workspace#` prompt
+// forever. This is the CheerpX OverlayDevice wedge striking *inside*
+// bash startup rather than during the prime. The fast-cycle detector
+// above cannot see it (there is no exit, no error, no rapid respawn), so
+// we add a per-spawn watchdog: if bash produces no visible bytes within
+// this window, we treat the shell as silently hung, record it, and write
+// a visible advisory into the terminal so the user sees an actionable
+// message instead of a blank tofu cursor.
+const SHELL_FIRST_OUTPUT_TIMEOUT_MS = 15_000;
+
 /**
  * Run the canonical "shell loop" the way leaningtech/webvm does:
  * spawn `/bin/bash --login`, and when it exits, spawn it again.
@@ -102,6 +118,8 @@ function runShellLoop(cx, {
   debug = () => {},
   diag = null,
   onUnhealthy,
+  onSilentStart,
+  firstOutputTimeoutMs = SHELL_FIRST_OUTPUT_TIMEOUT_MS,
 } = {}) {
   const fullEnv = env;
   let stopped = false;
@@ -117,15 +135,46 @@ function runShellLoop(cx, {
     }
   };
 
+  // Per-spawn "first output" watchdog. bash producing no visible bytes
+  // within `firstOutputTimeoutMs` of a spawn is the silent-hang signature
+  // (issue #37, iPad Safari): the loop is still "running" but the user
+  // sees nothing. We compare `diag.outputBytes` (incremented by the
+  // server's onData handler) before and after the window. Fires at most
+  // once per spawn and never disturbs a shell that is merely slow but
+  // does eventually print.
+  const armFirstOutputWatchdog = (spawnSeq, bytesAtSpawn) => {
+    if (!diag || !(firstOutputTimeoutMs > 0)) return () => {};
+    const timer = setTimeout(() => {
+      if (stopped) return;
+      const sawOutput = (diag.outputBytes ?? 0) > bytesAtSpawn;
+      const stillRunning = diag.running && diag.spawns === spawnSeq;
+      if (sawOutput || !stillRunning) return;
+      diag.silentSpawns = (diag.silentSpawns ?? 0) + 1;
+      diag.slowFirstOutput = true;
+      diag.lastSilentSpawnAt = Date.now();
+      const detail = {
+        elapsedMs: firstOutputTimeoutMs,
+        spawn: spawnSeq,
+        cwd,
+      };
+      try { onSilentStart?.({ kind: 'no-output', detail, diag }); } catch {}
+    }, firstOutputTimeoutMs);
+    if (typeof timer?.unref === 'function') timer.unref();
+    return () => clearTimeout(timer);
+  };
+
   (async () => {
     while (!stopped) {
       const startedAt = Date.now();
+      const spawnSeq = (diag?.spawns ?? 0) + 1;
+      const bytesAtSpawn = diag?.outputBytes ?? 0;
       if (diag) {
-        diag.spawns = (diag.spawns ?? 0) + 1;
+        diag.spawns = spawnSeq;
         diag.lastSpawnAt = startedAt;
         diag.running = true;
       }
       debug('shell loop spawn #%d (cwd=%s)', diag?.spawns ?? 0, cwd);
+      const disarmWatchdog = armFirstOutputWatchdog(spawnSeq, bytesAtSpawn);
       try {
         const fn = cx.run ?? cx.runAsync;
         if (typeof fn !== 'function') throw new Error('CheerpX missing run()');
@@ -135,6 +184,7 @@ function runShellLoop(cx, {
           uid: 0,
           gid: 0,
         });
+        disarmWatchdog();
         const elapsed = Date.now() - startedAt;
         if (diag) {
           diag.exits = (diag.exits ?? 0) + 1;
@@ -146,6 +196,7 @@ function runShellLoop(cx, {
         if (elapsed < SHELL_FAST_CYCLE_MS) noteFastCycle('exit', { code, elapsed });
         else if (diag) diag.fastCycles = 0;
       } catch (err) {
+        disarmWatchdog();
         const message = err?.message ?? String(err);
         const elapsed = Date.now() - startedAt;
         if (diag) {
@@ -210,6 +261,9 @@ function buildShellProfileScript() {
     'export LANG=C.UTF-8',
     'export CARGO_HOME=/root/.cargo',
     'export CARGO_INCREMENTAL=0',
+    // See BASH_ENV: avoid allocating a fresh ~/.bash_history inode on the
+    // CheerpX OverlayDevice, which can trip the 'a1' wedge (issue #37).
+    'export HISTFILE=/dev/null',
     ...LEAN_CARGO_DEV_PROFILE_SCRIPT,
     'export PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
     'export PS1="root@rust-web-box:\\w# "',
@@ -474,7 +528,7 @@ export function fullServerMethods({
     'workspace.prime': async () => {
       // VS Code's webvm-host extension calls this when a terminal opens.
       // When skipPrime is set we must NOT actually run the prime — that
-      // would trip the CheerpX 1.3.0 OverlayDevice 'a1' wedge that
+      // would trip the CheerpX 1.3.x OverlayDevice 'a1' wedge that
       // skipPrime exists to avoid. The disk image already ships a
       // populated /workspace, so a no-op here is safe.
       if (skipPrime) return;
@@ -537,7 +591,9 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     shellPrepareError: null,
     // Interactive-shell health, populated by runShellLoop. `healthy`
     // flips to false after repeated fast spawn→exit cycles (the iPad
-    // Safari terminal-never-starts signature from issue #37).
+    // Safari terminal-never-starts signature from issue #37). The
+    // `outputBytes` / `silentSpawns` / `slowFirstOutput` fields track the
+    // *other* iPad signature: bash that spawns but never prints a prompt.
     shellLoop: {
       healthy: true,
       running: false,
@@ -545,6 +601,15 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
       exits: 0,
       errors: 0,
       fastCycles: 0,
+      // Visible bytes bash has emitted so far (incremented by the onData
+      // handler below). The first-output watchdog compares this across a
+      // spawn window to detect a silently-hung shell.
+      outputBytes: 0,
+      firstOutputAt: null,
+      lastOutputAt: null,
+      silentSpawns: 0,
+      slowFirstOutput: false,
+      lastSilentSpawnAt: null,
       lastSpawnAt: null,
       lastExitAt: null,
       lastExitCode: null,
@@ -660,6 +725,17 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     const visible = syncFrameParser.filter(text);
     if (!visible) return;
     const chunk = normaliseCrlf(visible);
+    // Feed the interactive-shell first-output watchdog (issue #37). Any
+    // visible byte from bash means the terminal is alive; the watchdog in
+    // runShellLoop reads these counters to tell a working shell apart from
+    // one that spawned but silently hung.
+    const shellDiag = runtime.shellLoop;
+    if (shellDiag) {
+      const now = Date.now();
+      shellDiag.outputBytes = (shellDiag.outputBytes ?? 0) + chunk.length;
+      shellDiag.lastOutputAt = now;
+      if (shellDiag.firstOutputAt == null) shellDiag.firstOutputAt = now;
+    }
     if (
       typeof globalThis !== 'undefined' &&
       globalThis.__RWB_DEBUG_TERMINAL_STREAM
@@ -696,7 +772,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   // echo heredocs, prompts, or temporary commands into the visible
   // terminal.
   //
-  // CheerpX 1.3.0 has a flaky bug allocating new inodes on the
+  // CheerpX 1.3.x has a flaky bug allocating new inodes on the
   // OverlayDevice (rust-alpine ext2 + IDBDevice writable layer): roughly
   // 1 in N attempts to mkdir/touch a brand-new path under `/workspace`
   // hangs the underlying `cx.run` *forever* with `TypeError: …reading
@@ -725,7 +801,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
             setTimeout(
               () => reject(new Error(
                 `workspace prime timed out after ${PRIME_TIMEOUT_MS}ms ` +
-                `(suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)`,
+                `(suspected CheerpX 1.3.x OverlayDevice 'a1' hang)`,
               )),
               PRIME_TIMEOUT_MS,
             ),
@@ -776,7 +852,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
           setTimeout(
             () => reject(new Error(
               `shell profile prepare timed out after ${SHELL_PREPARE_TIMEOUT_MS}ms ` +
-              `(suspected CheerpX 1.3.0 OverlayDevice 'a1' hang)`,
+              `(suspected CheerpX 1.3.x OverlayDevice 'a1' hang)`,
             )),
             SHELL_PREPARE_TIMEOUT_MS,
           ),
@@ -789,7 +865,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     }
   }
 
-  // CheerpX 1.3.0 has a flaky OverlayDevice bug: writing a brand-new
+  // CheerpX 1.3.x has a flaky OverlayDevice bug: writing a brand-new
   // inode under /workspace tends to fire a `TypeError: …reading 'a1'`
   // followed by `Program exited with code 71` and — critically — leaves
   // the entire CheerpX runtime wedged. Once wedged, every subsequent
@@ -823,11 +899,13 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
       runtime.workspacePrimeError = 'skipped';
     }
     if (!skipShellLoop) {
+      let silentAdvisoryShown = false;
       stopShell = runShellLoop(cx, {
         cwd: runtime.primed ? '/workspace' : '/root',
         onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
         debug,
         diag: runtime.shellLoop,
+        firstOutputTimeoutMs: opts.shellFirstOutputTimeoutMs,
         onUnhealthy: ({ kind, detail }) => {
           // The interactive shell keeps dying immediately — the terminal
           // will never show a prompt. Make it loud (issue #37): the
@@ -839,6 +917,34 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
             runtime.shellLoop,
           );
           busServer.emit('vm.shell', { healthy: false, kind, detail });
+          try { opts.onShellUnhealthy?.({ kind, detail, diag: runtime.shellLoop }); } catch {}
+        },
+        onSilentStart: ({ kind, detail }) => {
+          // bash spawned but produced no prompt within the watchdog
+          // window — the iPad-Safari silent-hang from issue #37. We can't
+          // un-wedge CheerpX from JS, but we MUST NOT leave the user
+          // staring at a blank tofu cursor: surface a visible, actionable
+          // advisory directly in the terminal, plus structured diagnostics.
+          logger?.warn?.(
+            '[rust-web-box] interactive shell produced no output:',
+            kind,
+            detail,
+            runtime.shellLoop,
+          );
+          busServer.emit('vm.shell', { healthy: false, kind, detail });
+          if (!silentAdvisoryShown) {
+            silentAdvisoryShown = true;
+            const advisory =
+              '\r\n\x1b[33m[rust-web-box]\x1b[0m The Linux shell started but ' +
+              'produced no prompt.\r\n' +
+              'This is the known CheerpX/WebVM terminal issue on ' +
+              'Safari/iPad (rust-web-box#37).\r\n' +
+              'Workarounds: reload the tab, or open this site in a ' +
+              'Chromium-based browser.\r\n' +
+              'Diagnostics: run \x1b[36m__rustWebBox.dump()\x1b[0m in the ' +
+              'browser console.\r\n';
+            busServer.emit('proc.stdout', { pid: 1, chunk: advisory });
+          }
           try { opts.onShellUnhealthy?.({ kind, detail, diag: runtime.shellLoop }); } catch {}
         },
       });

@@ -111,10 +111,10 @@ test('boot shell: service worker synthesises COOP/COEP headers (require-corp for
   assert.match(sw, /Cross-Origin-Embedder-Policy.*require-corp/);
 });
 
-test('boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.3.0', async () => {
+test('boot shell: build script vendors vscode-web@1.91.1 + cheerpx 1.3.3', async () => {
   const build = await read('build/build-workbench.mjs');
   assert.match(build, /VSCODE_WEB_VERSION = '1\.91\.1'/);
-  assert.match(build, /CHEERPX_VERSION = '1\.3\.0'/);
+  assert.match(build, /CHEERPX_VERSION = '1\.3\.3'/);
 });
 
 test('boot shell: workbench bootstrap provides process.env for browserified dependencies', async () => {

@@ -74,7 +74,7 @@ jobs:
           # Issue #17: verify BOTH the debug AND the release pre-bakes
           # exist in the image. If either is missing, plain `cargo run`
           # in the browser would have to allocate fresh inodes from
-          # scratch, which trips the CheerpX 1.3.0 OverlayDevice 'a1'
+          # scratch, which trips the CheerpX 1.3.x OverlayDevice 'a1'
           # wedge. The pre-baked artifacts let cargo's mtime check
           # finish early ("Finished … 0.00s") instead.
           test -x "$MNT/workspace/target/release/hello" \
