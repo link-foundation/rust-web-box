@@ -281,15 +281,34 @@ async function bringUpVM({ workspace, channel, busServer }) {
     dbgBoot('startWebVMServer skipped (bisect mode)');
     setPhase('ready');
   } else {
-    startWebVMServer({
+    const vmServer = startWebVMServer({
       cx: vm.cx,
       dataDevice: vm.dataDevice,
       busServer,
       workspace,
       status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
       onPhase: setPhase,
-      opts: { debug: dbgGuest, skipPrime, skipShellLoop },
+      opts: {
+        debug: dbgGuest,
+        skipPrime,
+        skipShellLoop,
+        // If the interactive shell turns out to be unhealthy (keeps dying
+        // immediately — the iPad Safari signature from issue #37), tell
+        // the user instead of leaving an empty terminal with no
+        // explanation.
+        onShellUnhealthy: ({ kind, detail }) => {
+          dbgGuest('interactive shell unhealthy: %s %o', kind, detail);
+          setToast(
+            'The Linux shell could not start in this browser. ' +
+              'Terminal features are unavailable — see console for details.',
+            'error',
+          );
+        },
+      },
     });
+    // Surface live server runtime (interactive-shell health, prime
+    // errors) so dumpRuntime() can report it — issue #37 diagnostics.
+    globalThis.__rustWebBox.vmServer = vmServer;
   }
 
   globalThis.__rustWebBox.vm = vm;

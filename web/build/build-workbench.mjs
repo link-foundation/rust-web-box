@@ -273,6 +273,12 @@ async function writeProductJson() {
     enableTelemetry: false,
     additionalBuiltinExtensions: buildExtensionPointers(),
     configurationDefaults: {
+      // Pin the default to VS Code's dark theme so a self-hosted
+      // deployment renders dark out of the box. Without this, VS Code
+      // Web falls back to the OS `prefers-color-scheme`, which on a
+      // light-mode device leaves the workbench in "Default Light Modern"
+      // — the exact "dark theme not applied" symptom from issue #37.
+      'workbench.colorTheme': 'Default Dark Modern',
       'workbench.startupEditor': 'none',
       'extensions.ignoreRecommendations': true,
     },
@@ -308,6 +314,12 @@ async function renderIndex() {
     },
     additionalBuiltinExtensions: ourExts,
     configurationDefaults: {
+      // Pin the default to VS Code's dark theme so a self-hosted
+      // deployment renders dark out of the box. Without this, VS Code
+      // Web falls back to the OS `prefers-color-scheme`, which on a
+      // light-mode device leaves the workbench in "Default Light Modern"
+      // — the exact "dark theme not applied" symptom from issue #37.
+      'workbench.colorTheme': 'Default Dark Modern',
       'workbench.startupEditor': 'none',
       'extensions.ignoreRecommendations': true,
     },

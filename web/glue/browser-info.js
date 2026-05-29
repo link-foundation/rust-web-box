@@ -29,10 +29,35 @@ export async function detectBrowser({ nav = globalThis.navigator } = {}) {
     /Chrome\/|Chromium\//.test(ua) || isBrave || !!nav.userAgentData?.brands?.some?.(
       (b) => /Chromium|Google Chrome|Brave/.test(b?.brand ?? ''),
     );
+
+  // Apple platform detection (issue #37: the terminal fails specifically
+  // on iPad Safari). iPhone/iPod still carry their device token in the
+  // UA, but since iPadOS 13 desktop-class Safari reports as "Macintosh"
+  // with no iPad token — the only reliable tell is a Mac UA that also has
+  // a touch screen (`maxTouchPoints > 1`). `platform` is deprecated but
+  // still the most stable signal where present.
+  const platform = String(nav.platform || '');
+  const maxTouchPoints = Number(nav.maxTouchPoints || 0);
+  const isIPhone = /iPhone|iPod/.test(ua);
+  const isIPadOS = /iPad/.test(ua) || (/Mac/.test(platform) && maxTouchPoints > 1);
+  const isIOS = isIPhone || isIPadOS;
+  // Safari's UA contains "Safari" but so does Chrome's; the distinguishing
+  // tell is the absence of the Chromium/Edge/Firefox tokens. On iOS every
+  // browser is WebKit under the hood, so we also flag iOS as Safari-class.
+  const isSafari =
+    isIOS ||
+    (/Safari\//.test(ua) && !/Chrome\/|Chromium\/|Edg\/|OPR\/|Firefox\//.test(ua));
+
   return {
-    id: isBrave ? 'brave' : isChromium ? 'chromium' : 'other',
+    id: isBrave ? 'brave' : isChromium ? 'chromium' : isSafari ? 'safari' : 'other',
     isBrave,
     isChromium,
+    isSafari,
+    isIOS,
+    isIPad: isIPadOS,
+    isIPhone,
+    platform,
+    maxTouchPoints,
     ua,
   };
 }

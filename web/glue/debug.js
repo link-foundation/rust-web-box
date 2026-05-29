@@ -143,10 +143,36 @@ export function dumpRuntime(globalRef = globalThis) {
     if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
     return undefined; // drop live objects so JSON.stringify can't choke
   };
+  // Shallow copy of the interactive-shell health diagnostics (all
+  // primitives). Lets a maintainer see at a glance whether the terminal
+  // ever started — the iPad Safari failure mode from issue #37.
+  const shell = r.vmServer?.runtime?.shellLoop;
+  const shellLoop = shell
+    ? {
+        healthy: !!shell.healthy,
+        running: !!shell.running,
+        spawns: shell.spawns ?? 0,
+        exits: shell.exits ?? 0,
+        errors: shell.errors ?? 0,
+        fastCycles: shell.fastCycles ?? 0,
+        lastExitCode: safe(shell.lastExitCode) ?? null,
+        lastError: safe(shell.lastError) ?? null,
+      }
+    : null;
+  const browser = r.browser || {};
   return {
     timestamp: new Date().toISOString(),
     href: globalRef.location?.href ?? null,
     userAgent: globalRef.navigator?.userAgent ?? null,
+    // Platform tells — surfaced so iPad-Safari-specific reports (issue
+    // #37) are self-evident from the dump alone. iPadOS Safari hides its
+    // iPad token, so we lean on detectBrowser()'s maxTouchPoints heuristic.
+    platform: globalRef.navigator?.platform ?? null,
+    maxTouchPoints: globalRef.navigator?.maxTouchPoints ?? null,
+    browserId: safe(browser.id) ?? null,
+    isSafari: !!browser.isSafari,
+    isIOS: !!browser.isIOS,
+    isIPad: !!browser.isIPad,
     crossOriginIsolated: globalRef.crossOriginIsolated ?? null,
     sharedArrayBuffer: typeof globalRef.SharedArrayBuffer === 'function',
     serviceWorker: !!globalRef.navigator?.serviceWorker?.controller,
@@ -156,5 +182,6 @@ export function dumpRuntime(globalRef = globalThis) {
     workspaceReady: !!r.workspace,
     busAlive: !!r.busServer,
     shimAlive: !!r.shim,
+    shellLoop,
   };
 }

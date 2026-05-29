@@ -75,28 +75,89 @@ const LEAN_CARGO_DEV_PROFILE_SCRIPT = [
   'unset -f __rwb_apply_cargo_profile 2>/dev/null || true',
 ];
 
+// A `/bin/bash --login` that spawns and immediately dies (throws, or
+// exits within this many ms) is not a usable interactive terminal — it
+// is the signature of the iPad-Safari terminal failure from issue #37,
+// where the cursor never reaches a shell prompt. We treat that as a
+// "fast cycle" and, after a few in a row, surface a diagnostic so the
+// root cause is observable instead of silently retried forever.
+const SHELL_FAST_CYCLE_MS = 750;
+const SHELL_FAST_CYCLE_LIMIT = 3;
+
 /**
  * Run the canonical "shell loop" the way leaningtech/webvm does:
  * spawn `/bin/bash --login`, and when it exits, spawn it again.
+ *
+ * Every spawn / exit / error is recorded into `diag` (when supplied) so
+ * `dumpRuntime()` can report whether the terminal ever actually came up,
+ * how many times bash respawned, and the last exit code / error. This is
+ * the verbose-mode hook issue #37 asks for: on a device where the shell
+ * never starts (e.g. iPad Safari), the diagnostics make the failure mode
+ * visible on the next iteration instead of being swallowed by the retry.
  */
-function runShellLoop(cx, { cwd = '/root', env = BASH_ENV, onExit } = {}) {
+function runShellLoop(cx, {
+  cwd = '/root',
+  env = BASH_ENV,
+  onExit,
+  debug = () => {},
+  diag = null,
+  onUnhealthy,
+} = {}) {
   const fullEnv = env;
   let stopped = false;
+  let unhealthyNotified = false;
+
+  const noteFastCycle = (kind, detail) => {
+    if (!diag) return;
+    diag.fastCycles = (diag.fastCycles ?? 0) + 1;
+    if (diag.fastCycles >= SHELL_FAST_CYCLE_LIMIT && !unhealthyNotified) {
+      unhealthyNotified = true;
+      diag.healthy = false;
+      try { onUnhealthy?.({ kind, detail, diag }); } catch {}
+    }
+  };
 
   (async () => {
     while (!stopped) {
+      const startedAt = Date.now();
+      if (diag) {
+        diag.spawns = (diag.spawns ?? 0) + 1;
+        diag.lastSpawnAt = startedAt;
+        diag.running = true;
+      }
+      debug('shell loop spawn #%d (cwd=%s)', diag?.spawns ?? 0, cwd);
       try {
         const fn = cx.run ?? cx.runAsync;
         if (typeof fn !== 'function') throw new Error('CheerpX missing run()');
-        await fn.call(cx, '/bin/bash', ['--login'], {
+        const code = await fn.call(cx, '/bin/bash', ['--login'], {
           env: fullEnv,
           cwd,
           uid: 0,
           gid: 0,
         });
+        const elapsed = Date.now() - startedAt;
+        if (diag) {
+          diag.exits = (diag.exits ?? 0) + 1;
+          diag.lastExitCode = typeof code === 'number' ? code : null;
+          diag.lastExitAt = Date.now();
+          diag.running = false;
+        }
+        debug('shell loop exit #%d (code=%o, after %dms)', diag?.exits ?? 0, code, elapsed);
+        if (elapsed < SHELL_FAST_CYCLE_MS) noteFastCycle('exit', { code, elapsed });
+        else if (diag) diag.fastCycles = 0;
       } catch (err) {
+        const message = err?.message ?? String(err);
+        const elapsed = Date.now() - startedAt;
+        if (diag) {
+          diag.errors = (diag.errors ?? 0) + 1;
+          diag.lastError = message;
+          diag.lastErrorAt = Date.now();
+          diag.running = false;
+        }
+        debug('shell loop error #%d after %dms: %s', diag?.errors ?? 0, elapsed, message);
         // eslint-disable-next-line no-console
         console.warn('[rust-web-box] bash loop error:', err);
+        noteFastCycle('error', { message, elapsed });
         await new Promise((r) => setTimeout(r, 500));
       }
       onExit?.();
@@ -474,6 +535,22 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     guestSyncError: null,
     lastGuestSyncAt: null,
     shellPrepareError: null,
+    // Interactive-shell health, populated by runShellLoop. `healthy`
+    // flips to false after repeated fast spawn→exit cycles (the iPad
+    // Safari terminal-never-starts signature from issue #37).
+    shellLoop: {
+      healthy: true,
+      running: false,
+      spawns: 0,
+      exits: 0,
+      errors: 0,
+      fastCycles: 0,
+      lastSpawnAt: null,
+      lastExitAt: null,
+      lastExitCode: null,
+      lastError: null,
+      lastErrorAt: null,
+    },
   };
   const guestSyncState = { knownPaths: new Set() };
   let guestSyncTail = Promise.resolve();
@@ -749,6 +826,21 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
       stopShell = runShellLoop(cx, {
         cwd: runtime.primed ? '/workspace' : '/root',
         onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
+        debug,
+        diag: runtime.shellLoop,
+        onUnhealthy: ({ kind, detail }) => {
+          // The interactive shell keeps dying immediately — the terminal
+          // will never show a prompt. Make it loud (issue #37): the
+          // failure is otherwise invisible behind the silent retry.
+          logger?.error?.(
+            '[rust-web-box] interactive shell is unhealthy:',
+            kind,
+            detail,
+            runtime.shellLoop,
+          );
+          busServer.emit('vm.shell', { healthy: false, kind, detail });
+          try { opts.onShellUnhealthy?.({ kind, detail, diag: runtime.shellLoop }); } catch {}
+        },
       });
     } else {
       logger?.warn?.('[rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)');
@@ -763,6 +855,9 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     consoleHandle: console_,
     primeGuestWorkspace,
     bootTask,
+    // Exposed so the page-level shim / dumpRuntime() can report live
+    // interactive-shell health (issue #37 diagnostics).
+    runtime,
     stop() {
       stopShell();
       console_.dispose();
