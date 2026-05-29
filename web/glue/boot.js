@@ -29,6 +29,13 @@ import { createBusServer, openBroadcastChannel } from './webvm-bus.js';
 import { openWorkspaceFS } from './workspace-fs.js';
 import { applyWorkbenchPlaceholders } from './workbench-config.js';
 import { createDebug, dumpRuntime } from './debug.js';
+import { installDiskChunkFetch } from './disk-chunk-fetch.js';
+import { detectBrowser } from './browser-info.js';
+import {
+  categorizeBootError,
+  renderBootError,
+  installBootDiagnostics,
+} from './boot-diagnostics.js';
 
 const debugOpts = {
   search: location.search,
@@ -47,9 +54,10 @@ globalThis.__rustWebBox.dump = () => dumpRuntime(globalThis);
 const toast = document.getElementById('boot-toast');
 const toastText = toast?.querySelector('[data-toast-text]');
 
-function setToast(text, kind = 'info') {
+function setToast(text, kind = 'info', hint = '') {
   if (!toast || !toastText) return;
-  toastText.textContent = text;
+  const suffix = hint ? `\n${hint}` : '';
+  toastText.textContent = `${text}${suffix}`;
   toast.dataset.kind = kind;
   toast.hidden = false;
 }
@@ -57,6 +65,52 @@ function setToast(text, kind = 'info') {
 function hideToast() {
   if (!toast) return;
   toast.hidden = true;
+}
+
+// Install the chunk-fetch retry wrapper on `globalThis.fetch` BEFORE
+// the CheerpX module is imported — CheerpX captures `fetch` once at
+// module-eval time, so installing later would miss the warm-disk
+// chunk requests. Issue #35 root-cause fix.
+const diskFetchDiag = { attempts: [] };
+installDiskChunkFetch({
+  diag: diskFetchDiag,
+  logger: { debug: createDebug('disk-fetch', debugOpts) },
+  onPersistentFailure(info) {
+    // The chunk fetch ultimately failed after retries. CheerpX may
+    // continue (and JIT garbage into invalid WASM), so surface the
+    // toast immediately so the user sees the root cause rather than
+    // the downstream CompileError.
+    const browser = globalThis.__rustWebBox.browser ?? { id: 'unknown', isBrave: false };
+    const category = info.status
+      ? { kind: 'disk-503', title: 'Warm disk temporarily unavailable',
+          body: `GitHub Pages returned HTTP ${info.status} for ${info.url} after ${info.attempts} attempts.` }
+      : { kind: 'disk-503', title: 'Warm disk temporarily unavailable',
+          body: `Could not fetch ${info.url} after ${info.attempts} attempts: ${info.error?.message ?? info.error ?? 'network error'}.` };
+    const rendered = renderBootError(category, browser);
+    setToast(rendered.text, 'error', rendered.hint);
+  },
+});
+globalThis.__rustWebBox.diskDiag = diskFetchDiag;
+
+// Capture CheerpX-shaped boot errors into a structured diagnostics
+// log so the toast renderer and the e2e harness see the same data.
+installBootDiagnostics({ target: globalThis });
+
+// Best-effort browser identity for Brave-aware toast hints.
+detectBrowser().then((browser) => {
+  globalThis.__rustWebBox.browser = browser;
+}).catch(() => {
+  globalThis.__rustWebBox.browser = { id: 'unknown', isBrave: false };
+});
+
+function showBootError(err, { fallbackTitle } = {}) {
+  const category = categorizeBootError({ error: err });
+  const browser = globalThis.__rustWebBox.browser ?? { id: 'unknown', isBrave: false };
+  const rendered = renderBootError(category, browser);
+  const text = category.kind === 'unknown' && fallbackTitle
+    ? `${fallbackTitle}: ${rendered.text}`
+    : rendered.text;
+  setToast(text, 'error', rendered.hint);
 }
 
 // Substitute {ORIGIN_SCHEME}/{ORIGIN_HOST}/{BASE_PATH} placeholders in
@@ -120,7 +174,7 @@ async function bringUpWorkspace() {
   try {
     workspace = await openWorkspaceFS();
   } catch (err) {
-    setToast(`Workspace store unavailable: ${err?.message ?? err}`, 'error');
+    showBootError(err, { fallbackTitle: 'Workspace store unavailable' });
     throw err;
   }
 
@@ -128,7 +182,7 @@ async function bringUpWorkspace() {
   try {
     channel = openBroadcastChannel();
   } catch (err) {
-    setToast(`Bus init failed: ${err?.message ?? err}`, 'error');
+    showBootError(err, { fallbackTitle: 'Bus init failed' });
     throw err;
   }
 
@@ -170,7 +224,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
   try {
     CheerpX = await loadCheerpX();
   } catch (err) {
-    setToast(`CheerpX failed to load: ${err?.message ?? err}`, 'error');
+    showBootError(err, { fallbackTitle: 'CheerpX failed to load' });
     return null;
   }
 
@@ -183,7 +237,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
       onProgress: setPhase,
     });
   } catch (err) {
-    setToast(`Linux VM failed to boot: ${err?.message ?? err}`, 'error');
+    showBootError(err, { fallbackTitle: 'Linux VM failed to boot' });
     return null;
   }
   dbgBoot('VM booted with disk', vm.diskUrl);
