@@ -38,16 +38,21 @@ in this single PR.
   **Fix:** ship `workbench.colorTheme: "Default Dark Modern"` from every
   place the workbench configuration is produced.
 
-- **CSS clipping (confirmed, fixed).** `html, body` used
-  `width: 100vw; height: 100vh`. On Safari (desktop *and* iPad) `100vw`
-  is the layout-viewport width *including* the classic-scrollbar /
-  visual-viewport gutter, so the body ends up a few px wider than the
-  visible area. Because the workbench sets `overflow: hidden`, the
-  title-bar and panel controls that lay out against the right edge get
-  clipped — exactly the red-marked misalignment. **Fix:**
-  `position: fixed; inset: 0` (always matches the *visible* viewport and
-  also dodges the `100vh` dynamic-toolbar bug), `viewport-fit=cover`, and
-  `env(safe-area-inset-*)` offsets on the boot toast.
+- **CSS clipping / control geometry (confirmed, fixed).** There were two
+  CSS regressions. First, `html, body` used `width: 100vw; height: 100vh`.
+  On Safari (desktop *and* iPad) `100vw` is the layout-viewport width
+  *including* the classic-scrollbar / visual-viewport gutter, so the body
+  ends up a few px wider than the visible area. Because the workbench sets
+  `overflow: hidden`, right-edge title-bar and panel controls get clipped.
+  Second, `boot.css` applied a global `* { box-sizing: border-box }` reset
+  over the entire VS Code Web workbench. VS Code's action buttons and tree
+  expanders rely on content-box sizing plus padding; the reset shrank 16 px
+  controls and their hover hitboxes, exactly matching the small-button /
+  expander offsets called out in review. **Fix:** `position: fixed;
+  inset: 0` (always matches the *visible* viewport and also dodges the
+  `100vh` dynamic-toolbar bug), `viewport-fit=cover`,
+  `env(safe-area-inset-*)` offsets on the boot toast, and no global
+  box-sizing reset outside our toast.
 
 - **iPad terminal (root cause in CheerpX; mitigated + made visible).**
   The terminal pipeline is sound; the failure lives in the CheerpX
@@ -79,14 +84,20 @@ in this single PR.
 
 1. **v0.14.0 deployed** to GitHub Pages (commit `786da32`). The workbench
    mounts directly into `<body>`; no `workbench.colorTheme` default ships,
-   and `boot.css` pins the body with `100vw/100vh`.
+   and `boot.css` pins the body with `100vw/100vh` while also applying a
+   global `box-sizing: border-box` reset to VS Code Web internals.
 2. **Reporter opens the app on an iPad** in Safari next to vscode.dev and
    files issue #37 with two screenshots and three defects.
 3. **Investigation (this PR).**
    - Reproduced the *theme* defect live with Playwright: the body class is
      `…light_modern-json`, confirming the OS-fallback root cause.
    - Reproduced the *CSS clipping* mechanism by analysis + the documented
-     Safari `100vw` scrollbar-gutter bug (see `online-research.md`).
+     Safari `100vw` scrollbar-gutter bug (see `online-research.md`), then
+     reproduced the reviewer-visible small-button / expander geometry bug
+     with Playwright DOM measurements: title/panel action labels rendered
+     as 16 px `border-box` boxes instead of 22 px `content-box` boxes, and
+     Explorer twisties rendered as 16 px boxes with a 20 px label offset
+     instead of 30 px / 34 px.
    - Could **not** reproduce the *iPad terminal* defect (no iPad
      hardware); confirmed from the code that bash failures were swallowed
      by a silent retry loop.
@@ -97,19 +108,22 @@ in this single PR.
    `HISTFILE=/dev/null`) and `web/disk/Dockerfile.disk`, with diagnostics
    in `web/glue/boot.js`, `web/glue/browser-info.js`, `web/glue/debug.js`.
    CheerpX bumped to the latest **1.3.3** across all code, tests, and docs.
-5. **Regression tests** added in `web/tests/issue-37-ux-parity.test.mjs`
-   and `web/tests/webvm-server.test.mjs` (silent-spawn watchdog: fires the
-   advisory on no-output, and stays quiet when a prompt is printed).
+5. **Regression tests** added in `web/tests/issue-37-ux-parity.test.mjs`,
+   `web/tests/webvm-server.test.mjs`, and
+   `web/tests/e2e/local-pages-e2e.test.mjs` (source assertions for theme,
+   viewport, safe area, scoped box sizing, and diagnostics; silent-spawn
+   watchdog integration tests; plus an e2e DOM-geometry test that checks
+   action buttons and Explorer expanders at rest and on hover).
 
 ## Requirements checklist (verbatim from the issue)
 
 | # | Requirement | Status |
 | --- | --- | --- |
 | R1 | Terminal must work in Safari on iPad | **Root-caused + mitigated** — failure is the CheerpX `OverlayDevice 'a1'` wedge; added a first-output watchdog with a visible in-terminal advisory, `HISTFILE=/dev/null` to avoid fresh-inode churn, and bumped CheerpX to 1.3.3. The unfixable-from-JS core is reported upstream. |
-| R2 | Fix CSS offsets/margins/paddings causing misalignment in all browsers | **Fixed** — `position:fixed;inset:0` + safe-area insets. |
+| R2 | Fix CSS offsets/margins/paddings causing misalignment in all browsers | **Fixed** — `position:fixed;inset:0`, safe-area insets, and removal of the global `box-sizing` reset that shrank VS Code action buttons/tree expanders. |
 | R3 | Apply the dark theme like vscode.dev | **Fixed** — `Default Dark Modern` default. |
 | R4 | Consider latest versions of all components | **Done** — CheerpX bumped 1.3.0 → latest 1.3.3; `vscode-web@1.91.1` is already latest. See *Component versions* below. |
-| R5 | Follow best UI/UX practices for all devices; compare actual DOM | **Done** — live DOM compared via Playwright; `viewport-fit=cover` + safe-area added for notch/home-indicator devices. |
+| R5 | Follow best UI/UX practices for all devices; compare actual DOM | **Done** — live DOM compared via Playwright; e2e tests now assert workbench viewport fill, action-button width/box sizing, Explorer twistie offset, and hover geometry; `viewport-fit=cover` + safe-area added for notch/home-indicator devices. |
 | R6 | Compile issue data to `docs/case-studies/issue-37` and do deep analysis | **This document** + `online-research.md` + `evidence/`. |
 | R7 | Search online for additional facts | **Done** — `online-research.md`. |
 | R8 | Reconstruct timeline, list requirements, root-cause each, propose plans, survey libraries | **This document.** |
@@ -140,13 +154,27 @@ config writers in `web/build/build-workbench.mjs` (`writeProductJson` and
 scrollbar/visual-viewport gutter (documented WebKit behaviour — see
 `online-research.md`), so a `width: 100vw` body is slightly wider than the
 visible area. The workbench's `overflow: hidden` then clips whatever lays
-out against the right/bottom edges (title-bar actions, panel toggles) —
-the red-marked misalignment. The classic `100vh` dynamic-toolbar bug
-compounds it on mobile Safari. **Fix:** drop `100vw/100vh` entirely and
-pin the body to the *visible* viewport with `position: fixed; inset: 0`,
-add `viewport-fit=cover` so the workbench paints edge-to-edge under the
-notch/home-indicator, and offset the only floating element (the boot
-toast) by `env(safe-area-inset-*)` so it clears the rounded corners.
+out against the right/bottom edges (title-bar actions, panel toggles).
+The classic `100vh` dynamic-toolbar bug compounds it on mobile Safari.
+
+The reviewer-visible small-button / expander offsets had a second, local
+root cause: `boot.css` applied `* { box-sizing: border-box }` globally.
+VS Code Web action labels and tree twisties are built around fixed
+content widths plus padding. With the reset in place, Playwright measured
+the layout/customize and split-editor action labels as 16 px
+`border-box` controls; after removing the reset, the same controls
+returned to VS Code's expected 22 px `content-box` geometry. Explorer
+twisties likewise moved from 16 px boxes with a 20 px label offset to
+30 px boxes with a 34 px label offset. The same e2e test repeats the
+measurements after hovering the title-bar button and the `.vscode` tree
+row, covering the "on hover and without" feedback from PR review.
+
+**Fix:** drop `100vw/100vh` entirely and pin the body to the *visible*
+viewport with `position: fixed; inset: 0`; add `viewport-fit=cover` so the
+workbench paints edge-to-edge under the notch/home-indicator; offset the
+only floating element (the boot toast) by `env(safe-area-inset-*)`; and
+scope `box-sizing: border-box` to `#boot-toast` only so VS Code Web keeps
+its own geometry.
 
 ### R1 — iPad terminal (ROOT-CAUSED → mitigated + made visible)
 
@@ -247,6 +275,13 @@ reproducible example, the workarounds we ship, and a fix suggestion. See
   unsupported in Safari per Smashing Magazine)*; (d) JS
   `--vh` custom-property hack *(rejected — adds runtime JS for what CSS
   solves)*.
+- **Control geometry.** (a) Remove the global box-sizing reset and scope
+  it to the boot toast *(chosen — preserves VS Code Web's own content-box
+  sizing and hover hitboxes)*; (b) override individual VS Code selectors
+  for title actions, panel actions, and tree twisties *(rejected — brittle
+  against upstream VS Code CSS changes)*; (c) add compensating margins /
+  padding to our container *(rejected — masks one viewport but leaves the
+  underlying third-party geometry changed)*.
 - **Terminal.** (a) Make the silent wedge observable *and* visible to the
   user via the first-output watchdog + in-terminal advisory, reduce its
   trigger rate with `HISTFILE=/dev/null`, ship the latest CheerpX, and
@@ -279,6 +314,8 @@ Vendored after this PR: `vscode-web@1.91.1` (already the latest published
 `vscode-web`) and CheerpX **1.3.3** (bumped from 1.3.0; pinned in
 `web/build/build-workbench.mjs`, `web/glue/cheerpx-bridge.js`, the service
 worker cache key, and the vendored `web/cheerpx/.version`).
+The `web/cheerpx/README.md` pinned-version note is also updated so the
+vendor directory documentation matches the shipped runtime.
 
 CheerpX latest was confirmed empirically: `cxcore.js` is served for
 1.3.0–1.3.3 (HTTP 200) but 1.3.4 returns HTTP 204, so 1.3.3 is the newest
@@ -300,27 +337,48 @@ local Chromium boot.
 
 ## Verification
 
-- `node --test web/tests/` — full suite green (236 pass / 4 skipped / 0
+- `node --test web/tests/` — full suite green (239 pass / 4 skipped / 0
   fail), including:
   - `issue-37-ux-parity.test.mjs` — theme/viewport/diagnostics **and**
-    the first-output watchdog + advisory source assertions.
+    the scoped-box-sizing regression assertion, plus the first-output
+    watchdog + advisory source assertions.
   - `webvm-server.test.mjs` — two integration tests for the silent-spawn
     watchdog: it fires the `no-output` advisory (`vm.shell` event +
     `proc.stdout` "produced no prompt" text + `silentSpawns`/
     `slowFirstOutput`) when bash is silent, and stays quiet when a prompt
     is printed before the window.
-- Built the workbench locally (`node web/build/build-workbench.mjs`) and
-  rendered it via Playwright (Chromium) at desktop and iPad viewports.
+- `RUST_WEB_BOX_E2E=1 RUST_WEB_BOX_E2E_NO_SANDBOX=1 node --test
+  --test-name-pattern "issue #37" web/tests/e2e/local-pages-e2e.test.mjs`
+  — focused e2e green (1 pass / 3 skipped by name pattern / 0 fail). This
+  test failed before the CSS fix with `layout button must keep VS Code box
+  sizing` (`border-box` instead of `content-box`). It now asserts, at rest
+  and after hover, that title/panel action buttons keep 22 px content-box
+  hitboxes, stay inside the viewport, and Explorer labels do not slide
+  under their twisties.
+- Built the workbench locally (`SKIP_CHEERPX=1 node
+  web/build/build-workbench.mjs`) and rendered it via Playwright
+  (Chromium) at desktop and iPad viewports.
   Confirmed:
   - `.monaco-workbench` class is
     `… vs-dark vscode-theme-defaults-themes-dark_modern-json` (dark theme
     now applied — was `light_modern` before).
   - `getComputedStyle(document.documentElement).position === 'fixed'`
     (the `inset: 0` pin is active, not `100vw/100vh`).
+  - Title/panel action buttons measure 22 px wide with
+    `box-sizing: content-box`; the Explorer twistie measures 30 px wide.
   - `document.body` background is `rgb(30, 30, 30)`.
   - See `screenshots/after-dark-theme.png`,
     `screenshots/after-ipad-portrait.png`,
     `screenshots/after-ipad-landscape.png`.
+- Repo quality checks passed:
+  - `cargo fmt --all -- --check`
+  - `cargo clippy --all-targets --all-features`
+  - `cargo test --all-features --verbose`
+  - `cargo test --doc --verbose`
+  - `rust-script scripts/check-file-size.rs`
+  - `rust-script scripts/check-changelog-fragment.rs`
+  - `rust-script scripts/check-version-modification.rs` (expected local
+    skip outside a GitHub PR event)
 - Playwright is Chromium-only, so the *Safari/iPad-specific* CheerpX wedge
   cannot be reproduced in this harness; the iPad screenshots verify the
   theme + viewport fixes at iPad dimensions, and the terminal mitigation

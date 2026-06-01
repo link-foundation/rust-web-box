@@ -20,7 +20,7 @@
 // instead of failing — CI overrides that with `RUST_WEB_BOX_E2E=1`.
 //
 // To run with a visible browser locally:
-//   RUST_WEB_BOX_E2E_HEADED=1 node --test web/tests/e2e/local-pages-e2e.test.mjs
+//   RUST_WEB_BOX_E2E=1 RUST_WEB_BOX_E2E_HEADED=1 node --test web/tests/e2e/local-pages-e2e.test.mjs
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,6 +44,10 @@ const BASE_PREFIX = '/rust-web-box';
 
 function vendoredCheerpx() {
   return existsSync(path.join(WEB_ROOT, 'cheerpx', 'cx.esm.js'));
+}
+
+function vendoredVSCodeWeb() {
+  return existsSync(path.join(WEB_ROOT, 'vscode-web', 'out', 'vs', 'workbench', 'workbench.web.main.js'));
 }
 
 async function requestWorkbenchBus(page, method, params) {
@@ -107,6 +111,148 @@ function bailIfMissingPrereqs(t, { commander }) {
   }
   return false;
 }
+
+function bailIfMissingWorkbenchPrereqs(t, { commander }) {
+  if (!E2E_REQUIRED && process.env.RUST_WEB_BOX_E2E_NO_SANDBOX !== '1') {
+    t.skip('set RUST_WEB_BOX_E2E=1 to run workbench e2e');
+    return true;
+  }
+  if (!commander) {
+    if (E2E_REQUIRED) throw new Error('browser-commander is required when RUST_WEB_BOX_E2E=1');
+    t.skip('browser-commander / playwright not installed; skipping workbench e2e');
+    return true;
+  }
+  if (!vendoredVSCodeWeb()) {
+    if (E2E_REQUIRED) {
+      throw new Error('web/vscode-web/out/vs/workbench/workbench.web.main.js missing — run `node web/build/build-workbench.mjs` first');
+    }
+    t.skip('VS Code Web not vendored; run `node web/build/build-workbench.mjs` first');
+    return true;
+  }
+  return false;
+}
+
+async function waitForIssue37Chrome(page) {
+  await page.waitForSelector('.monaco-workbench.vs-dark', { timeout: 30_000 });
+  await page.waitForSelector('a.action-label[aria-label="Customize Layout..."]', { timeout: 30_000 });
+  await page.waitForSelector('a.action-label[aria-label^="Split Editor Right"]', { timeout: 30_000 });
+  await page.waitForSelector('a.action-label[aria-label="Hide Panel"]', { timeout: 30_000 });
+  await page.waitForSelector('.monaco-list-row[aria-label=".vscode"] .monaco-tl-twistie', { timeout: 30_000 });
+}
+
+async function collectIssue37ChromeGeometry(page) {
+  return await page.evaluate(() => {
+    function mustQuery(selector, root = document) {
+      const el = root.querySelector(selector);
+      if (!el) throw new Error(`missing selector: ${selector}`);
+      return el;
+    }
+
+    function metric(selector, root = document) {
+      const el = mustQuery(selector, root);
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return {
+        selector,
+        boxSizing: style.boxSizing,
+        padding: style.padding,
+        widthStyle: style.width,
+        rect: {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          right: rect.right,
+          bottom: rect.bottom,
+        },
+      };
+    }
+
+    const folderRow = mustQuery('.monaco-list-row[aria-label=".vscode"]');
+    const folderRowRect = folderRow.getBoundingClientRect();
+    const folderLabelRect = mustQuery('.label-name', folderRow).getBoundingClientRect();
+    const folderTwistie = metric('.monaco-tl-twistie', folderRow);
+
+    return {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      workbench: metric('.monaco-workbench'),
+      layoutButton: metric('a.action-label[aria-label="Customize Layout..."]'),
+      editorSplitButton: metric('a.action-label[aria-label^="Split Editor Right"]'),
+      panelCloseButton: metric('a.action-label[aria-label="Hide Panel"]'),
+      folderTwistie,
+      folderLabelOffset: folderLabelRect.x - folderRowRect.x,
+    };
+  });
+}
+
+function assertIssue37ChromeGeometry(geometry, phase) {
+  assert.equal(geometry.workbench.rect.x, 0, `${phase}: workbench must start at viewport left`);
+  assert.equal(geometry.workbench.rect.y, 0, `${phase}: workbench must start at viewport top`);
+  assert.equal(
+    Math.round(geometry.workbench.rect.width),
+    geometry.viewportWidth,
+    `${phase}: workbench width must equal viewport width`,
+  );
+  assert.equal(
+    Math.round(geometry.workbench.rect.height),
+    geometry.viewportHeight,
+    `${phase}: workbench height must equal viewport height`,
+  );
+
+  for (const [name, button] of [
+    ['layout button', geometry.layoutButton],
+    ['editor split button', geometry.editorSplitButton],
+    ['panel close button', geometry.panelCloseButton],
+  ]) {
+    assert.equal(button.boxSizing, 'content-box', `${phase}: ${name} must keep VS Code box sizing`);
+    assert.ok(
+      button.rect.width >= 22,
+      `${phase}: ${name} hitbox should include VS Code's 16px icon plus padding; got ${button.rect.width}`,
+    );
+    assert.ok(
+      button.rect.right <= geometry.viewportWidth,
+      `${phase}: ${name} must stay inside the viewport; right=${button.rect.right}, viewport=${geometry.viewportWidth}`,
+    );
+  }
+
+  assert.equal(
+    geometry.folderTwistie.boxSizing,
+    'content-box',
+    `${phase}: Explorer twistie must keep VS Code box sizing`,
+  );
+  assert.ok(
+    geometry.folderTwistie.rect.width >= 28,
+    `${phase}: Explorer twistie should reserve icon plus padding; got ${geometry.folderTwistie.rect.width}`,
+  );
+  assert.ok(
+    geometry.folderLabelOffset >= 32,
+    `${phase}: Explorer label must not slide under the twistie; offset=${geometry.folderLabelOffset}`,
+  );
+}
+
+test('local e2e: issue #37 preserves VS Code control geometry and hover hitboxes', async (t) => {
+  const commander = await tryLoadBrowserCommander();
+  if (bailIfMissingWorkbenchPrereqs(t, { commander })) return;
+
+  const server = await startDevServer({ basePrefix: BASE_PREFIX });
+  t.after(() => server.stop());
+
+  await withWorkbench(server.url, async ({ page }) => {
+    await waitForIssue37Chrome(page);
+
+    const resting = await collectIssue37ChromeGeometry(page);
+    assertIssue37ChromeGeometry(resting, 'resting');
+
+    await page.hover('a.action-label[aria-label="Customize Layout..."]');
+    const titleHover = await collectIssue37ChromeGeometry(page);
+    assertIssue37ChromeGeometry(titleHover, 'title hover');
+
+    await page.hover('.monaco-list-row[aria-label=".vscode"]');
+    const treeHover = await collectIssue37ChromeGeometry(page);
+    assertIssue37ChromeGeometry(treeHover, 'tree hover');
+  }, { commander });
+});
 
 test('local e2e: workbench boots with COOP/COEP and CheerpX 1.3.3 runs `tree --version`', async (t) => {
   const commander = await tryLoadBrowserCommander();

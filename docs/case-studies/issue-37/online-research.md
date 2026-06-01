@@ -29,8 +29,8 @@ Related WebKit behaviour:
   Community; Medium / Susie Kim).
 
 **→** Our `html, body { width: 100vw; height: 100vh }` was the root cause
-of the clipped controls: `overflow: hidden` on the workbench then crops
-the few px of overflow exactly where the title-bar/panel actions sit. We
+of one clipping vector: `overflow: hidden` on the workbench then crops the
+few px of overflow exactly where the title-bar/panel actions sit. We
 replaced it with `position: fixed; inset: 0`, which always equals the
 *visible* viewport box and side-steps both the `100vw` scrollbar-gutter
 bug and the `100vh` toolbar bug. (Note: the scroll-lock community warns
@@ -44,7 +44,27 @@ Sources:
 - [Medium — Addressing the iOS Viewport Unit Bug](https://medium.com/@susiekim9/how-to-compensate-for-the-ios-viewport-unit-bug-46e78d54af0d)
 - [WebKit Bug 153852 — body overflow:hidden scrollable on iOS](https://bugs.webkit.org/show_bug.cgi?id=153852)
 
-## 2. VS Code theme selection / default
+## 2. Global `box-sizing` resets can change third-party control geometry
+
+MDN documents that `box-sizing` controls how an element's total width and
+height are calculated. With the default `content-box`, padding and border
+are added to the declared width; with `border-box`, padding and border are
+included inside the declared width and the content box shrinks.
+
+**→** Our `* { box-sizing: border-box }` reset changed VS Code Web's
+internal geometry. VS Code action labels and tree twisties use fixed
+content widths with padding for icon and hover hitbox spacing. Playwright
+DOM measurements showed title/panel action labels rendered as 16 px
+`border-box` boxes instead of 22 px `content-box` boxes, and Explorer
+twisties rendered as 16 px boxes with a 20 px label offset instead of
+30 px / 34 px. Removing the global reset and scoping `border-box` to the
+boot toast restored the expected VS Code geometry without changing our
+own shell UI.
+
+Sources:
+- [MDN — box-sizing CSS property](https://developer.mozilla.org/en-US/docs/Web/CSS/box-sizing)
+
+## 3. VS Code theme selection / default
 
 > "VS Code … preferred dark and light color themes … default to Dark
 > Modern and Light Modern respectively. The `workbench.colorTheme`
@@ -67,7 +87,7 @@ Sources:
 - [VS Code Docs — Themes](https://code.visualstudio.com/docs/configure/themes)
 - [microsoft/vscode#137635 — colorTheme restores to Default Dark+ automatically](https://github.com/microsoft/vscode/issues/137635)
 
-## 3. CheerpX / WebVM on Safari, iOS and iPadOS
+## 4. CheerpX / WebVM on Safari, iOS and iPadOS
 
 > "WebVM and CheerpX are compatible with any browser, both on Desktop
 > (Chrome/Chromium, Edge, Firefox, Safari) and Mobile (Chrome, Safari),
@@ -100,7 +120,7 @@ Sources:
 - [LambdaTest — WebAssembly browser support (Safari)](https://www.lambdatest.com/web-technologies/wasm-safari)
 - [Apple Developer Forums — Safari SharedArrayBuffer support](https://developer.apple.com/forums/thread/678808)
 
-## 4. Safe-area insets / `viewport-fit=cover`
+## 5. Safe-area insets / `viewport-fit=cover`
 
 The platform-standard way to paint edge-to-edge under the iPad/iPhone
 notch and home-indicator is `<meta name="viewport"

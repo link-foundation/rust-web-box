@@ -6,10 +6,11 @@
 //      `prefers-color-scheme`, rendering Light Modern). We now ship a
 //      `workbench.colorTheme: Default Dark Modern` default in every place
 //      the workbench configuration is produced.
-//   2. CSS clipping on iPad Safari: `width: 100vw; height: 100vh` resolves
-//      wider than the visible viewport, so `overflow: hidden` clipped the
-//      title-bar / panel controls. Fixed with `position: fixed; inset: 0`
-//      plus `viewport-fit=cover` + safe-area insets.
+//   2. CSS clipping on iPad Safari and VS Code chrome: `100vw/100vh`
+//      resolved wider/taller than the visible viewport, and a global
+//      `box-sizing: border-box` reset shrank fixed-width VS Code action
+//      buttons/tree expanders. Fixed with `position: fixed; inset: 0`,
+//      scoped box sizing, `viewport-fit=cover`, and safe-area insets.
 //   3. The interactive shell could hang silently on a device where bash
 //      spawns but never prints a prompt (the iPad-Safari terminal
 //      symptom). We added a first-output watchdog that, when no output
@@ -70,6 +71,16 @@ test('issue-37: boot.css offsets the boot toast by safe-area insets', async () =
   const css = await read('glue/boot.css');
   assert.match(css, /env\(safe-area-inset-right/);
   assert.match(css, /env\(safe-area-inset-bottom/);
+});
+
+test('issue-37: boot.css does not globally override VS Code box sizing', async () => {
+  const css = await read('glue/boot.css');
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(
+    code,
+    /(^|})\s*\*\s*\{[^}]*box-sizing\s*:\s*border-box/i,
+    'a global box-sizing reset clips VS Code action buttons and tree expanders',
+  );
 });
 
 test('issue-37: viewport meta opts into viewport-fit=cover (both source + rendered)', async () => {
