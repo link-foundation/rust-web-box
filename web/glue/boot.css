@@ -1,10 +1,9 @@
 /* Minimal styles for the static shell.
  *
- * The page intentionally has *no* boot-screen UI — the workbench fills
- * the viewport, exactly like vscode.dev. The only decoration we
- * contribute is a subtle bottom-right toast that appears when boot
- * actually fails, surfacing the error directly so the user can act on
- * it.
+ * The page intentionally has *no* boot-screen UI and *no* custom error
+ * widget — the workbench fills the viewport, exactly like vscode.dev.
+ * Errors and warnings surface through VS Code's native notification API
+ * (issue #39), so this file contributes only the viewport pin below.
  */
 
 html,
@@ -26,36 +25,4 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   overflow: hidden;
-}
-
-#boot-toast {
-  position: fixed;
-  /* Offset by the safe-area insets so the toast clears the iPad
-   * home-indicator / rounded corners under `viewport-fit=cover`. */
-  right: calc(1rem + env(safe-area-inset-right, 0px));
-  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-  z-index: 9999;
-  padding: 0.65rem 1rem;
-  border-radius: 6px;
-  background: rgba(248, 81, 73, 0.95);
-  color: #fff;
-  font-size: 0.85rem;
-  max-width: 360px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  line-height: 1.35;
-  /* Keep box sizing scoped to our toast. VS Code Web relies on its own
-   * content-box geometry for action buttons and tree expanders. */
-  box-sizing: border-box;
-}
-
-#boot-toast * {
-  box-sizing: border-box;
-}
-
-#boot-toast[hidden] {
-  display: none;
-}
-
-#boot-toast[data-kind="info"] {
-  background: rgba(56, 139, 253, 0.95);
 }

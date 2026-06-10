@@ -1,6 +1,6 @@
 // Boot diagnostics: categorise the error shapes we see when CheerpX
 // fails to bring up the Linux VM, and convert them into structured
-// toast content.
+// notification content.
 //
 // The categories model the three Brave-on-rust-web-box failure modes
 // captured in docs/case-studies/issue-35/README.md:
@@ -21,7 +21,7 @@
 //   * `unknown` — fallback.
 //
 // The renderer side returns plain strings; no DOM. The boot module
-// owns the toast DOM.
+// forwards them to the notification center (issue #39).
 
 const COMPILE_ERROR_NAMES = new Set(['CompileError', 'WebAssembly.CompileError']);
 const WASM_ERROR_MESSAGE_RE = /WebAssembly\.(Module|Instance|compile|instantiate)|\bwasm-function\b|elements on the stack for fallthru/i;
@@ -85,7 +85,7 @@ export function categorizeBootError(input) {
 }
 
 /**
- * Convert a categorised error + browser identity into the toast
+ * Convert a categorised error + browser identity into the notification
  * text the user sees. Returns `{ text, hint, kind }`.
  */
 export function renderBootError(category, browser = { id: 'unknown', isBrave: false }) {

@@ -59,10 +59,8 @@
 
   <body aria-label="rust-web-box workbench">
     <!-- The workbench mounts directly into <body>; we add no custom UI.
-         A bottom-right toast (hidden by default) surfaces boot errors. -->
-    <div id="boot-toast" hidden role="status" aria-live="polite">
-      <span data-toast-text></span>
-    </div>
+         Errors and warnings surface through VS Code's native notification
+         API (issue #39) — the page invents no error widget of its own. -->
 
     <!-- Page-level glue: network shim, CheerpX bridge, WebVM bus.
          Loaded as a module so the workbench's AMD loader (below)
