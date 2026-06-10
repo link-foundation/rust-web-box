@@ -252,7 +252,7 @@ async function bringUpVM({ workspace, channel, busServer }) {
   // heredocs. We expose this for e2e tests that need a deterministic boot
   // against the *currently published* disk image, before that image
   // republishes with the new pre-baked seed paths. See the comment above
-  // `skipPrime` in webvm-server.js for the underlying CheerpX 1.3.0 bug.
+  // `skipPrime` in webvm-server.js for the underlying CheerpX 1.3.x bug.
   const skipPrime = (() => {
     try {
       if (globalThis.__RUST_WEB_BOX_SKIP_PRIME === true) return true;
@@ -281,15 +281,34 @@ async function bringUpVM({ workspace, channel, busServer }) {
     dbgBoot('startWebVMServer skipped (bisect mode)');
     setPhase('ready');
   } else {
-    startWebVMServer({
+    const vmServer = startWebVMServer({
       cx: vm.cx,
       dataDevice: vm.dataDevice,
       busServer,
       workspace,
       status: { diskUrl: vm.diskUrl, persistKey: vm.persistKey },
       onPhase: setPhase,
-      opts: { debug: dbgGuest, skipPrime, skipShellLoop },
+      opts: {
+        debug: dbgGuest,
+        skipPrime,
+        skipShellLoop,
+        // If the interactive shell turns out to be unhealthy (keeps dying
+        // immediately — the iPad Safari signature from issue #37), tell
+        // the user instead of leaving an empty terminal with no
+        // explanation.
+        onShellUnhealthy: ({ kind, detail }) => {
+          dbgGuest('interactive shell unhealthy: %s %o', kind, detail);
+          setToast(
+            'The Linux shell could not start in this browser. ' +
+              'Terminal features are unavailable — see console for details.',
+            'error',
+          );
+        },
+      },
     });
+    // Surface live server runtime (interactive-shell health, prime
+    // errors) so dumpRuntime() can report it — issue #37 diagnostics.
+    globalThis.__rustWebBox.vmServer = vmServer;
   }
 
   globalThis.__rustWebBox.vm = vm;

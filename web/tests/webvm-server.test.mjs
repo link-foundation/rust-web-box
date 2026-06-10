@@ -561,7 +561,7 @@ test('webvm-server: workspace.prime bus method is a no-op when skipPrime is set'
   // Regression for issue #15: VS Code's webvm-host extension calls
   // `bus.request('workspace.prime')` whenever a terminal opens. Before
   // this guard, that bus call ran the prime regardless of opts.skipPrime,
-  // bypassing the bootTask check and tripping the CheerpX 1.3.0
+  // bypassing the bootTask check and tripping the CheerpX 1.3.x
   // OverlayDevice 'a1' wedge. The trace bisect (see
   // experiments/cx-130-bisect-trace-bus-skip.mjs) showed the runtime
   // wedge fired ~1s after the bus invocation, well before any user
@@ -635,7 +635,7 @@ test('webvm-server: workspace.prime bus method runs the prime when skipPrime is 
 });
 
 test('webvm-server: bootTask reaches "ready" even when workspace prime hangs', async () => {
-  // Regression for issue #15: CheerpX 1.3.0 has a flaky bug where
+  // Regression for issue #15: CheerpX 1.3.x has a flaky bug where
   // `cx.run` hangs forever after a runtime crash (the JS-level promise
   // never settles). Without a timeout in `primeGuestWorkspace`, the
   // entire boot stalls at `vmPhase: 'syncing-workspace'` and the e2e
@@ -668,8 +668,11 @@ test('webvm-server: bootTask reaches "ready" even when workspace prime hangs', a
 
   const server = startWebVMServer({
     cx, busServer, workspace, dataDevice, status: {},
-    // Tight timeout so the test finishes quickly.
-    opts: { primeTimeoutMs: 50, shellPrepareTimeoutMs: 50 },
+    // Tight timeout so the test finishes quickly. Disable the
+    // first-output watchdog (shellFirstOutputTimeoutMs: 0) — this test
+    // exercises the prime-hang path, not silent-spawn detection, and we
+    // don't want a stray 15s watchdog timer firing during the run.
+    opts: { primeTimeoutMs: 50, shellPrepareTimeoutMs: 50, shellFirstOutputTimeoutMs: 0 },
   });
   await server.bootTask;
 
@@ -680,6 +683,94 @@ test('webvm-server: bootTask reaches "ready" even when workspace prime hangs', a
     phases.includes('ready'),
     `bootTask must emit 'ready' even when prime hangs (got: ${JSON.stringify(phases)})`,
   );
+});
+
+test('webvm-server: silent shell spawn surfaces a visible terminal advisory (issue #37)', async () => {
+  // The iPad-Safari signature from issue #37: bash spawns and never
+  // dies, but also never prints a prompt — the terminal shows a lone
+  // cursor forever. The fast-cycle detector can't see this (no exit, no
+  // error), so the first-output watchdog must flag it AND write a visible
+  // advisory into the terminal so the user isn't staring at a blank pane.
+  const { cx } = makeFakeCx(); // bash run hangs forever, emits nothing
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+  const unhealthy = [];
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: {
+      skipPrime: true,
+      shellFirstOutputTimeoutMs: 30,
+      onShellUnhealthy: (info) => unhealthy.push(info),
+      logger: { warn() {}, error() {}, log() {} },
+    },
+  });
+  await server.bootTask;
+  // Wait past the first-output watchdog window.
+  await new Promise((r) => setTimeout(r, 90));
+
+  assert.ok(
+    unhealthy.some((u) => u.kind === 'no-output'),
+    `expected a 'no-output' notification (got ${JSON.stringify(unhealthy.map((u) => u.kind))})`,
+  );
+  assert.equal(server.runtime.shellLoop.silentSpawns, 1);
+  assert.equal(server.runtime.shellLoop.slowFirstOutput, true);
+
+  const advisory = busServer.events
+    .filter((e) => e.topic === 'proc.stdout')
+    .map((e) => e.payload.chunk)
+    .join('');
+  assert.match(advisory, /produced no prompt/);
+  assert.match(advisory, /__rustWebBox\.dump\(\)/);
+
+  const shellEvents = busServer.events.filter((e) => e.topic === 'vm.shell');
+  assert.ok(
+    shellEvents.some((e) => e.payload?.kind === 'no-output' && e.payload?.healthy === false),
+    'expected a vm.shell {healthy:false, kind:"no-output"} event',
+  );
+
+  server.stop();
+});
+
+test('webvm-server: a shell that prints a prompt is not flagged as silent (issue #37)', async () => {
+  // Guard against the watchdog crying wolf: a working shell that emits a
+  // prompt before the window must never produce the silent-spawn advisory.
+  const { cx, state } = makeFakeCx();
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+  const unhealthy = [];
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: {
+      skipPrime: true,
+      shellFirstOutputTimeoutMs: 60,
+      onShellUnhealthy: (info) => unhealthy.push(info),
+      logger: { warn() {}, error() {}, log() {} },
+    },
+  });
+  await server.bootTask;
+  // Shell prints its prompt almost immediately, before the watchdog window.
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(typeof state.writer, 'function');
+  state.writer(new TextEncoder().encode('root@rust-web-box:/root# '), 1);
+  // Wait past the watchdog window.
+  await new Promise((r) => setTimeout(r, 90));
+
+  assert.equal(unhealthy.length, 0, 'a healthy shell must not be flagged');
+  assert.equal(server.runtime.shellLoop.silentSpawns, 0);
+  assert.equal(server.runtime.shellLoop.slowFirstOutput, false);
+  assert.ok(server.runtime.shellLoop.outputBytes > 0, 'expected output bytes to be counted');
+
+  const advisory = busServer.events
+    .filter((e) => e.topic === 'proc.stdout')
+    .map((e) => e.payload.chunk)
+    .join('');
+  assert.doesNotMatch(advisory, /produced no prompt/);
+
+  server.stop();
 });
 
 // Make sure makeChannelPair stays referenced; it's exported in case

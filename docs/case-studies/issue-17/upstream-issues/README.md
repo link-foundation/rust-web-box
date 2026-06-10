@@ -9,7 +9,10 @@ which is dense in fresh inodes).
 
 The canonical home for the upstream filing is therefore
 [`docs/case-studies/issue-15/upstream-issues/`](../../issue-15/upstream-issues/).
-When that filing happens, the maintainer's reproducer should reference:
+**It has now been filed (during issue #37) as
+https://github.com/leaningtech/webvm/issues/222**, covering all three
+triggers (workspace prime #15, `cargo run` #17, interactive `bash` #37).
+The maintainer's reproducer references:
 
 - `experiments/cx-130-alpine-narrow5.mjs` (issue #15's minimal
   standalone reproducer of the OverlayDevice wedge)

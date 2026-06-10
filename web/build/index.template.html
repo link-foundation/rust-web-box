@@ -20,10 +20,12 @@
     <meta name="apple-mobile-web-app-title" content="rust-web-box" />
     <link rel="apple-touch-icon" href="./vscode-web/resources/server/code-192.png" />
 
-    <!-- Disable pinch zooming -->
+    <!-- Disable pinch zooming. `viewport-fit=cover` lets the workbench
+         paint edge-to-edge under the iPad notch/home-indicator; boot.css
+         then applies env(safe-area-inset-*) padding so no chrome is lost. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
 
     <title>rust-web-box</title>

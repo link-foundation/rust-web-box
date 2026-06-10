@@ -4,7 +4,7 @@ CheerpX runtime vendor directory. CI populates this with
 `cx.esm.js` (the CheerpX entry point) and any auxiliary assets pulled
 from `https://cxrtnc.leaningtech.com/<version>/`.
 
-Pinned version: `1.2.8` (see `web/build/build-workbench.mjs`).
+Pinned version: `1.3.3` (see `web/build/build-workbench.mjs`).
 
 The `.version` file in this directory is the build-step stamp; updating
 it triggers a re-vendor on the next CI run.

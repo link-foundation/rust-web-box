@@ -46,7 +46,13 @@ const VSCODE_WEB_VERSION = '1.91.1';
 // syncing-workspace…" and made `cargo run` / `tree` impossible. Issue #15
 // reproduces this on the deployed Pages site; the fix is verified end-to-end
 // in `web/tests/live-pages-e2e.test.mjs`.
-const CHEERPX_VERSION = '1.3.0';
+//
+// Bumped 1.3.0 → 1.3.3 for issue #37: always track the latest published
+// CheerpX (1.3.1 silences a non-fatal log, 1.3.2 fixes llseek arg
+// validation, 1.3.3 stops erroring on inet SO_RCVBUF). Note the
+// OverlayDevice fresh-inode 'a1' wedge is NOT fixed in any 1.3.x release,
+// so the warm-disk / skipPrime / timeout / HISTFILE mitigations stay.
+const CHEERPX_VERSION = '1.3.3';
 
 // ---------------------------------------------------------------------------
 
@@ -273,6 +279,12 @@ async function writeProductJson() {
     enableTelemetry: false,
     additionalBuiltinExtensions: buildExtensionPointers(),
     configurationDefaults: {
+      // Pin the default to VS Code's dark theme so a self-hosted
+      // deployment renders dark out of the box. Without this, VS Code
+      // Web falls back to the OS `prefers-color-scheme`, which on a
+      // light-mode device leaves the workbench in "Default Light Modern"
+      // — the exact "dark theme not applied" symptom from issue #37.
+      'workbench.colorTheme': 'Default Dark Modern',
       'workbench.startupEditor': 'none',
       'extensions.ignoreRecommendations': true,
     },
@@ -308,6 +320,12 @@ async function renderIndex() {
     },
     additionalBuiltinExtensions: ourExts,
     configurationDefaults: {
+      // Pin the default to VS Code's dark theme so a self-hosted
+      // deployment renders dark out of the box. Without this, VS Code
+      // Web falls back to the OS `prefers-color-scheme`, which on a
+      // light-mode device leaves the workbench in "Default Light Modern"
+      // — the exact "dark theme not applied" symptom from issue #37.
+      'workbench.colorTheme': 'Default Dark Modern',
       'workbench.startupEditor': 'none',
       'extensions.ignoreRecommendations': true,
     },

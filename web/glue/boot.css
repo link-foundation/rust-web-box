@@ -9,10 +9,18 @@
 
 html,
 body {
+  /* Pin the workbench to the *layout* viewport with `position: fixed;
+   * inset: 0` instead of `width: 100vw; height: 100vh`. On iPad Safari
+   * `100vw` resolves to the layout-viewport width *including* the
+   * scrollbar/visual-viewport gutter, so the body ends up a few pixels
+   * wider than the visible area — the workbench then lays its title-bar
+   * and panel controls out past the right edge, where `overflow: hidden`
+   * clips them (issue #37). `inset: 0` always matches the visible area
+   * exactly and also dodges the `100vh` dynamic-toolbar bug. */
+  position: fixed;
+  inset: 0;
   margin: 0;
   padding: 0;
-  height: 100vh;
-  width: 100vw;
   background: #1e1e1e;
   color: #cccccc;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
@@ -20,14 +28,12 @@ body {
   overflow: hidden;
 }
 
-* {
-  box-sizing: border-box;
-}
-
 #boot-toast {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
+  /* Offset by the safe-area insets so the toast clears the iPad
+   * home-indicator / rounded corners under `viewport-fit=cover`. */
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   z-index: 9999;
   padding: 0.65rem 1rem;
   border-radius: 6px;
@@ -37,6 +43,13 @@ body {
   max-width: 360px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   line-height: 1.35;
+  /* Keep box sizing scoped to our toast. VS Code Web relies on its own
+   * content-box geometry for action buttons and tree expanders. */
+  box-sizing: border-box;
+}
+
+#boot-toast * {
+  box-sizing: border-box;
 }
 
 #boot-toast[hidden] {

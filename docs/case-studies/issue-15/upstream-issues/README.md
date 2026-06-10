@@ -44,9 +44,11 @@ they don't get lost.
   honors the flag, bound `primeGuestWorkspace` with `Promise.race`, and
   set the skip flag in the e2e harness. Documented in
   `web/glue/webvm-server.js` and the parent case-study `README.md`.
-- **Action item:** open an upstream issue with
-  `experiments/cx-130-alpine-narrow5.mjs` as the minimal reproducer,
-  after #15's PR merges.
+- **Filed upstream (during issue #37):**
+  https://github.com/leaningtech/webvm/issues/222 — the single canonical
+  report for this bug, using `experiments/cx-130-alpine-narrow5.mjs` as
+  the minimal reproducer and covering all three observed triggers
+  (workspace prime #15, `cargo run` #17, interactive `bash` #37).
 
 ## browser-commander wrapper coverage
 
