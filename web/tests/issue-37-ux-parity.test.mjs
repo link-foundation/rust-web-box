@@ -67,10 +67,14 @@ test('issue-37: boot.css pins the workbench with position:fixed/inset:0, not 100
   assert.doesNotMatch(code, /100vh/);
 });
 
-test('issue-37: boot.css offsets the boot toast by safe-area insets', async () => {
+test('issue-39: boot.css no longer ships a custom boot toast widget', async () => {
+  // Issue #37 originally offset a bottom-right boot toast by the iPad
+  // safe-area insets. Issue #39 removed that invented UI element entirely
+  // — errors/warnings now surface through VS Code's native notification
+  // API — so the toast styles (and their safe-area offsets) are gone.
   const css = await read('glue/boot.css');
-  assert.match(css, /env\(safe-area-inset-right/);
-  assert.match(css, /env\(safe-area-inset-bottom/);
+  assert.doesNotMatch(css, /#boot-toast/);
+  assert.doesNotMatch(css, /env\(safe-area-inset/);
 });
 
 test('issue-37: boot.css does not globally override VS Code box sizing', async () => {
@@ -119,10 +123,12 @@ test('issue-37: webvm-server arms a first-output watchdog and writes a terminal 
   assert.match(srv, /__rustWebBox\.dump\(\)/);
 });
 
-test('issue-37: boot.js surfaces an unhealthy shell as a toast', async () => {
+test('issue-37: boot.js surfaces an unhealthy shell as a notification', async () => {
   const boot = await read('glue/boot.js');
   assert.match(boot, /onShellUnhealthy/);
   assert.match(boot, /vmServer/);
+  // Issue #39: it routes through the notification center, not a toast.
+  assert.match(boot, /notify\(\s*'warning'/);
 });
 
 test('issue-37: browser-info detects iOS / iPadOS / Safari', async () => {

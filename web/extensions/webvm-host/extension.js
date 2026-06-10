@@ -75,7 +75,14 @@ function createBusClient(channel, { timeoutMs = 30000 } = {}) {
     return () => ls.delete(fn);
   }
 
-  return { request, on };
+  // Fire-and-forget event to the page side. Used to ask the page to
+  // replay buffered notifications (`vm.notify.sync`) once this extension
+  // host has activated and subscribed (issue #39).
+  function emit(topic, payload) {
+    channel.postMessage({ kind: 'event', topic, payload });
+  }
+
+  return { request, on, emit };
 }
 
 const textEncoder = new TextEncoder();
@@ -195,6 +202,7 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
   let sub = null;
   let stdoutDispose = null;
   let exitDispose = null;
+  let shellDispose = null;
   let dimsPending = null;
   let opened = false;
   let inputTail = Promise.resolve();
@@ -210,8 +218,10 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
   function detachBusListeners() {
     try { stdoutDispose?.(); } catch {}
     try { exitDispose?.(); } catch {}
+    try { shellDispose?.(); } catch {}
     stdoutDispose = null;
     exitDispose = null;
+    shellDispose = null;
   }
 
   function ansi(s) { return `\x1b[${s}`; }
@@ -317,6 +327,25 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
       });
       exitDispose = bus.on('proc.exit', () => {
         writeEmitter.fire(`\r\n${DIM}[bash exited — respawning…]${RESET}\r\n`);
+      });
+
+      // Issue #39: when the page-side shell loop reports the interactive
+      // shell is unhealthy (the CheerpX/WebVM silent-hang on Safari/iPad),
+      // the terminal must GENUINELY fail rather than sit on a blank
+      // cursor. The server first streams a visible advisory on
+      // `proc.stdout`; we then close the pty with a non-zero exit code so
+      // VS Code marks the terminal as failed. A short defer lets the
+      // queued advisory render before the close.
+      shellDispose = bus.on('vm.shell', (payload) => {
+        if (!payload || payload.healthy !== false) return;
+        const reason =
+          payload.kind === 'no-output'
+            ? 'the shell started but produced no prompt'
+            : 'the shell kept exiting before it could start';
+        writeEmitter.fire(
+          `\r\n[rust-web-box] Terminal unavailable — ${reason}.\r\n`,
+        );
+        setTimeout(() => closeEmitter.fire(1), 50);
       });
 
       try {
@@ -488,6 +517,46 @@ function makeCargoTasks(vscode, bus, ctx) {
   };
 }
 
+// --- Native notifications (issue #39) ---------------------------------
+//
+// The page never renders its own error widget. Instead it broadcasts
+// every user-facing error / warning / info over the bus as a `vm.notify`
+// event, and we surface each one through VS Code's native notification
+// API — the exact surface vscode.dev uses. Records can be produced very
+// early in boot (a disk-chunk 503, a CheerpX load failure) *before* this
+// extension host has activated; the page buffers them and replays on
+// demand. We emit `vm.notify.sync` once subscribed to pull that buffer,
+// and dedupe by the monotonic `id` so a record delivered both live and
+// via replay is shown exactly once.
+
+function showNotification(vscode, record) {
+  const message = String(record?.message ?? '').trim() || 'Unknown error';
+  const detail = record?.detail ? String(record.detail).trim() : '';
+  const text = detail ? `${message} — ${detail}` : message;
+  if (record?.severity === 'warning') {
+    vscode.window.showWarningMessage(text);
+  } else if (record?.severity === 'info') {
+    vscode.window.showInformationMessage(text);
+  } else {
+    vscode.window.showErrorMessage(text);
+  }
+}
+
+function subscribeNotifications(vscode, bus) {
+  const seen = new Set();
+  const off = bus.on('vm.notify', (record) => {
+    const id = record?.id;
+    if (id != null) {
+      if (seen.has(id)) return;
+      seen.add(id);
+    }
+    showNotification(vscode, record);
+  });
+  // Ask the page to replay anything buffered before we subscribed.
+  bus.emit('vm.notify.sync', {});
+  return off;
+}
+
 // --- activate ----------------------------------------------------------
 
 function activate(context) {
@@ -503,6 +572,10 @@ function activate(context) {
     return;
   }
   const bus = createBusClient(channel);
+
+  // Issue #39: surface every page-side error / warning / info through VS
+  // Code's native notification API instead of any custom HTML widget.
+  context.subscriptions.push({ dispose: subscribeNotifications(vscode, bus) });
 
   // Track when the VM has reported itself ready so terminals (and tasks)
   // can reliably gate their work behind boot completion.

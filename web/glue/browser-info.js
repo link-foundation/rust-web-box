@@ -1,7 +1,7 @@
 // Lightweight browser identification.
 //
 // We treat browser identity as best-effort and observational only:
-// no code path depends on it; the boot-toast renderer uses it to
+// no code path depends on it; the notification renderer uses it to
 // surface Brave-specific hints when CheerpX errors look like the
 // upstream V8/Shields/farbling issues documented in
 // docs/case-studies/issue-35/online-research.md.

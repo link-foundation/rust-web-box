@@ -21,9 +21,10 @@ test('boot shell: index.html mounts directly into <body> with no custom UI overl
   // No 5-stage boot overlay — the workbench is the page now.
   assert.doesNotMatch(html, /id="boot-overlay"/);
   assert.doesNotMatch(html, /Static shell/);
-  // The toast element exists but is hidden by default.
-  assert.match(html, /id="boot-toast"/);
-  assert.match(html, /id="boot-toast"\s+hidden/);
+  // Issue #39: the page invents NO custom error UI. The old bottom-right
+  // toast is gone; errors surface through VS Code's native notifications.
+  assert.doesNotMatch(html, /id="boot-toast"/);
+  assert.doesNotMatch(html, /data-toast-text/);
 });
 
 test('boot shell: index.html references workbench config meta', async () => {

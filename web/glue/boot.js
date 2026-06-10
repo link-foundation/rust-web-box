@@ -4,7 +4,9 @@
 // fills the viewport, exactly like vscode.dev. CheerpX boots in the
 // background; loading status surfaces inside the VS Code terminal
 // pane (rendered by the webvm-host extension), not as a custom HTML
-// overlay. A tiny corner toast appears only if booting actually fails.
+// overlay. Errors and warnings surface through VS Code's native
+// notification API — the page never invents its own UI element
+// (issue #39).
 //
 // Boot order (each step decoupled from the next so VS Code can show a
 // populated workspace immediately, even while CheerpX is still
@@ -25,7 +27,12 @@ import { createNetworkShim, classifyHost } from './network-shim.js';
 import { loadCheerpX, bootLinux } from './cheerpx-bridge.js';
 import { startWebVMServer } from './webvm-server.js';
 import { workspaceOnlyMethods } from './workspace-server.js';
-import { createBusServer, openBroadcastChannel } from './webvm-bus.js';
+import {
+  createBusServer,
+  createBusClient,
+  openBroadcastChannel,
+} from './webvm-bus.js';
+import { createNotificationCenter } from './notifications.js';
 import { openWorkspaceFS } from './workspace-fs.js';
 import { applyWorkbenchPlaceholders } from './workbench-config.js';
 import { createDebug, dumpRuntime } from './debug.js';
@@ -51,20 +58,28 @@ globalThis.__rustWebBox.shim = shim;
 globalThis.__rustWebBox.classifyHost = classifyHost;
 globalThis.__rustWebBox.dump = () => dumpRuntime(globalThis);
 
-const toast = document.getElementById('boot-toast');
-const toastText = toast?.querySelector('[data-toast-text]');
+// Issue #39: the page renders NO custom UI element for errors/warnings.
+// Every user-facing notification is funnelled through this center, which
+// broadcasts `vm.notify` over the bus; the webvm-host extension renders
+// each one with VS Code's native notification API. The center buffers
+// records produced before the extension subscribes (early-boot disk /
+// CheerpX failures) and replays them on attach / on the extension's
+// `vm.notify.sync` request.
+const notifications = createNotificationCenter();
+globalThis.__rustWebBox.notifications = notifications;
 
-function setToast(text, kind = 'info', hint = '') {
-  if (!toast || !toastText) return;
-  const suffix = hint ? `\n${hint}` : '';
-  toastText.textContent = `${text}${suffix}`;
-  toast.dataset.kind = kind;
-  toast.hidden = false;
-}
-
-function hideToast() {
-  if (!toast) return;
-  toast.hidden = true;
+/**
+ * Single uniform entry point for surfacing an error/warning/info. Always
+ * also mirrored to the console so a failure is never truly silent even
+ * before VS Code's extension host is live (issue #39 — handle every error
+ * and warning uniformly, never fail silently).
+ */
+function notify(severity, message, detail = '') {
+  const line = detail ? `${message} — ${detail}` : message;
+  if (severity === 'warning') console.warn(`[rust-web-box] ${line}`);
+  else if (severity === 'info') console.info(`[rust-web-box] ${line}`);
+  else console.error(`[rust-web-box] ${line}`);
+  return notifications.notify({ severity, message, detail });
 }
 
 // Install the chunk-fetch retry wrapper on `globalThis.fetch` BEFORE
@@ -78,8 +93,8 @@ installDiskChunkFetch({
   onPersistentFailure(info) {
     // The chunk fetch ultimately failed after retries. CheerpX may
     // continue (and JIT garbage into invalid WASM), so surface the
-    // toast immediately so the user sees the root cause rather than
-    // the downstream CompileError.
+    // notification immediately so the user sees the root cause rather
+    // than the downstream CompileError.
     const browser = globalThis.__rustWebBox.browser ?? { id: 'unknown', isBrave: false };
     const category = info.status
       ? { kind: 'disk-503', title: 'Warm disk temporarily unavailable',
@@ -87,16 +102,16 @@ installDiskChunkFetch({
       : { kind: 'disk-503', title: 'Warm disk temporarily unavailable',
           body: `Could not fetch ${info.url} after ${info.attempts} attempts: ${info.error?.message ?? info.error ?? 'network error'}.` };
     const rendered = renderBootError(category, browser);
-    setToast(rendered.text, 'error', rendered.hint);
+    notify('error', rendered.text, rendered.hint);
   },
 });
 globalThis.__rustWebBox.diskDiag = diskFetchDiag;
 
 // Capture CheerpX-shaped boot errors into a structured diagnostics
-// log so the toast renderer and the e2e harness see the same data.
+// log so the notification center and the e2e harness see the same data.
 installBootDiagnostics({ target: globalThis });
 
-// Best-effort browser identity for Brave-aware toast hints.
+// Best-effort browser identity for Brave-aware notification hints.
 detectBrowser().then((browser) => {
   globalThis.__rustWebBox.browser = browser;
 }).catch(() => {
@@ -110,7 +125,7 @@ function showBootError(err, { fallbackTitle } = {}) {
   const text = category.kind === 'unknown' && fallbackTitle
     ? `${fallbackTitle}: ${rendered.text}`
     : rendered.text;
-  setToast(text, 'error', rendered.hint);
+  notify('error', text, rendered.hint);
 }
 
 // Substitute {ORIGIN_SCHEME}/{ORIGIN_HOST}/{BASE_PATH} placeholders in
@@ -184,6 +199,21 @@ async function bringUpWorkspace() {
   } catch (err) {
     showBootError(err, { fallbackTitle: 'Bus init failed' });
     throw err;
+  }
+
+  // Wire the notification center to the bus. We use a dedicated client on
+  // its own BroadcastChannel instance (same channel name) so it can both
+  // emit `vm.notify` and listen for the extension's `vm.notify.sync`
+  // replay request — `busServer` only emits and would not survive the
+  // stage-1 → stage-2 method-table hot-swap as a listener. Attaching here
+  // also flushes any notifications buffered during early boot.
+  try {
+    const notifyBus = createBusClient({ channel: openBroadcastChannel() });
+    notifications.attach(notifyBus);
+    globalThis.__rustWebBox.notifyBus = notifyBus;
+  } catch (err) {
+    // Notifications still buffer; only live delivery is unavailable.
+    console.warn('[rust-web-box] could not attach notification bus:', err);
   }
 
   // Stage 1 method table: serves fs.* immediately so the Explorer
@@ -298,10 +328,14 @@ async function bringUpVM({ workspace, channel, busServer }) {
         // explanation.
         onShellUnhealthy: ({ kind, detail }) => {
           dbgGuest('interactive shell unhealthy: %s %o', kind, detail);
-          setToast(
-            'The Linux shell could not start in this browser. ' +
-              'Terminal features are unavailable — see console for details.',
-            'error',
+          // Surface as a native VS Code warning (issue #39 — no invented
+          // UI). The terminal itself also shows the failure and exits
+          // non-zero via the `vm.shell` event handled in the extension.
+          notify(
+            'warning',
+            'The Linux shell did not start in this browser.',
+            'Terminal features may be unavailable — see the terminal for ' +
+              'details, then reload the tab or try a Chromium-based browser.',
           );
         },
       },
@@ -315,26 +349,22 @@ async function bringUpVM({ workspace, channel, busServer }) {
   return vm;
 }
 
-// Watch for the workbench mounting; when it does, hide the toast (which
-// was only visible on errors).
-function watchVSCode() {
+// If the VS Code Web bundle failed to load there is no workbench — and
+// therefore no extension host to render a native notification through.
+// This is a build/deploy fault (the deployed app always vendors the
+// bundle), so the only honest surface left is the console. We still
+// record it in the notification center so it replays if an extension
+// host somehow comes up later. We never inject a custom DOM element.
+function checkVSCode() {
   if (window.__vscodeMissing) {
-    setToast(
-      'VS Code Web bundle not vendored — run `node web/build/build-workbench.mjs`.',
+    notify(
       'error',
+      'VS Code Web bundle not vendored — run `node web/build/build-workbench.mjs`.',
     );
-    return;
   }
-  const obs = new MutationObserver(() => {
-    if (document.querySelector('.monaco-workbench')) {
-      hideToast();
-      obs.disconnect();
-    }
-  });
-  obs.observe(document.body, { childList: true, subtree: true });
 }
 
-watchVSCode();
+checkVSCode();
 
 (async () => {
   try {
@@ -344,7 +374,7 @@ watchVSCode();
     // schedule.
     bringUpVM(ws);
   } catch (err) {
-    // bringUpWorkspace already surfaces a toast; nothing more to do.
+    // bringUpWorkspace already surfaces a notification; nothing more to do.
     // eslint-disable-next-line no-console
     console.warn('[rust-web-box] boot failed:', err);
   }
