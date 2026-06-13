@@ -91,6 +91,13 @@ const SEED_FILES = {
       '      "command": "cargo run",',
       '      "problemMatcher": ["$rustc"],',
       '      "group": { "kind": "build", "isDefault": true }',
+      '    },',
+      '    {',
+      '      "label": "cargo check (fast)",',
+      '      "type": "shell",',
+      '      "command": "cargo check",',
+      '      "problemMatcher": ["$rustc"],',
+      '      "detail": "Fastest feedback under emulation (issue #41): checks for errors without codegen or linking."',
       '    }',
       '  ]',
       '}',
@@ -187,6 +194,26 @@ const PREVIOUS_SEED_FILES = {
       'fn main() {',
       '    println!("Hello from rust-web-box!");',
       '    println!("Compiled by Rust inside the browser via CheerpX.");',
+      '}',
+      '',
+    ].join('\n'),
+  // The tasks.json before issue #41 had only the single "cargo run" task.
+  // Pin its exact bytes so an untouched copy is migrated to the version
+  // that also offers the fast `cargo check` task; edited copies are left
+  // alone by replaceIfUnchanged().
+  '/workspace/.vscode/tasks.json':
+    [
+      '{',
+      '  "version": "2.0.0",',
+      '  "tasks": [',
+      '    {',
+      '      "label": "cargo run",',
+      '      "type": "shell",',
+      '      "command": "cargo run",',
+      '      "problemMatcher": ["$rustc"],',
+      '      "group": { "kind": "build", "isDefault": true }',
+      '    }',
+      '  ]',
       '}',
       '',
     ].join('\n'),
@@ -368,6 +395,14 @@ export async function openWorkspaceFS({ seed = SEED_FILES } = {}) {
         '/workspace/src/main.rs',
         PREVIOUS_SEED_FILES['/workspace/src/main.rs'],
         seed['/workspace/src/main.rs'],
+      );
+    }
+    // Add the fast `cargo check` task (issue #41) to untouched tasks.json.
+    if (seed['/workspace/.vscode/tasks.json']) {
+      await replaceIfUnchanged(
+        '/workspace/.vscode/tasks.json',
+        PREVIOUS_SEED_FILES['/workspace/.vscode/tasks.json'],
+        seed['/workspace/.vscode/tasks.json'],
       );
     }
   }

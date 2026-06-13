@@ -26,6 +26,17 @@ FROM i386/alpine:3.20
 
 # busybox `ash` ships by default; the issue asks for bash explicitly,
 # and rustup-style tooling is happier with bash, so install it first.
+#
+# NOTE (issue #41): we deliberately do NOT install `lld` here. On native
+# i386 strace, linking with lld cuts the rebuild's filesystem syscalls by
+# ~85% (14,736 → 2,157), which looked like the headline fix. But the
+# in-browser e2e (Stage G of web/tests/e2e/local-pages-e2e.test.mjs, the
+# real CheerpX `cargo run` after an edit) REGRESSED from ~58s to a >180s
+# timeout once lld was added: CheerpX must x86→WASM-JIT the much larger
+# LLVM linker on first use, and that cold-JIT cost dwarfs the syscall
+# saving. Native syscall count was the wrong proxy for in-VM wall-clock.
+# The real, verified speedup is the lean dev profile + pre-bakes below
+# (issues #17/#31) and `cargo check`. See docs/case-studies/issue-41.
 RUN apk add --no-cache \
       bash \
       ca-certificates \
@@ -125,9 +136,18 @@ RUN printf '%s\n' \
 # the config and environment aligned is important because Cargo includes
 # profile settings in freshness/fingerprint decisions; the browser must
 # not invalidate the pre-baked target on the first command.
+#
+# NOTE (issue #41): a `[target.<host>] rustflags = -fuse-ld=lld` entry was
+# tried here and reverted — it regressed the in-browser rebuild (see the
+# apk comment above and docs/case-studies/issue-41). The lean `[profile.dev]`
+# (debug = 0, codegen-units = 1, incremental = false) is the change that
+# actually makes the in-VM rebuild fast, and it must be written before the
+# pre-bake `cargo build` below so cargo's fingerprint matches the first
+# in-browser build.
 RUN mkdir -p /root/.cargo && \
     printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n\n[build]\nincremental = false\n\n[profile.dev]\nincremental = false\ndebug = 0\ncodegen-units = 1\n' \
-      > /root/.cargo/config.toml
+      > /root/.cargo/config.toml && \
+    cat /root/.cargo/config.toml
 
 # Pre-bake a hello-world cargo project at /workspace so users can edit
 # `src/main.rs` and run plain `cargo run` from the opened terminal.
@@ -144,6 +164,14 @@ RUN mkdir -p /root/.cargo && \
 # both pre-bakes, every common invocation of cargo from the user's
 # terminal hits a "Finished … 0.00s" path and avoids the bug entirely.
 #
+# We also pre-bake `cargo check` (issue #41): it skips codegen and
+# linking, so it is the fastest edit→feedback loop under x86→WASM
+# emulation (a one-line rebuild costs minutes, a `cargo check` costs
+# seconds). Pre-baking warms its `.fingerprint`/metadata so the first
+# in-browser `cargo check` reuses inodes too — and because it writes
+# strictly fewer fresh inodes than a full build, it never increases
+# wedge pressure.
+#
 # The build is intentionally fatal: a broken disk image must fail CI
 # instead of shipping a no-cargo box.
 RUN mkdir -p /workspace/src && \
@@ -153,7 +181,8 @@ RUN mkdir -p /workspace/src && \
       > /workspace/src/main.rs && \
     cd /workspace && \
     cargo build --release && \
-    cargo build
+    cargo build && \
+    cargo check
 
 # Pre-create the workspace seed paths that boot-time priming overwrites.
 # CheerpX 1.3.x has a flaky bug allocating new inodes on the OverlayDevice
@@ -196,6 +225,13 @@ RUN mkdir -p /workspace/.vscode && \
       '      "command": "cargo run",' \
       '      "problemMatcher": ["$rustc"],' \
       '      "detail": "Plain debug build. Slower first run; prefer the release task until CheerpX 1.3.x lands the OverlayDevice fix."' \
+      '    },' \
+      '    {' \
+      '      "label": "cargo check (fast)",' \
+      '      "type": "shell",' \
+      '      "command": "cargo check",' \
+      '      "problemMatcher": ["$rustc"],' \
+      '      "detail": "Fastest feedback under emulation (issue #41): checks for errors without codegen or linking, so it finishes in seconds where a full rebuild takes minutes."' \
       '    }' \
       '  ]' \
       '}' \
