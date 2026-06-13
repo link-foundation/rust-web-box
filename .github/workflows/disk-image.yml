@@ -81,6 +81,12 @@ jobs:
             || (echo "missing /workspace/target/release/hello in image (cargo build --release pre-bake failed)" && exit 1)
           test -x "$MNT/workspace/target/debug/hello" \
             || (echo "missing /workspace/target/debug/hello in image (cargo build pre-bake failed — this is the issue #17 mitigation; do not remove)" && exit 1)
+          # Issue #41: the `cargo check` pre-bake warms the check
+          # fingerprint so the first in-browser `cargo check` reuses
+          # inodes. Verify it ran (it writes a .fingerprint but no
+          # binary, so check for the metadata dir).
+          test -d "$MNT/workspace/target/debug/.fingerprint" \
+            || (echo "missing /workspace/target/debug/.fingerprint in image (cargo check pre-bake failed — issue #41)" && exit 1)
           sudo chroot "$MNT" /bin/bash -lc '
             set -euo pipefail
             tree --version
@@ -119,6 +125,15 @@ jobs:
             printf "%s\n" "$edited_output"
             [[ "$edited_output" == *"edited smoke output from disk image"* ]] \
               || (echo "edited cargo run did not use updated src/main.rs" && exit 1)
+            # Issue #41: the fast edit→feedback lever. `cargo check` must
+            # succeed on the edited source without emitting a binary.
+            check_output=$(cargo check 2>&1) || {
+              status=$?
+              printf "%s\n" "$check_output"
+              echo "cargo check failed inside disk smoke test (issue #41)"
+              exit "$status"
+            }
+            printf "%s\n" "$check_output"
           '
 
       - name: Build workbench and stage fresh disk chunks

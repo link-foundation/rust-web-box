@@ -295,6 +295,12 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
           status(`Shell preparation failed: ${result.shellPrepareError}`);
         } else {
           status('Workspace mirrored to /workspace — try `cargo run`.');
+          // Compiling under x86→WASM emulation is slow (issue #41): a
+          // one-line rebuild can take minutes. `cargo check` skips codegen
+          // and linking, so it surfaces compile errors in seconds — the
+          // fastest edit→feedback loop in the VM. It is also pre-baked in
+          // the disk image, so the first run reuses warm artifacts.
+          status('Tip: `cargo check` is the fastest way to catch errors (no codegen/link).');
         }
         writeEmitter.fire('\r\n');
       } catch (err) {
