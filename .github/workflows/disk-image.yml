@@ -39,13 +39,8 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Install e2fsprogs + binutils
-        # binutils provides the host runner's native `readelf`, used by the
-        # issue #41 lld regression guard to inspect the i386 binaries on the
-        # mounted image (see the smoke-test step). The runner image already
-        # ships binutils, but install it explicitly so the guard never
-        # depends on an undocumented pre-install.
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq e2fsprogs binutils
+      - name: Install e2fsprogs
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq e2fsprogs
 
       - name: Build rust-alpine.ext2
         run: |
@@ -95,10 +90,11 @@ jobs:
           sudo chroot "$MNT" /bin/bash -lc '
             set -euo pipefail
             # Replicate the in-browser CheerpX VM environment: it runs as
-            # root with HOME=/root, so cargo reads the lld config at
-            # /root/.cargo/config.toml and the recompile below links with
-            # lld. sudo chroot does not guarantee HOME=/root (GitHub Actions
-            # sudo can leak HOME=/home/runner), so set it explicitly.
+            # root with HOME=/root, so cargo reads the dev-profile config at
+            # /root/.cargo/config.toml (lean debug profile, issues #17/#31)
+            # and the recompile below uses it. sudo chroot does not
+            # guarantee HOME=/root (GitHub Actions sudo can leak
+            # HOME=/home/runner), so set it explicitly.
             export HOME=/root
             tree --version
             cargo --version
@@ -146,30 +142,6 @@ jobs:
             }
             printf "%s\n" "$check_output"
           '
-          # Issue #41 regression guard (host-side, native readelf).
-          # The shipped fix links with lld instead of GNU ld — the
-          # measured −85% link-time syscall win that makes the in-VM
-          # rebuild fast. Assert the binaries on the image carry lld's
-          # signature: lld stamps "Linker: LLD <ver>" into .comment,
-          # GNU ld does not. A future revert of the lld config then
-          # fails CI loudly instead of silently shipping the slow linker.
-          #
-          # Run this on the HOST, not in the chroot: the in-image readelf
-          # is an i386 binary that would execute under the runner's QEMU
-          # emulation, and inspecting an ELF needs no emulation at all.
-          # The host's native readelf (binutils, installed above) reads
-          # i386 ELF files directly. Check the pristine release pre-bake
-          # (proves the lld config produces lld binaries) AND the debug
-          # binary the chroot just recompiled from the edited source
-          # (proves an in-VM edit→rebuild also links with lld).
-          for bin in \
-            "$MNT/workspace/target/release/hello" \
-            "$MNT/workspace/target/debug/hello"; do
-            comment=$(readelf -p .comment "$bin" 2>/dev/null || true)
-            printf '%s .comment:\n%s\n' "$bin" "$comment"
-            printf '%s' "$comment" | grep -qi 'LLD' \
-              || { echo "$bin not linked with lld — issue #41 fix regressed"; exit 1; }
-          done
 
       - name: Build workbench and stage fresh disk chunks
         run: |
