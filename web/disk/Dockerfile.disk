@@ -26,12 +26,21 @@ FROM i386/alpine:3.20
 
 # busybox `ash` ships by default; the issue asks for bash explicitly,
 # and rustup-style tooling is happier with bash, so install it first.
+#
+# lld (issue #41): the LLVM linker. The shipped GNU `ld` walks the libc
+# archive with thousands of seek/readv syscalls at link time; lld mmaps
+# instead. Measured on this exact i386 toolchain, a one-line-edit rebuild
+# drops from ~14,700 to ~2,150 filesystem syscalls when linking with lld.
+# Under CheerpX every filesystem syscall crosses the WASM/JS boundary into
+# the IndexedDB OverlayDevice, so this is the single largest real speedup
+# of the actual `cargo run` build. See docs/case-studies/issue-41.
 RUN apk add --no-cache \
       bash \
       ca-certificates \
       curl \
       git \
       gcc \
+      lld \
       musl-dev \
       pkgconfig \
       openssl-dev \
@@ -125,9 +134,25 @@ RUN printf '%s\n' \
 # the config and environment aligned is important because Cargo includes
 # profile settings in freshness/fingerprint decisions; the browser must
 # not invalidate the pre-baked target on the first command.
+#
+# `[target.<host>] rustflags = -C link-arg=-fuse-ld=lld` (issue #41):
+# link with lld instead of GNU ld. We compute the host triple with
+# `rustc -vV` so the setting tracks whatever target the Alpine `rust`
+# package actually builds for (currently i586-alpine-linux-musl) and
+# cannot silently drift. This MUST be written before the pre-bake
+# `cargo build` below: cargo records rustflags in the fingerprint, so
+# the baked artifacts and the first in-browser build have to share the
+# exact same linker config or the workspace would rebuild from scratch
+# on first use. lld is verified to link AND run cleanly on this musl
+# toolchain. The measured payoff (~85% fewer link-time filesystem
+# syscalls) is documented in docs/case-studies/issue-41.
 RUN mkdir -p /root/.cargo && \
     printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n\n[build]\nincremental = false\n\n[profile.dev]\nincremental = false\ndebug = 0\ncodegen-units = 1\n' \
-      > /root/.cargo/config.toml
+      > /root/.cargo/config.toml && \
+    HOST="$(rustc -vV | sed -n 's/^host: //p')" && \
+    printf '\n[target.%s]\nrustflags = ["-C", "link-arg=-fuse-ld=lld"]\n' "$HOST" \
+      >> /root/.cargo/config.toml && \
+    cat /root/.cargo/config.toml
 
 # Pre-bake a hello-world cargo project at /workspace so users can edit
 # `src/main.rs` and run plain `cargo run` from the opened terminal.
