@@ -1,0 +1,24 @@
+
+=== 1. bash -n syntax check ===
+PASS  run block parses cleanly
+
+=== 2. chroot body apostrophe check ===
+PASS  chroot body is apostrophe-free (52 lines)
+
+=== 3. sandboxed execution of the real run block ===
+PASS  lld-linked image: run block exits 0
+PASS  chroot received the complete body (HOME + cargo run + edit + cargo check)
+PASS  host-side guard inspected both the release pre-bake and the recompiled debug binary
+PASS  non-lld rebuild: guard fails the step with the regression message
+
+=== 4. real readelf classifies real GNU-ld vs lld output ===
+PASS  GNU-ld fixture: .comment has NO 'LLD' (guard would flag a revert)
+PASS  lld fixture: .comment has 'LLD' (guard passes a real lld link)
+
+=== 4b. real i386 image binaries (from measure harness) ===
+PASS  i386 release-prebake: lld-linked (guard passes)
+PASS  i386 debug-prebake: lld-linked (guard passes)
+PASS  i386 debug-recompiled: lld-linked (guard passes)
+PASS  i386 debug-noconfig (lld config reverted): NOT lld-linked (guard catches it)
+
+=== ALL CHECKS PASSED ===
