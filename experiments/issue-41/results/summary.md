@@ -57,7 +57,14 @@ time:   0.084; rss:   48MB ->  119MB (  +72MB)	total
 The link step is `0.049s` of `0.072s` total (**68%**), so the linker is the
 single largest compile phase — and it is dominated by filesystem I/O, not CPU.
 
-## Linker: the one native knob that changes the syscall count (the real lever)
+## Linker: the native knob that changes the syscall count (looked like the lever — but see the caveat)
+
+> **⚠️ This section's conclusion was overturned in the real VM.** The
+> native −85 % syscall win below is real, but `lld` *regressed* the
+> in-browser rebuild (~58 s → >180 s timeout) and was **reverted**. The
+> native syscall count omits CheerpX's cost to JIT-compile the larger
+> linker binary. See [`in-vm-ab.md`](./in-vm-ab.md). The text below is
+> kept verbatim as the (refuted) native hypothesis.
 
 Wall-clock above is emulation-invariant noise (everything is <0.3s natively).
 What is NOT invariant is the *number of filesystem syscalls* the link step
@@ -80,5 +87,7 @@ output binary's `.comment` reads `Linker: LLD 17.0.6`.
 Caveat: the `direct-lld` config (`-C linker=ld.lld`, bypassing the gcc driver)
 fails to link on musl — it cannot find `Scrt1.o`/`crti.o`. The practical config
 is `-C link-arg=-fuse-ld=lld`: keep the gcc driver, just swap the linker. This
-is what the disk now ships.
+was tried on the disk and **reverted** after the in-VM A/B
+([`in-vm-ab.md`](./in-vm-ab.md)) showed it regressed the real rebuild; the disk
+ships GNU `ld`.
 

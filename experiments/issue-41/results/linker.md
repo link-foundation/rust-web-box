@@ -1,9 +1,18 @@
 # Issue #41 — linker comparison (i386, native, emulation-invariant)
 
+> **⚠️ Caveat (read first): this native syscall win did NOT hold in the
+> real VM.** The −85 % filesystem-syscall result below is real and
+> reproducible, but it was the **wrong proxy**: in the actual CheerpX VM,
+> `lld` *regressed* the edited `cargo run` from ~58 s to a >180 s timeout,
+> because CheerpX must x86→WASM-JIT the much larger LLVM linker. `lld` was
+> therefore **reverted**. See [`in-vm-ab.md`](./in-vm-ab.md) for the
+> decisive in-VM A/B.
+
 Process-spawn and syscall counts for a one-line-edit `cargo build`
-rebuild under three linker configurations. Lower execve/file-syscall
-counts mean less CheerpX cold-start and less IndexedDB traffic in the
-browser — the two things that actually make the in-VM build slow.
+rebuild under two linker configurations. Lower file-syscall counts mean
+less IndexedDB traffic in the browser — but, per the caveat above, that is
+only *part* of the in-VM cost: it omits the cost of JIT-compiling the
+linker binary itself, which is what sank `lld`.
 
 lld version: LLD 17.0.6 (compatible with GNU linkers)
 
