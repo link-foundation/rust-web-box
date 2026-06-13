@@ -90,6 +90,156 @@ trims) is real but either blocked on our toolchain or orthogonal to the
 6-minute rebuild — catalogued honestly in
 [Solution catalogue](#solution-catalogue).
 
+## Follow-up review responses (PR #42)
+
+[konard's PR #42 review comment](https://github.com/link-foundation/rust-web-box/pull/42)
+raised four follow-ups. Each is answered below to the same
+measure-don't-assume standard as the rest of this study: two are questions
+(IO, multithreading) answered from the architecture + code + the on-demand
+probe, two are deliverables shipped in this PR (on-demand benchmarks, full
+UI e2e).
+
+### F1 — "Are we using the most efficient IO? Can we use RAM as a temporary cache for files, with a queue that flushes to local storage?"
+
+**How IO actually works today (cited):**
+
+- The root filesystem is `OverlayDevice(CloudDevice, IDBDevice)` — a
+  read-only base disk unioned with a writable **IndexedDB** overlay
+  (`web/glue/cheerpx-bridge.js:316-317`). `/web` is a `WebDevice`, `/data`
+  a `DataDevice` for staging sync scripts (`:320-321`).
+- **There is no RAM-backed mount anywhere.** No `tmpfs`/`ramfs`/`/dev/shm`
+  is mounted in boot or in the disk image — a grep of `web/glue/boot.js`,
+  `web/glue/webvm-server.js`, and `web/disk/Dockerfile.disk` finds none. So
+  both `/tmp` *and* `/workspace/target` live on the same IndexedDB overlay
+  (`web/glue/webvm-server.js:638-640`). Every `target/` write is therefore
+  an IndexedDB write across the WASM/JS boundary — exactly the
+  ~14,700-syscall cost [Measurement 2](#measurement-2--the-cost-is-filesystem-syscalls-over-the-overlay)
+  isolates.
+- A **write queue already exists**, but for *ordering*, not *buffering*:
+  `runGuestScript` chains each guest write on a `tail` promise so saves
+  serialize against the VM (`web/glue/webvm-server.js:413`, `:471`), and
+  `fs.writeFile` writes the guest mirror **then** the JS store, both
+  straight to IndexedDB (`:575`). CheerpX 1.3.3 exposes no `flush`/`sync`
+  hook to splice a block-layer write-back cache underneath.
+
+**Verdict — the instinct is right, applied where it pays.** A *generic*
+RAM-cache-with-write-back in front of the **whole** overlay would trade
+away durability (a reload or tab crash silently drops unflushed **source**
+edits) for a saving that is dominated by **build artifacts**, not source.
+The targeted, no-durability-risk form of exactly this idea is already
+catalogued as [**S2 — move `target/` onto a RAM/tmpfs device**](#s2--move-target-off-the-indexeddb-overlay-in-memory-build-dir--the-big-architectural-win):
+the build dir is ephemeral (safe to drop on reload), it is where ~all the
+syscall churn happens, and keeping *source* on the persistent overlay
+preserves "your edits survive reload". That is the honest version of "use
+RAM as a temporary cache with a flush queue" — **RAM for the throwaway
+artifacts, durable IndexedDB for the code** — and it needs no hack, only a
+CheerpX device that 1.3.3 does not yet expose (tracked under S2/S4). This
+PR adds the in-VM **storage probe** (`STORAGE_CPU_PROBE` in
+`web/tests/bench/run-in-vm-bench.mjs`) that confirms the live mount table /
+tmpfs availability on the real VM when the bench workflow (F3) is
+dispatched, so the "no RAM mount" finding is verifiable, not asserted.
+
+### F2 — "Can we use js + rust + wasm + web workers? Can we do it maximum multithreaded?"
+
+**What is already multi-context (cited):** the app is *already*
+js + wasm + web-workers + `SharedArrayBuffer`:
+
+- **CheerpX (wasm)** runs on the page/main thread and owns the
+  `SharedArrayBuffer` (`web/glue/webvm-server.js:3-7`).
+- The **VS Code extension host** runs in a dedicated **Web Worker** — no
+  DOM, no SAB — talking to the page over a same-origin BroadcastChannel
+  (`web/glue/webvm-bus.js:1-12`, `web/extensions/webvm-host/extension.js:1-20`).
+- **Cross-origin isolation** (the prerequisite for SAB) is synthesized by a
+  service worker: `Cross-Origin-Opener-Policy: same-origin` +
+  `Cross-Origin-Embedder-Policy: require-corp` (`web/sw.js:63`, `:69`;
+  rationale in `web/glue/coi-bootstrap.js`). So the UI is *already* off the
+  VM thread — typing and scrolling stay responsive while a build runs.
+
+**The honest limit — the guest VM is single-core.** `CheerpX.Linux.create`
+is given mount config only; there is **no SMP / `nproc` option**
+(`web/glue/cheerpx-bridge.js:324`), and CheerpX 1.3.x JITs x86→WASM in a
+**single execution context**. `nproc` inside the guest returns `1` (the
+bench captures it: `web/glue/cargo-bench.js:105`). Therefore:
+
+- `cargo -j4` / parallel codegen / `-Zthreads=N` **cannot fan out** —
+  there is one core. The disk deliberately ships `codegen-units = 1` and
+  `incremental = false` (`web/disk/Dockerfile.disk:148`); raising the job
+  count buys nothing and only risks the fresh-inode wedge (#17).
+- More Web Workers **cannot** speed the compile either: the bottleneck
+  [Measurement 2](#measurement-2--the-cost-is-filesystem-syscalls-over-the-overlay)
+  isolates is **serial filesystem-syscall IO over IndexedDB**, not
+  parallelizable CPU. You can move *other* work off the VM thread (already
+  done), but you cannot split one `rustc` invocation across cores that do
+  not exist.
+
+**Verdict:** "maximum multithreaded" is the right instinct for a native
+multi-core box and the wrong lever here. The win is not *more threads* but
+**less per-syscall IO** ([S2](#s2--move-target-off-the-indexeddb-overlay-in-memory-build-dir--the-big-architectural-win),
+RAM-backed `target/`) and **a faster engine**
+([S4](#s4--track-cheerpxs-own-performance-levers--upstream), tracking
+CheerpX's JIT/threading upstream). The A/B knobs that *prove* extra jobs
+don't help on a single core are wired into the bench as the `jobs1` vs
+`jobs4` configs, runnable on demand (F3).
+
+### F3 — "Keep all benchmarks runnable on demand (CI manual dispatch), usable via the gh tool, to reduce load on your machine."
+
+Shipped: **`.github/workflows/perf-bench.yml`** — `workflow_dispatch`
+**only** (no push / PR / schedule trigger). Two independent jobs:
+
+- **native** — the i386 Alpine measurement rig (`experiments/issue-41/`),
+  same compile work without CheerpX, per profile knob;
+- **in-vm** — the user's *real* `cargo run` / `build` / `check` timed
+  inside the live CheerpX VM (`web/tests/bench/run-in-vm-bench.mjs` driving
+  the `vm.benchCargo` bus method), plus the F1/F2 storage + CPU probe.
+  Configs: `shipped`, `incremental`, `jobs1`, `jobs4`.
+
+Both publish a Markdown job-summary and upload artifacts; nothing runs on a
+local machine. Dispatch (post-merge — see the availability note under F4):
+
+```sh
+gh workflow run perf-bench.yml --ref main \
+  -f configs=shipped,jobs1,jobs4 -f run_native=true -f run_in_vm=true
+```
+
+### F4 — "Full e2e tests, also manual-dispatch, that verify exactly all steps: cargo run + output, file change (VS Code editor), cargo run + verify output (VS Code terminal)."
+
+Shipped: **`web/tests/e2e/ui-driven-e2e.test.mjs`** +
+**`.github/workflows/ui-e2e.yml`** (`workflow_dispatch` only). The test
+drives the *real* UI a user touches — not the `cx.run`/bus shortcut the
+other suites use — in exactly this order:
+
+1. type `cargo run` in the **integrated terminal** (xterm) → assert the
+   seed greeting (read off the guest, so it is version-skew safe);
+2. edit `/workspace/src/main.rs` in the **Monaco editor** (select-all +
+   `insertText` + Ctrl+S — the genuine `FileSystemProvider` save path) with
+   a **unique per-run marker**;
+3. type `cargo run` again → assert the **new marker** *and* `Compiling`.
+
+Step 3 is the anti-fake gate the issue demands: a cached or pre-baked
+binary cannot print a marker that did not exist until this run, and
+`Compiling` proves CheerpX re-invoked `rustc` in the VM rather than
+replaying a stale artifact. It uses the **real interactive bash + workspace
+prime** (`skipBash:false`, `skipPrime:false`), so the workflow builds
+`rust-alpine.ext2` **fresh by default** — only a disk whose seed inodes all
+already exist is safe from the OverlayDevice 'a1' wedge. The terminal
+readiness handshake echoes an arithmetic expansion (`$((21 * 2))`) so it
+proves bash *executes*, not merely that the tty echoes keystrokes.
+Dispatch:
+
+```sh
+gh workflow run ui-e2e.yml --ref main
+```
+
+> **Dispatch availability (verified, not assumed).** GitHub only lists and
+> dispatches a `workflow_dispatch` workflow once its file is on the
+> repository's **default branch**. While these two workflows live only on
+> the PR branch, both `gh workflow run perf-bench.yml --ref issue-41-…` and
+> the raw `POST …/actions/workflows/perf-bench.yml/dispatches` return
+> `HTTP 404: … not found on the default branch` (confirmed during this
+> work). They become dispatchable the moment PR #42 merges to `main`; the
+> `--ref main` commands above are then exact. **No auto-trigger was added**,
+> per the explicit on-demand-only request.
+
 ## Evidence collected
 
 | File | Purpose |
