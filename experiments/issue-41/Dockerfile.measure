@@ -1,0 +1,50 @@
+# Measurement image for issue #41.
+#
+# Mirrors web/disk/Dockerfile.disk exactly (same i386 Alpine base + the
+# same toolchain packages) so the compile work we time here is the SAME
+# compile work the in-browser disk performs — minus the CheerpX x86->WASM
+# emulation layer and minus the IndexedDB OverlayDevice. That isolation is
+# the whole point: it tells us how much of the 6-minute rebuild is the
+# compile itself vs. how much is the browser execution environment.
+#
+# Built and driven by experiments/issue-41/measure.sh.
+FROM i386/alpine:3.20
+
+RUN apk add --no-cache \
+      bash \
+      ca-certificates \
+      curl \
+      git \
+      gcc \
+      musl-dev \
+      pkgconfig \
+      openssl-dev \
+      rust \
+      cargo \
+      tree \
+      vim \
+      nano \
+      lld \
+      coreutils \
+      strace
+
+# The hello-world crate exactly as web/disk/Dockerfile.disk pre-bakes it.
+RUN mkdir -p /workspace/src && \
+    printf '[package]\nname = "hello"\nversion = "0.1.0"\nedition = "2021"\n\n[[bin]]\nname = "hello"\npath = "src/main.rs"\n\n[dependencies]\n' \
+      > /workspace/Cargo.toml && \
+    printf 'fn main() {\n    println!("Hello, world!");\n}\n' \
+      > /workspace/src/main.rs
+
+# A clean cargo config: only the registry/network bits from the disk, with
+# NO profile overrides, so every profile knob is controlled per-scenario by
+# the measurement script via CARGO_* environment variables. This keeps each
+# scenario fully reproducible and independent.
+RUN mkdir -p /root/.cargo && \
+    printf '[net]\ngit-fetch-with-cli = false\n\n[registries.crates-io]\nprotocol = "sparse"\n' \
+      > /root/.cargo/config.toml
+
+COPY measure.sh /usr/local/bin/measure.sh
+RUN chmod +x /usr/local/bin/measure.sh
+
+WORKDIR /workspace
+CMD ["/usr/local/bin/measure.sh"]
