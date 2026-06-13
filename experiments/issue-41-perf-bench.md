@@ -8,6 +8,14 @@ Run every command **inside the app's integrated terminal** at
 <https://link-foundation.github.io/rust-web-box/> (the real CheerpX VM).
 Copy the output back into this folder when you measure.
 
+> This is the **manual, in-browser** recipe. Two automated counterparts
+> exist: the native i386 docker rig in
+> [`experiments/issue-41/`](./issue-41/) (emulation-invariant syscall and
+> linker measurements — the basis for the shipped `lld` fix), and the
+> in-VM `vm.benchCargo` bus method / `__RWB_DEBUG_VM_TIMING` flag, which
+> run the same real `cargo run` and emit structured per-phase timing. Use
+> this manual recipe for a quick eyeball; use those for repeatable numbers.
+
 ## 0. Confirm the environment (proves it's a real VM)
 
 ```sh
@@ -42,25 +50,33 @@ Read `/tmp/build-v.log`: the wall-clock gap between the `Running 'rustc …'`
 line and the linker (`cc … -o … hello`) line attributes time to
 front-end+codegen vs link.
 
-## 3. Measure the `cargo check` win (this PR's shipped lever, S1)
+## 3. Verify the shipped `lld` linker fix (S1)
+
+The disk now links with `lld` (issue #41, the measured fix). Confirm the
+linker on the shipped artifact and that the warm cache survived the swap:
+
+```sh
+readelf -p .comment target/debug/hello | grep -i lld   # expect: Linker: LLD …
+cargo build                                             # expect: Finished in ~0.0s (warm, no rebuild)
+```
+
+To re-measure the win, compare the link-time syscall count of a one-line
+rebuild against GNU `ld` (the docker rig `experiments/issue-41/` does this
+automatically: 14,736 → 2,157 filesystem syscalls, −85 %).
+
+## 4. (Complementary, C1) the `cargo check` edit→error loop
 
 ```sh
 touch src/main.rs
-time cargo check        # no codegen, no link — should be a large fraction faster than `cargo build`
+time cargo check        # no codegen, no link — much faster than `cargo build`
 ```
 
-Record the ratio `time(cargo build) / time(cargo check)`. That ratio is
-the size of the edit→error feedback win S1 delivers today.
+Record the ratio `time(cargo build) / time(cargo check)`. `cargo check`
+is a faster *error-feedback* loop, but it produces no binary — it does
+**not** speed up `cargo run` itself. It is complementary to S1, not the
+fix.
 
-## 4. (Proposed, S2) faster linker — only after pre-baking lld on the disk
-
-Do **not** run ad-hoc on the shipped disk: changing `RUSTFLAGS`/linker
-invalidates the warm fingerprints and can re-trigger the wedge (issue
-#31). Measure this in `disk-image.yml` CI against a disk rebuilt with
-`apk add lld` + the matching `~/.cargo/config.toml`, comparing the
-`cc … -o hello` link duration from step 2 before vs after.
-
-## 5. (Proposed, S4) in-memory `target/` + re-enabled incremental
+## 5. (Proposed, S2/S3) in-memory `target/` + re-enabled incremental
 
 Prototype mounting a writable in-memory device at `/workspace/target`
 (or `CARGO_TARGET_DIR`), then:
@@ -71,8 +87,8 @@ sed -i 's/rust world/RUST WORLD/' src/main.rs
 CARGO_INCREMENTAL=1 time cargo build # incremental one-line rebuild — the target to beat
 ```
 
-If this completes in seconds without the `a1`/exit-71 wedge, S4 is
-validated and incremental can be re-enabled by default.
+If this completes in seconds without the `a1`/exit-71 wedge, S2 is
+validated and incremental (S3) can be re-enabled by default.
 
 ## What to capture
 

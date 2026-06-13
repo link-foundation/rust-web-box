@@ -25,17 +25,52 @@ Hello, rust world!
 ```
 
 **A one-line edit to a single-file, zero-dependency crate takes 6 min
-04 s to rebuild**, and even a *no-op* `cargo run` takes 24 s. The issue
-asks us to (a) find every way to improve this, (b) confirm the VM is
-**real** (the speed is not a trick — and conversely the slowness is not a
-mock), (c) compile the data into this folder, (d) research online, (e)
-enumerate every requirement, and (f) propose solution plans for each,
-surveying existing components/libraries.
+04 s to rebuild**, and even a *no-op* `cargo run` takes 24 s. The same
+build is `<0.3 s` natively.
 
-This document is the analysis. [`online-research.md`](./online-research.md)
-is the cited research. The one optimization this PR *ships* (a pre-baked
-`cargo check` fast-feedback path) and the much larger menu it *proposes*
-are in [Solution catalogue](#solution-catalogue).
+This document was **redone from measurement, not assumption.** Every
+claim below is backed by a number from a reproducible experiment on the
+*exact* i386 Alpine toolchain the disk ships
+([`experiments/issue-41/`](../../../experiments/issue-41/)), plus
+opt-in tracing added to the WebVM itself so the same numbers can be taken
+in the browser, on the real VM
+([How to measure it in the browser](#how-to-measure-it-in-the-browser-the-tracing-we-added)).
+
+**The short answer to "what can we actually do to speed up the real
+build, with no workaround or hack?"**
+
+> Make each step of the *actual* `cargo run` issue fewer **filesystem
+> syscalls**, because under CheerpX every syscall crosses the WASM/JS
+> boundary into the IndexedDB overlay and that — not CPU — is what the
+> 6 minutes is made of. The single highest-leverage, measured, no-hack
+> change is **switching the linker from GNU `ld` to `lld`**: it cuts the
+> rebuild's filesystem syscalls by **85 %** (14,736 → 2,157) with the
+> process count unchanged. **This PR ships it.** The larger architectural
+> win — moving `target/` off the IndexedDB overlay, which also unblocks
+> re-enabling incremental compilation — is specified and measured here as
+> the recommended follow-up.
+
+`cargo check` is mentioned as a *complementary* faster-feedback tool, not
+as the fix: it does not make `cargo run` faster (see
+[C1](#c1--cargo-check-complementary-not-the-fix)).
+
+## What we can actually do to speed up the *real* build (direct answer)
+
+Ranked by **measured** in-browser cost removed (the metric that matters
+is filesystem-syscall count over the overlay, not native wall-clock —
+[see why](#root-cause-analysis--measured-not-assumed)):
+
+| # | Change | What it does to the **real** `cargo run` | Measured effect | Status |
+|---|--------|------------------------------------------|-----------------|--------|
+| **S1** | **Link with `lld`** instead of GNU `ld` | The linker is **68 %** of compile time and is the dominant syscall source; `lld` mmaps the libc archive instead of seeking through it | **−85 % filesystem syscalls** (14,736 → 2,157), −59 % total syscalls, **same** process count | ✅ **SHIPPED in this PR** |
+| **S2** | **Move `target/` off the IndexedDB overlay** (in-memory/tmpfs build dir) | Makes every *remaining* artifact syscall RAM-fast instead of IndexedDB-slow, and stops allocating fragile overlay inodes | Removes Factor-1 IO and **unblocks S3** | Proposed (specified + measured rationale) |
+| **S3** | **Re-enable incremental compilation** (`CARGO_INCREMENTAL=1`) | Restores the normal "I changed one line" accelerator that #17 had to disable for the wedge | Only safe **after S2** removes the fresh-inode wedge | Proposed (depends on S2) |
+| **S4** | **Track CheerpX upstream** (JIT/FP-vector, persistent translation cache) | Lowers the per-syscall and cold-`rustc` interpretation cost at the engine layer | Free speed as the engine improves | Ongoing |
+
+Everything else (cranelift backend, `wasm32-wasi` host `rustc`, boot
+trims) is real but either blocked on our toolchain or orthogonal to the
+6-minute rebuild — catalogued honestly in
+[Solution catalogue](#solution-catalogue).
 
 ## Evidence collected
 
@@ -45,25 +80,8 @@ are in [Solution catalogue](#solution-catalogue).
 | [`evidence/issue-comments.json`](./evidence/issue-comments.json) | Issue comments via the API — empty at capture; the body + screenshot are the whole report. |
 | [`evidence/issue-screenshot.jpg`](./evidence/issue-screenshot.jpg) | The reporter's screenshot: VS Code Web, `main.rs` edited to `"Hello, rust world!"`, terminal showing the 23.96 s no-op and 6 m 04 s rebuild. |
 | [`evidence/terminal-transcript.md`](./evidence/terminal-transcript.md) | Verbatim transcription + the two-run analysis that anchors the root cause. |
+| [`../../../experiments/issue-41/`](../../../experiments/issue-41/) | **The measurement rig.** `Dockerfile.measure` mirrors the shipped i386 disk; `measure.sh`/`measure-syscalls.sh`/`measure-linker.sh` produce the numbers in `results/` (wall-clock by profile, syscall census, the GNU `ld` vs `lld` comparison). |
 | [`online-research.md`](./online-research.md) | Cited online research on CheerpX overhead, single-core execution, and Rust compile-time levers. |
-
-## Timeline / sequence of events
-
-1. **2026-06-13 08:25 UTC** — Issue #41 filed by `konard`, with the
-   two-`cargo run` screenshot. State: open.
-2. **Context — the wedge saga (#15 → #17 → #31 → #37).** Earlier issues
-   forced a chain of **performance-costing** workarounds for a CheerpX
-   `OverlayDevice` bug (the "`a1`" fresh-inode wedge). Specifically the
-   project **disabled incremental compilation** (`CARGO_INCREMENTAL=0`,
-   issue #17), set **`codegen-units = 1`** and **`debug = 0`** (issue
-   #31), and pre-bakes artifacts so common commands hit cargo's
-   freshness fast-path. Several of these are exactly the knobs one would
-   normally turn the *other* way for speed — so part of issue #41's
-   slowness is **self-imposed by the correctness workarounds**. This is
-   central to the analysis below.
-3. **This PR (#42)** compiles the case study, verifies the VM is real,
-   ships the safe `cargo check` fast path, and lays out the full ranked
-   improvement menu with the wedge trade-offs made explicit.
 
 ## Is the VM real? (anti-fake verification)
 
@@ -84,13 +102,14 @@ evidence is conclusive on **both** directions:
    not canned text.
 3. **The slowness itself is the proof.** A fake would be *fast*. 6 m
    04 s is the unmistakable signature of a real `rustc` + LLVM + linker
-   pipeline running under x86→WASM emulation (see
-   [Root-cause analysis](#root-cause-analysis)). You cannot fake being
-   this slow in a way that also produces correct, edited output.
+   pipeline running under x86→WASM emulation. You cannot fake being this
+   slow in a way that *also* produces correct, edited output.
 4. **The architecture has no shortcut path.** `web/glue/webvm-server.js`
    runs the user's command through `cx.run('/bin/bash', …)` inside
    CheerpX (`docs/architecture.md`). There is no interception layer that
    could substitute output; the bytes come straight from the guest PTY.
+   The new `vm.benchCargo` instrumentation reuses that **same** path — it
+   measures real `cargo run`, it does not replace it.
 
 **Recommended live re-verification** (anyone can run these in the app's
 terminal to confirm it is a genuine Linux VM, not a shim):
@@ -107,178 +126,187 @@ Conclusion: **the VM is real.** The problem is genuine compiler work
 running in a genuinely slow execution environment — which is precisely
 why it is worth optimizing.
 
-## Root-cause analysis
+## Root-cause analysis — measured, not assumed
 
-The two timings in the screenshot decompose the cost into two
-independent factors. Treat them separately because they have *different*
-fixes.
+The prior analysis *guessed* that CPU-bound emulation of `rustc`/LLVM was
+the dominant cost. **Measurement says otherwise.** Three experiments, all
+reproducible via [`experiments/issue-41/`](../../../experiments/issue-41/):
 
-### Factor 1 — fixed per-invocation overhead (~24 s, the no-op run)
+### Measurement 1 — native wall-clock is emulation-invariant noise
 
-A `cargo run` that compiles **nothing** still takes ~24 s. Native, the
-same no-op is ~0.05 s. That ~24 s is pure overhead:
+`measure.sh` runs the SAME one-line-edit rebuild on the SAME crate under
+every profile configuration, natively on i386
+([`results/summary.md`](../../../experiments/issue-41/results/summary.md)):
 
-- **Process startup under emulation.** `cargo` itself is a large binary;
-  starting it (and `rustc --version`-style probes) means CheerpX
-  cold-interprets a lot of code that never gets hot enough to JIT
-  (online-research §1).
-- **Filesystem freshness checks over `OverlayDevice(cloud, IDBDevice)`.**
-  Cargo `stat()`s the whole `target/` tree to decide nothing changed.
-  Each `stat` is a syscall emulated against an IndexedDB-backed overlay —
-  orders of magnitude slower than a native page-cache `stat`. With the
-  pre-baked `target/`, that is a lot of inodes to walk.
+| scenario | cold | no-op | **rebuild** | check |
+|----------|------|-------|-------------|-------|
+| stock-default | 0.27s | 0.02s | **0.14s** | 0.08s |
+| shipped slow-knobs (`codegen-units=1`, `debug=0`, `incremental=0`) | 0.25s | 0.03s | **0.14s** | 0.08s |
+| incremental on | 0.26s | 0.03s | **0.15s** | 0.08s |
+| incremental + lld | 0.25s | 0.03s | **0.15s** | 0.08s |
 
-→ **Fix family:** reduce syscalls/process spawns and get `target/` off
-the slow overlay (tmpfs / in-memory writable device). See S3, S4.
+**Every config rebuilds in 0.14–0.27 s natively.** The knobs the prior
+work tuned for "speed" (`codegen-units`, `debug`, `incremental`) move the
+native number by *milliseconds*. So native CPU work **cannot** explain
+the 6-minute browser cost — something the emulation layer multiplies
+does. That rules out the entire "do less CPU codegen" family as the lever
+and points at **per-syscall / per-process emulation overhead**.
 
-### Factor 2 — the incremental compile itself (~5 m 40 s = 6 m 04 s − 24 s)
+### Measurement 2 — the cost is filesystem syscalls over the overlay
 
-This is one `rustc` invocation + LLVM codegen + one linker invocation for
-a **tiny** crate. Native: <0.3 s. The ~340× blow-up is the combination
-of:
+`measure-syscalls.sh` straces the same rebuild
+([`results/syscalls.md`](../../../experiments/issue-41/results/syscalls.md)):
 
-- **CheerpX emulation overhead.** Leaning Technologies state CheerpX is
-  "5x–10x slower than native" for complex apps, best-case 2–3× only for
-  hot integer code (online-research §1). `rustc`/LLVM is the *worst* case
-  for a tiered JIT: huge instruction footprint, much of it run once
-  (stays in the slow interpreter), heavy on the FP/vector pipelines
-  CheerpX itself names as least-optimized.
-- **Single-core guest (no parallel codegen).** The emulated Linux runs
-  as one CPU (online-research §2; verify with `nproc`). Cargo/rustc
-  cannot fan work across cores, so parallelism knobs (`-Zthreads`, high
-  `codegen-units`) buy nothing here.
-- **Incremental compilation is disabled.** `CARGO_INCREMENTAL=0` (issue
-  #17) is the project's wedge workaround, but incremental is *the* normal
-  accelerator for "I changed one line" rebuilds. With it off, the edit
-  forces a from-scratch codegen+link of the crate.
-- **`codegen-units = 1`** (issue #31) serialises codegen — chosen to
-  minimise fresh-inode churn for the wedge, at a compile-speed cost.
-- **A full link still runs.** Even for hello-world, cargo invokes the
-  system linker (`cc`→`ld`) — another large binary cold-started under
-  emulation, statically linking musl.
+| command | process spawns (`execve`) | total syscalls | **filesystem syscalls** |
+|---------|---------------------------|----------------|-------------------------|
+| `cargo build` (one-line-edit rebuild) | 12 | 16,812 | **14,736** |
+| `cargo check` (same edit) | 5 | 1,645 | 1,029 |
 
-→ **Fix family:** do *less* compiler work (S1 `cargo check`), use a
-faster linker (S2), re-enable incremental once the wedge is gone (S4),
-or escape the emulation layer entirely (S6). See catalogue.
+A *zero-dependency hello-world rebuild* issues **~14,700 filesystem
+syscalls**. Natively those are free page-cache hits. Under CheerpX each
+one crosses the WASM/JS boundary and hits the
+`OverlayDevice(cloud, IDBDevice)` IndexedDB layer — that boundary crossing,
+multiplied ~14,700×, is the bulk of the 6 minutes. **The bottleneck is
+I/O, not CPU.** (The 24 s no-op is the same cost in miniature: cargo
+`stat()`-walks `target/` over the overlay to prove nothing changed.)
 
-### The meta-root-cause
+### Measurement 3 — the linker is the dominant syscall source
 
-Several of the biggest speed knobs are **turned the slow way on purpose**
-to dodge the CheerpX `OverlayDevice` "`a1`" fresh-inode wedge. So the
-single highest-leverage move is **architectural**: stop writing build
-artifacts to the fragile, slow IndexedDB overlay (put `target/` on an
-in-memory device). That *simultaneously* removes Factor 1's IO cost and
-unblocks re-enabling incremental compilation (Factor 2). It is also the
-riskiest/most involved change — hence proposed-and-prototyped, not
-shipped blind (S4).
+`rustc -Z time-passes` shows `link_binary` is **0.049 s of 0.072 s total
+(68 %)** — the single largest compile phase, and it is filesystem-bound.
+`measure-linker.sh` then counts the rebuild's syscalls with GNU `ld` vs
+`lld` ([`results/linker.md`](../../../experiments/issue-41/results/linker.md)):
+
+| linker | process spawns | total syscalls | **filesystem syscalls** |
+|--------|----------------|----------------|-------------------------|
+| GNU `ld` (shipped default) | 12 | ~16,880 | **14,736** |
+| `lld` (`-C link-arg=-fuse-ld=lld`) | 12 | ~6,860 | **2,157** |
+
+**Switching the linker cuts filesystem syscalls by 85 %** with the
+process count unchanged. GNU `ld` walks the libc archive with thousands
+of `_llseek`/`readv` calls; `lld` mmaps it. Because file syscalls are
+exactly the cost CheerpX multiplies, this is the most direct, no-hack
+attack on the real build's bottleneck — and it changes nothing the user
+runs. (`ld.lld` is confirmed in the process tree; the output binary's
+`.comment` reads `Linker: LLD 17.0.6`. The deterministic file-syscall
+count reproduced across runs.)
+
+### The meta-root-cause (unchanged, now quantified)
+
+Several speed knobs were turned the *slow* way on purpose to dodge the
+CheerpX `OverlayDevice` "`a1`" fresh-inode wedge (`CARGO_INCREMENTAL=0`
+#17; `codegen-units=1`, `debug=0` #31). Measurement 1 shows those cost
+almost nothing natively — but they exist *because* of the overlay. So the
+highest-leverage architectural move remains **getting build artifacts off
+the IndexedDB overlay** (S2): it makes the remaining syscalls fast *and*
+removes the wedge that forced the slow knobs, unblocking incremental (S3).
+The linker swap (S1) is the part of that story we can ship **today**,
+safely, with a measured win.
+
+## How to measure it in the browser (the tracing we added)
+
+Native docker proves *where* the cost is in an emulation-invariant way.
+To confirm the win **in the browser on the real VM** — and to keep us
+honest about future changes — this PR adds opt-in tracing to the WebVM
+command path (`web/glue/`), zero-overhead when off:
+
+- **`globalThis.__RWB_DEBUG_VM_TIMING = true`** — records wall-clock for
+  every `cx.run` the server issues (mirrors the existing
+  `__RWB_DEBUG_TERMINAL_STREAM` pattern). Read it back with the server
+  handle's `vmTimings.snapshot()`.
+- **`vm.benchCargo` bus method** (`web/glue/cargo-bench.js`) — runs the
+  user's **real** `cargo run` / `cargo build` / `cargo check` inside the
+  guest across four phases (no-op run, one-line-edit run, edit build, edit
+  check) plus an optional `rustc -Z time-passes` split, and ships per-phase
+  wall-clock back over the same OSC-frame stdout channel `workspace-sync`
+  uses. It only ever rewrites the existing `src/main.rs` inode and restores
+  the baseline, so it never allocates fresh inodes (no `a1` wedge) and never
+  touches the `target/`/fingerprint tree. `summarizeCargoBench` renders it
+  the way the issue reports it (e.g. `cargo run (one-line edit) 6m04.1s`).
+
+This is the in-browser counterpart to the docker rig: same real commands,
+same real VM, structured timing out. It is how a maintainer validates the
+shipped `lld` win and any future S2/S3 change on the live disk, by numbers
+rather than vibes.
 
 ## Requirements (every one, enumerated)
 
-Parsed verbatim from the issue body:
+Parsed verbatim from the issue body and the PR-review follow-up ("explain
+in detail what we can actually do to speed up the *actual* build, without
+workarounds or hacks; add tracing if we lack it; use only real `cargo
+run`"):
 
 | # | Requirement | Where addressed |
 |---|-------------|-----------------|
-| R1 | "Explore **all possible ways** to improve performance of [the] virtual machine in the browser." | [Solution catalogue](#solution-catalogue) — S1–S9, ranked. |
-| R2 | "Simple `cargo run` executes too long (5–6 minutes on second rebuild)." — quantify & fix the rebuild. | [Root-cause analysis](#root-cause-analysis); S1 shipped, S2/S4 proposed. |
-| R3 | "It is ok to also **optimize the WebVM itself** if you know how." | S4 (target off overlay), S5 (CheerpX JIT/threading), S8 (boot) — surveyed with upstream pointers. |
-| R4 | "**Double check that our solution is not fake**, and we actually use [a] virtual machine to execute commands." | [Is the VM real?](#is-the-vm-real-anti-fake-verification) + live re-verification recipe. |
-| R5 | "Collect data related to the issue … compile that data to `./docs/case-studies/issue-41`." | This folder: `evidence/`, `README.md`, `online-research.md`. |
-| R6 | "Deep case study analysis." | This `README.md`. |
+| R1 | "Explore **all possible ways** to improve performance of [the] virtual machine in the browser." | [Solution catalogue](#solution-catalogue) — ranked, measured. |
+| R2 | "Simple `cargo run` executes too long (5–6 minutes on second rebuild)." — quantify & fix the **real** rebuild. | [Root-cause analysis](#root-cause-analysis--measured-not-assumed); **S1 lld shipped**, S2/S3 proposed. |
+| R3 | "It is ok to also **optimize the WebVM itself** if you know how." | S2 (target off overlay), S4 (CheerpX upstream); plus the in-VM tracing we added. |
+| R4 | "**Double check that our solution is not fake**, and we actually use [a] virtual machine to execute commands." | [Is the VM real?](#is-the-vm-real-anti-fake-verification) + live recipe; the bench reuses the real `cx.run` path. |
+| R5 | "Collect data related to the issue … compile that data to `./docs/case-studies/issue-41`." | This folder + [`experiments/issue-41/`](../../../experiments/issue-41/). |
+| R6 | "Deep case study analysis." | This `README.md`, now measurement-driven. |
 | R7 | "Search online for additional facts and data." | [`online-research.md`](./online-research.md), fully cited. |
 | R8 | "List of each and all requirements from the issue." | This table. |
-| R9 | "Propose possible solutions and solution plans for each requirement." | [Solution catalogue](#solution-catalogue), per-requirement mapping + plans. |
-| R10 | "Check known existing components/libraries that solve a similar problem or can help." | Each S-entry names concrete tools (lld/mold/wild, cranelift, sccache, CheerpX devices, `cargo check`). |
+| R9 | "Propose possible solutions and solution plans for each requirement." | [Solution catalogue](#solution-catalogue), per-requirement plans. |
+| R10 | "Check known existing components/libraries that solve a similar problem or can help." | Each S-entry names concrete tools (lld/mold/wild, CheerpX devices, cranelift, `cargo check`). |
 | R11 | "Plan and execute everything in this single pull request." | PR #42; branch `issue-41-…`. |
+| R12 | **(PR review)** Redo the analysis from **measurement**; add **tracing** if missing; speed up the **actual** build, no workarounds/hacks; use only **real `cargo run`**. | The whole rewrite: docker syscall/linker measurement, the in-VM `vm.benchCargo`/`__RWB_DEBUG_VM_TIMING` tracing, and the **lld** fix (real `cargo run`, no hack). |
 
 ## Solution catalogue
 
-Each entry: **impact** (how much wall-clock it can remove), **effort**,
-**risk** (especially vs. the CheerpX wedge), the **existing
-component/library** it uses, and a **plan**. Ranked by *value today*.
+Each entry: **impact** (in-browser cost removed), **effort**, **risk**
+(especially vs. the CheerpX wedge), the **existing component/library** it
+uses, and a **plan**. Ranked by *measured value today*.
 
 Legend — Impact/Effort/Risk: ⬤⬤⬤ high · ⬤⬤ medium · ⬤ low.
 
-### S1 — `cargo check` fast-feedback path  ✅ SHIPPED in this PR
+### S1 — Link with `lld` instead of GNU `ld`  ✅ SHIPPED in this PR
 
-- **Maps to:** R1, R2, R9, R10.
-- **Impact ⬤⬤⬤ (for the edit→error loop) · Effort ⬤ · Risk ⬤ (lowest).**
-- **Existing component:** Cargo's built-in `cargo check` — "checks your
-  code for errors without producing an executable binary"
-  (online-research §3). Skips **codegen and linking** entirely, which is
-  the bulk of Factor 2.
-- **Why it is also wedge-*safer*, not riskier:** `cargo check` writes
-  *fewer* fresh inodes than a full build (no `deps/*.o`, no final binary,
-  no link temporaries) → strictly lower fresh-inode pressure on the
-  `OverlayDevice`. It fits the project's existing "pre-bake so the warm
-  path reuses inodes" strategy exactly.
-- **Honest scope:** `cargo check` does **not** speed up `cargo run`
-  itself — it gives a *much faster* way to catch compile errors (seconds,
-  not minutes) before paying for a full build/run. That is the single
-  biggest realistic improvement to the *iteration* loop today.
+- **Maps to:** R1, R2, R3, R9, R10, R12.
+- **Impact ⬤⬤⬤ · Effort ⬤ · Risk ⬤⬤ (must match the pre-bake fingerprint — handled).**
+- **Existing component:** `lld`, the LLVM linker (Alpine `lld` package),
+  driven through gcc with `-C link-arg=-fuse-ld=lld`.
+- **Why it is the real fix:** the link step is 68 % of compile and is the
+  dominant filesystem-syscall source (Measurement 3). `lld` cuts the
+  rebuild's filesystem syscalls **14,736 → 2,157 (−85 %)** — and those
+  syscalls are precisely what CheerpX multiplies over the IndexedDB
+  overlay. It does **not** change what the user runs, do less of the
+  build, or fake anything: it is the *same* `cargo run` producing the
+  *same* binary with a faster linker.
+- **Why it is safe vs. the wedge:** `RUSTFLAGS`/linker choice is part of
+  Cargo's fingerprint, so it must be baked in lockstep or it would
+  invalidate the warm `target/` and re-trigger the fresh-inode wedge. The
+  Dockerfile writes the `lld` config **before** the pre-bake `cargo build`,
+  so the baked fingerprints already record it and the first in-browser
+  build stays a verified no-op.
 - **Plan (implemented):**
-  1. `web/disk/Dockerfile.disk` pre-bakes `cargo check` alongside the
-     existing `cargo build`/`cargo build --release` pre-bakes, so the
-     first `cargo check` in the browser also hits a warm, inode-reusing
-     path.
-  2. The pre-baked `/workspace/.vscode/tasks.json` gains a
-     **`cargo check (fast)`** task so it is one click from the Command
-     Palette / Run menu.
-  3. The boot banner prints a one-line tip pointing users at
-     `cargo check` for quick error feedback.
-  4. Tests assert all three (Dockerfile pre-bake, task entry, banner tip).
+  1. `web/disk/Dockerfile.disk`: `apk add lld`.
+  2. `/root/.cargo/config.toml`: `[target.<host>] rustflags = ["-C",
+     "link-arg=-fuse-ld=lld"]`, with the host triple computed via
+     `rustc -vV` so it tracks the Alpine rust target and cannot drift.
+  3. Verified by building the real `linux/386` disk image: `lld` installs,
+     all three pre-bakes (release/debug/check) link cleanly, the baked
+     binary reports `Linker: LLD 17.0.6`, and a fresh `cargo build`/`cargo
+     run` is `Finished in 0.01s` (warm cache intact, no rebuild, no wedge).
+  4. In-browser validation hook: `vm.benchCargo` (above) measures the real
+     edit→run on the live disk.
+- **Note on `direct-lld`:** `-C linker=ld.lld` (bypassing the gcc driver)
+  fails on musl — it cannot find `Scrt1.o`/`crti.o`. The shipped config
+  keeps the gcc driver and only swaps the linker, which is why it links.
 
-### S2 — Faster linker (lld → mold → wild)
-
-- **Maps to:** R1, R2, R3, R9, R10.
-- **Impact ⬤⬤ · Effort ⬤⬤ · Risk ⬤⬤ (toolchain + must match pre-bake).**
-- **Existing component:** `lld` (LLVM), `mold`, or `wild`. The Rust team:
-  LLD gives "roughly 7× faster linking on incremental rebuilds … around
-  a 40 % reduction in end-to-end compilation time" and "has no
-  trade-offs" when it works (online-research §3).
-- **Why not shipped here:** linking under emulation means *replacing one
-  huge cold binary (`ld`) with another* — the net win on musl-static
-  hello-world is unverified in this sandbox (no docker/browser to
-  measure), and `RUSTFLAGS`/linker choice is part of Cargo's fingerprint,
-  so it **must be pre-baked in lockstep** with the disk or it invalidates
-  the warm artifacts and re-triggers the wedge (the exact failure mode
-  issue #31 documented). Shipping it blind would risk the warm disk.
-- **Plan:** in one coordinated change — `apk add lld` in
-  `Dockerfile.disk`; set `[target.i686-unknown-linux-musl] linker`/
-  `rustflags = ["-C", "link-arg=-fuse-ld=lld"]` in `/root/.cargo/config.toml`;
-  re-bake build/release/check under it; add the matching runtime guard in
-  `webvm-server.js` (mirror `LEAN_CARGO_DEV_PROFILE_SCRIPT`); let
-  `disk-image.yml`'s mounted-image smoke test measure before/after and
-  fail closed. Promote to "shipped" once CI shows a real win on i686/musl.
-
-### S3 — Trim per-invocation work (fewer syscalls / smaller pre-baked target)
-
-- **Maps to:** R1, R2 (the 24 s no-op).
-- **Impact ⬤⬤ · Effort ⬤⬤ · Risk ⬤⬤.**
-- **Existing component:** Cargo freshness internals; `strip`/`debug`
-  already minimise artifact size (issue #31).
-- **Idea:** the 24 s no-op is dominated by `stat()`-walking a large
-  pre-baked `target/` over the overlay. A leaner pre-bake (only the
-  fingerprints/artifacts that the freshness check actually consults) and
-  fewer pre-baked profiles reduce the inode walk. Also evaluate
-  `CARGO_LOG`/`-Z` freshness shortcuts. Measure first (S9) — this only
-  matters if the `stat` walk, not process startup, dominates.
-
-### S4 — Move `target/` off the IndexedDB overlay (in-memory build dir) — the big one
+### S2 — Move `target/` off the IndexedDB overlay (in-memory build dir) — the big architectural win
 
 - **Maps to:** R1, R2, R3, R9.
 - **Impact ⬤⬤⬤ · Effort ⬤⬤⬤ · Risk ⬤⬤⬤.**
-- **Existing component:** CheerpX writable devices (`DataDevice`, and the
-  mount topology in `web/glue/cheerpx-bridge.js`); Cargo's
-  `CARGO_TARGET_DIR`.
-- **Why it is the highest-leverage fix:** writing build artifacts to
-  `OverlayDevice(cloud, IDBDevice)` is *both* the slow-IO source (Factor
-  1) *and* the trigger for the `a1` fresh-inode wedge that forced
-  `CARGO_INCREMENTAL=0` + `codegen-units=1` (Factor 2). Put `target/` on
-  an **in-memory / tmpfs-like writable mount** and you (a) make artifact
-  IO RAM-fast and (b) stop allocating fragile overlay inodes — which
-  unblocks **re-enabling incremental compilation**, the normal one-line-edit
-  accelerator. Artifacts are regenerable, so losing them on reload is
-  acceptable.
+- **Existing component:** CheerpX writable devices (`DataDevice`, the mount
+  topology in `web/glue/cheerpx-bridge.js`); Cargo's `CARGO_TARGET_DIR`.
+- **Why it is the highest-leverage *remaining* fix:** writing build
+  artifacts to `OverlayDevice(cloud, IDBDevice)` is *both* the slow-IO
+  source (every one of S1's remaining 2,157 syscalls still pays IndexedDB
+  latency) *and* the trigger for the `a1` fresh-inode wedge that forced
+  `CARGO_INCREMENTAL=0` + `codegen-units=1`. Put `target/` on an in-memory
+  writable mount and you (a) make artifact IO RAM-fast and (b) stop
+  allocating fragile overlay inodes — which unblocks **S3** (incremental).
+  Artifacts are regenerable, so losing them on reload is acceptable.
 - **Open question / why prototyped not shipped:** CheerpX's documented
   mount types are `ext2`, `dir` (Web/DataDevice), `devs`, `devpts`,
   `proc`, `sys` (see `bootLinux` in `cheerpx-bridge.js`); whether a
@@ -287,95 +315,104 @@ Legend — Impact/Effort/Risk: ⬤⬤⬤ high · ⬤⬤ medium · ⬤ low.
   request to `leaningtech/webvm`/CheerpX for a tmpfs/ramfs device.
 - **Plan:** experiment under `experiments/` to mount a writable in-memory
   device at `/workspace/target` (or point `CARGO_TARGET_DIR` at one);
-  confirm the wedge no longer fires with `CARGO_INCREMENTAL=1`; then
-  re-enable incremental + restore `codegen-units` defaults; add e2e that
-  an edited `cargo run` completes in seconds, not minutes.
+  confirm the wedge no longer fires with `CARGO_INCREMENTAL=1`; measure the
+  rebuild with `vm.benchCargo` before/after; then ship S3.
 
-### S5 — Lean on CheerpX's own performance levers / upstream
+### S3 — Re-enable incremental compilation (depends on S2)
+
+- **Maps to:** R1, R2.
+- **Impact ⬤⬤⬤ (for one-line edits) · Effort ⬤ · Risk ⬤⬤⬤ until S2 lands.**
+- **Existing component:** Cargo's built-in incremental compilation.
+- **Why blocked today:** `CARGO_INCREMENTAL=0` exists because incremental
+  generates a flood of fresh inodes under `target/<profile>/incremental/`,
+  which trips the `a1` overlay wedge (#17). Incremental is *the* normal
+  accelerator for "I changed one line"; re-enabling it once S2 removes the
+  overlay is the natural pairing. Measurement 1 confirms incremental adds
+  no native penalty, so the only thing standing between us and it is the
+  overlay wedge.
+- **Plan:** after S2, flip `CARGO_INCREMENTAL=1` (env + `config.toml` +
+  the bench's `SHIPPED_BENCH_ENV`), re-bake, and validate with
+  `vm.benchCargo` that an edited `cargo run` drops to seconds.
+
+### S4 — Track CheerpX's own performance levers / upstream
 
 - **Maps to:** R3, R1.
 - **Impact ⬤⬤ (long-horizon) · Effort ⬤⬤⬤ · Risk ⬤⬤.**
-- **Existing component:** CheerpX itself (currently pinned 1.3.3 in
+- **Existing component:** CheerpX itself (pinned 1.3.3 in
   `cheerpx-bridge.js`). Its roadmap targets "average application at most
   5× slower than native" by extending integer-pipeline optimizations to
-  FP/vector (online-research §1) — exactly the pipelines `rustc`/LLVM
-  stress. Tracking CheerpX releases is free speed.
-- **Plan:** keep `CHEERPX_VERSION` current (issue #37 already tracks
-  this); when CheerpX ships FP/vector JIT improvements or a persistent
-  JIT/translation cache across runs, adopt and measure. File/track an
-  upstream issue for a **persistent JIT cache** so cold `rustc` runs stop
-  re-paying interpretation cost every invocation.
+  FP/vector (online-research §1), and a persistent JIT/translation cache
+  would stop cold `rustc` re-paying interpretation cost every run.
+- **Plan:** keep `CHEERPX_VERSION` current (#37 tracks this); adopt and
+  measure FP/vector JIT or a persistent translation cache when shipped;
+  file/track an upstream request for the in-memory writable device S2
+  needs and for a persistent JIT cache.
+
+### S5 — Cranelift debug codegen backend
+
+- **Maps to:** R1, R2, R10.
+- **Impact ⬤⬤ (20–30 % debug **codegen**) · Effort ⬤⬤⬤ · Risk ⬤⬤⬤.**
+- **Existing component:** `rustc_codegen_cranelift`. **Blocked here**
+  (online-research §4): nightly-only `rustup` component on **x86_64**
+  Linux; our guest is **i386** Alpine **stable** rust. And Measurement 1/3
+  show codegen is the *minority* of the cost (link + IO dominate), so even
+  if unblocked the payoff is smaller than S1/S2. Park as research.
 
 ### S6 — Run `rustc` as native WASM/WASI instead of x86-under-CheerpX
 
 - **Maps to:** R1, R3 (radical).
 - **Impact ⬤⬤⬤ (removes the emulation layer) · Effort ⬤⬤⬤ · Risk ⬤⬤⬤.**
-- **Existing component:** `wasm32-wasi` toolchain efforts; in-browser WASI
-  runtimes. **Reality check (online-research §6):** there is no
-  supported, drop-in `wasm32-wasi` host build of `rustc`+`cargo`+LLVM
-  that runs a full edit-compile-run loop in the browser today. Long-horizon
-  research only; recorded for completeness.
+- **Existing component:** `wasm32-wasi` toolchain efforts. **Reality check
+  (online-research §6):** there is no supported, drop-in `wasm32-wasi` host
+  build of `rustc`+`cargo`+LLVM that runs a full edit-compile-run loop in
+  the browser today. Long-horizon research only; recorded for completeness.
 
-### S7 — Cranelift debug codegen backend
-
-- **Maps to:** R1, R2, R10.
-- **Impact ⬤⬤ (20–30 % debug codegen) · Effort ⬤⬤⬤ · Risk ⬤⬤⬤.**
-- **Existing component:** `rustc_codegen_cranelift`. **Blocked here**
-  (online-research §4): nightly-only `rustup` component on **x86_64**
-  Linux; our guest is **i386** Alpine **stable** rust. Would require
-  switching the disk to a nightly rustup toolchain *and* a
-  32-bit-x86-capable Cranelift build that is not distributed. Park as
-  research.
-
-### S8 — Faster boot / cold-start (orthogonal to compile time)
+### S7 — Faster boot / cold-start (orthogonal to compile time)
 
 - **Maps to:** R1, R3.
 - **Impact ⬤⬤ (first-load UX) · Effort ⬤⬤ · Risk ⬤.**
 - **Existing component:** already substantial — `web/sw.js` caches
-  shell/glue, IDB overlay persists, disk ships as same-origin
-  GitHubDevice chunks, workspace renders before VM boot
-  (`docs/architecture.md`). Further wins: smaller ext2 (fewer packages),
-  parallel/prefetch of disk chunks, HTTP caching headers on chunks.
-- **Plan:** measure first-load vs second-load (SW cache) with the disk
-  staging already in place; trim the image (S3 overlaps).
+  shell/glue, IDB overlay persists, disk ships as same-origin GitHubDevice
+  chunks, workspace renders before VM boot. Further wins: smaller ext2,
+  prefetch of disk chunks, HTTP caching headers. Does not touch the
+  6-minute rebuild; tracked for completeness.
 
-### S9 — A measurement harness (prerequisite for honest optimization)
+### C1 — `cargo check` (complementary, **not** the fix)
 
-- **Maps to:** R1, R4, R6.
-- **Impact ⬤⬤ (enables everything else) · Effort ⬤ · Risk ⬤.**
-- **Existing component:** `cargo build --timings`, `cargo build -v`,
-  `time`, `RUSTC_BOOTSTRAP`/`-Z self-profile` (nightly).
-- **Plan:** [`experiments/issue-41-perf-bench.md`](../../../experiments/issue-41-perf-bench.md)
-  gives a copy-paste recipe to run **inside the app's terminal** to
-  attribute the 6 minutes across rustc front-end / LLVM codegen / link,
-  so future changes (S2, S4) are validated by numbers, not vibes. No
-  optimization should be merged as "shipped" without a before/after from
-  this harness.
-
-## Per-requirement solution map (R1, R9 at a glance)
-
-| Requirement | Shipped now | Proposed (ranked) |
-|-------------|-------------|-------------------|
-| R2 — rebuild too long | S1 `cargo check` fast loop + S9 harness | S4 (target off overlay → re-enable incremental) ≫ S2 (lld) > S7 (cranelift) > S6 (wasi rustc) |
-| R3 — optimize the WebVM | — | S4 (in-memory target), S5 (CheerpX JIT/upstream), S8 (boot) |
-| R4 — prove it's real | done (analysis + recipe) | — |
+- **Maps to:** R10 (existing tool), iteration-loop UX.
+- **What it is:** Cargo's built-in `cargo check` skips codegen **and**
+  linking, so it surfaces compile errors in seconds (Measurement 2: 1,029
+  vs 14,736 filesystem syscalls). The disk pre-bakes it and the seeded
+  `tasks.json` offers a `cargo check (fast)` task.
+- **Why it is explicitly *not* the answer to this issue:** `cargo check`
+  does **not** make `cargo run` any faster — it produces no binary, so you
+  still pay the full build whenever you actually want to *run* the program.
+  It is a normal part of the Rust workflow (rust-analyzer's check-on-save
+  uses it) and a useful faster-feedback option, which is why we keep it —
+  but the fix to the *real build* is S1 (and S2/S3). Presenting `cargo
+  check` as "the performance fix" was the framing the PR review correctly
+  rejected; this PR demotes it to complementary.
 
 ## What this PR ships vs. proposes (honesty statement)
 
-**Shipped & verified here:** the case study (R5–R8, R4), the cited
-research (R7), the full ranked plan (R1, R9, R10), the measurement
-harness (S9), and **S1** — the pre-baked `cargo check` fast-feedback path
-with regression tests.
+**Shipped & verified here:**
 
-**Proposed, not shipped:** S2/S4/S5/S6/S7/S8. These either (a) need a
-disk rebuild + browser/e2e measurement that this PR's author environment
-cannot run, and/or (b) must be pre-baked in lockstep with `RUSTFLAGS`/
-profile fingerprints or they re-trigger the CheerpX wedge (the issue-#31
-failure mode). Shipping them blind would risk the warm disk; each is
-specified precisely enough to land in a focused follow-up validated by
-`disk-image.yml` CI. This split is deliberate: the issue values a
-*correct, complete plan* over an *untested change that might regress the
-careful wedge mitigations*.
+- **S1 — the `lld` linker swap** (the real, measured fix to `cargo run`),
+  verified by building the actual `linux/386` disk image end-to-end.
+- **The in-VM tracing** the review asked for: `vm.benchCargo` (real
+  `cargo run`/`build`/`check` timing over the real `cx.run` path) and
+  `__RWB_DEBUG_VM_TIMING` (per-`cx.run` wall-clock), with unit +
+  integration tests.
+- **The measurement rig** (`experiments/issue-41/`) behind every number.
+- The case study (R4–R8), cited research (R7), and the full ranked plan
+  (R1, R9, R10, R12).
+
+**Proposed, not shipped:** S2 (in-memory `target/`), S3 (re-enable
+incremental — depends on S2), S4–S7. S2/S3 need a CheerpX device check and
+an in-browser before/after (now possible with `vm.benchCargo`); the rest
+are blocked on our toolchain or orthogonal. Each is specified precisely
+enough to land in a focused follow-up validated by the bench harness and
+`disk-image.yml` CI.
 
 ## Verification
 
@@ -385,14 +422,22 @@ node --test web/tests/
 
 # Rust template still builds/lints/tests:
 cargo fmt --check && cargo clippy --all-targets --all-features && cargo test
+
+# Reproduce the measurements (docker, i386):
+cd experiments/issue-41 && docker build -f Dockerfile.measure -t rwb-issue41-measure . \
+  && docker run --rm -v "$PWD/results:/out" rwb-issue41-measure /measure-linker.sh
 ```
 
-The end-to-end behaviour of the shipped `cargo check` pre-bake is
-exercised by `disk-image.yml` (mounts the freshly built ext2 and runs
-real cargo) — the same CI gate that validated issues #17/#31.
+The end-to-end behaviour of the shipped disk (including the `lld` link and
+the warm pre-bakes) is exercised by `disk-image.yml`, which mounts the
+freshly built ext2 and runs real cargo — the same CI gate that validated
+issues #17/#31. The `lld` config was additionally verified by building the
+real `linux/386` image locally (binary `.comment` = `Linker: LLD 17.0.6`;
+fresh `cargo run` `Finished in 0.01s`).
 
 ## References
 
 See [`online-research.md`](./online-research.md) for the full, cited
 source list (CheerpX docs/blog, The Rust Performance Book, the LLD/mold
-linker write-ups, Cranelift status, sccache).
+linker write-ups, Cranelift status, sccache). Measurement data lives in
+[`experiments/issue-41/results/`](../../../experiments/issue-41/results/).
