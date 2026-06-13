@@ -38,6 +38,12 @@ import {
   createWorkspaceSyncFrameParser,
   decodeWorkspaceSyncPayload,
 } from './workspace-sync.js';
+import {
+  buildCargoBenchScript,
+  createCargoBenchFrameParser,
+  parseCargoBenchPayload,
+  summarizeCargoBench,
+} from './cargo-bench.js';
 
 const TEXT_DECODER = new TextDecoder('utf-8', { fatal: false });
 const TEXT_ENCODER = new TextEncoder();
@@ -100,6 +106,44 @@ const SHELL_FAST_CYCLE_LIMIT = 3;
 // message instead of a blank tofu cursor.
 const SHELL_FIRST_OUTPUT_TIMEOUT_MS = 15_000;
 
+// Opt-in per-`cx.run` timing (issue #41). Every `cx.run` the server issues —
+// boot prime, shell profile, each workspace-sync script, the shell loop's
+// bash spawns, the cargo benchmark — pays CheerpX's cold-start interpreter +
+// the WASM/JS syscall boundary. To find the EXACT bottleneck the issue asks
+// about, we record the wall-clock of each of those calls into a bounded ring
+// buffer when `globalThis.__RWB_DEBUG_VM_TIMING` is set. It is OFF by default
+// (mirroring `__RWB_DEBUG_TERMINAL_STREAM`), so there is zero overhead in
+// normal use: `record()` returns immediately and the buffer stays empty.
+const VM_TIMINGS_MAX = 500;
+
+function createVmTimings({ logger = console } = {}) {
+  const entries = [];
+  return {
+    entries,
+    get enabled() {
+      return typeof globalThis !== 'undefined' && !!globalThis.__RWB_DEBUG_VM_TIMING;
+    },
+    record(entry) {
+      if (!this.enabled) return;
+      entries.push({ at: Date.now(), ...entry });
+      if (entries.length > VM_TIMINGS_MAX) entries.shift();
+      try {
+        // eslint-disable-next-line no-console
+        (logger?.log ?? console.log)(
+          `[rwb:vm-timing] ${entry.kind}`,
+          entry.label ?? '',
+          `${Math.round(entry.elapsedMs)}ms`,
+          entry.exitCode != null ? `exit=${entry.exitCode}` : '',
+          entry.error ? `error=${entry.error}` : '',
+        );
+      } catch {}
+    },
+    snapshot() {
+      return entries.slice();
+    },
+  };
+}
+
 /**
  * Run the canonical "shell loop" the way leaningtech/webvm does:
  * spawn `/bin/bash --login`, and when it exits, spawn it again.
@@ -120,6 +164,7 @@ function runShellLoop(cx, {
   onUnhealthy,
   onSilentStart,
   firstOutputTimeoutMs = SHELL_FIRST_OUTPUT_TIMEOUT_MS,
+  recordTiming = () => {},
 } = {}) {
   const fullEnv = env;
   let stopped = false;
@@ -193,6 +238,12 @@ function runShellLoop(cx, {
           diag.running = false;
         }
         debug('shell loop exit #%d (code=%o, after %dms)', diag?.exits ?? 0, code, elapsed);
+        recordTiming({
+          kind: 'shell-spawn',
+          label: `bash --login (#${spawnSeq})`,
+          elapsedMs: elapsed,
+          exitCode: typeof code === 'number' ? code : null,
+        });
         if (elapsed < SHELL_FAST_CYCLE_MS) noteFastCycle('exit', { code, elapsed });
         else if (diag) diag.fastCycles = 0;
       } catch (err) {
@@ -206,6 +257,12 @@ function runShellLoop(cx, {
           diag.running = false;
         }
         debug('shell loop error #%d after %dms: %s', diag?.errors ?? 0, elapsed, message);
+        recordTiming({
+          kind: 'shell-spawn',
+          label: `bash --login (#${spawnSeq})`,
+          elapsedMs: elapsed,
+          error: message,
+        });
         // eslint-disable-next-line no-console
         console.warn('[rust-web-box] bash loop error:', err);
         noteFastCycle('error', { message, elapsed });
@@ -340,7 +397,13 @@ function scriptPathForName(name) {
   return `/rust-web-box-${safeName}.sh`;
 }
 
-function createGuestScriptRunner({ cx, dataDevice, logger = console, debug = () => {} } = {}) {
+function createGuestScriptRunner({
+  cx,
+  dataDevice,
+  logger = console,
+  debug = () => {},
+  recordTiming = () => {},
+} = {}) {
   const run = cx?.run ?? cx?.runAsync;
   if (typeof run !== 'function') throw new Error('CheerpX missing run()');
   if (typeof dataDevice?.writeFile !== 'function') {
@@ -364,12 +427,33 @@ function createGuestScriptRunner({ cx, dataDevice, logger = console, debug = () 
       await dataDevice.writeFile(devicePath, script);
       try {
         debug('run guest script', { name, guestPath, cwd });
-        await run.call(cx, '/bin/sh', [guestPath], {
-          env: GUEST_ENV,
-          cwd,
-          uid: 0,
-          gid: 0,
-        });
+        // Time the real `cx.run` so issue #41 diagnostics can attribute cost
+        // to each staged script (prime / shell-profile / sync / bench).
+        const startedAt = Date.now();
+        let exitCode = null;
+        try {
+          const code = await run.call(cx, '/bin/sh', [guestPath], {
+            env: GUEST_ENV,
+            cwd,
+            uid: 0,
+            gid: 0,
+          });
+          exitCode = typeof code === 'number' ? code : null;
+          recordTiming({
+            kind: 'guest-script',
+            label: name,
+            elapsedMs: Date.now() - startedAt,
+            exitCode,
+          });
+        } catch (err) {
+          recordTiming({
+            kind: 'guest-script',
+            label: name,
+            elapsedMs: Date.now() - startedAt,
+            error: err?.message ?? String(err),
+          });
+          throw err;
+        }
         debug('guest script complete', { name });
       } finally {
         try {
@@ -405,6 +489,7 @@ export function fullServerMethods({
   runGuestScript,
   primeGuestWorkspace,
   refreshGuestTarget,
+  runCargoBench,
   spawn,
   killSub,
   skipPrime = false,
@@ -471,8 +556,21 @@ export function fullServerMethods({
       guestSyncError: runtime.guestSyncError,
       lastGuestSyncAt: runtime.lastGuestSyncAt,
       shellPrepareError: runtime.shellPrepareError,
+      vmTimingCount: runtime.vmTimings?.entries?.length ?? 0,
       ...status,
     }),
+    // Issue #41: run the real cargo build inside the live VM and report
+    // per-phase wall-clock timing + the rustc time-passes split. This is a
+    // measurement, not a workaround — it runs the user's actual `cargo run` /
+    // `cargo build` / `cargo check`. It is slow on purpose (the whole point
+    // is to time the slow build), so callers should treat it as a deliberate
+    // diagnostic. Returns the structured result from parseCargoBenchPayload.
+    'vm.benchCargo': async (params = {}) => {
+      if (typeof runCargoBench !== 'function') {
+        throw new Error('cargo benchmark is not available on this server');
+      }
+      return await runCargoBench(params ?? {});
+    },
     'fs.readFile': async ({ path }) => await workspace.readFile(path),
     'fs.writeFile': async ({ path, data, options }) => {
       const buf = data instanceof Uint8Array ? data : new Uint8Array(data ?? []);
@@ -579,7 +677,11 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   });
   const debug = opts.debug ?? (() => {});
   const logger = opts.logger ?? console;
-  const runGuestScript = createGuestScriptRunner({ cx, dataDevice, logger, debug });
+  // Issue #41: opt-in per-cx.run timing (see createVmTimings). OFF unless
+  // `globalThis.__RWB_DEBUG_VM_TIMING` is set, so it costs nothing normally.
+  const vmTimings = createVmTimings({ logger });
+  const recordTiming = (entry) => vmTimings.record(entry);
+  const runGuestScript = createGuestScriptRunner({ cx, dataDevice, logger, debug, recordTiming });
   const runtime = {
     ready: false,
     primed: false,
@@ -617,6 +719,8 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
       lastErrorAt: null,
     },
   };
+  // Expose the timing ring buffer for `__rustWebBox.dump()` / diagnostics.
+  runtime.vmTimings = vmTimings;
   const guestSyncState = { knownPaths: new Set() };
   let guestSyncTail = Promise.resolve();
   const guestSyncWaiters = new Set();
@@ -708,6 +812,92 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     onFrame: handleGuestSyncFrame,
     logger,
   });
+
+  // Issue #41: cargo benchmark readback. The guest emits a single
+  // `rust-web-box-bench` OSC frame at the end of the bench run; we parse it
+  // off the stdout stream (same mechanism as workspace-sync) and resolve the
+  // pending `runCargoBench` promise. Bench runs are serialised through
+  // `benchTail` so two callers can't interleave their measurements.
+  const benchWaiters = new Set();
+  function handleCargoBenchFrame(encodedPayload) {
+    let parsed = null;
+    let parseError = null;
+    try {
+      parsed = parseCargoBenchPayload(encodedPayload);
+    } catch (err) {
+      parseError = err;
+      logger?.warn?.('[rust-web-box] cargo bench payload decode failed:', err);
+    }
+    for (const waiter of [...benchWaiters]) {
+      clearTimeout(waiter.timer);
+      benchWaiters.delete(waiter);
+      if (parseError) waiter.reject(parseError);
+      else waiter.resolve(parsed);
+    }
+  }
+  function waitForCargoBench(timeoutMs) {
+    let waiter;
+    const promise = new Promise((resolve, reject) => {
+      waiter = {
+        resolve,
+        reject,
+        timer: setTimeout(() => {
+          benchWaiters.delete(waiter);
+          reject(new Error(`timed out waiting for cargo bench results after ${timeoutMs}ms`));
+        }, timeoutMs),
+      };
+      benchWaiters.add(waiter);
+    });
+    return {
+      promise,
+      cancel() {
+        if (benchWaiters.has(waiter)) {
+          clearTimeout(waiter.timer);
+          benchWaiters.delete(waiter);
+        }
+      },
+    };
+  }
+  const benchFrameParser = createCargoBenchFrameParser({
+    onFrame: handleCargoBenchFrame,
+    logger,
+  });
+
+  let benchTail = Promise.resolve();
+  function runCargoBench(benchOpts = {}) {
+    // The in-browser build is minutes long by design (that is the thing we
+    // are measuring); default generously and let callers override.
+    const timeoutMs = benchOpts.timeoutMs ?? opts.cargoBenchTimeoutMs ?? 1_800_000;
+    benchTail = benchTail.catch(() => {}).then(async () => {
+      const startedAt = Date.now();
+      const waiter = waitForCargoBench(timeoutMs);
+      try {
+        console_.reattach?.();
+        await runGuestScript(
+          buildCargoBenchScript(benchOpts),
+          { name: 'cargo-bench', cwd: benchOpts.workspaceDir ?? '/workspace' },
+        );
+        const result = await waiter.promise;
+        const wallMs = Date.now() - startedAt;
+        recordTiming({ kind: 'bench', label: 'cargo-bench', elapsedMs: wallMs, exitCode: 0 });
+        try {
+          // eslint-disable-next-line no-console
+          (logger?.log ?? console.log)(`\n${summarizeCargoBench(result, { wallMs })}\n`);
+        } catch {}
+        return { ...result, wallMs };
+      } catch (err) {
+        waiter.cancel();
+        recordTiming({
+          kind: 'bench',
+          label: 'cargo-bench',
+          elapsedMs: Date.now() - startedAt,
+          error: err?.message ?? String(err),
+        });
+        throw err;
+      }
+    });
+    return benchTail;
+  }
   // Streaming decoder so multi-byte UTF-8 split across CheerpX writes
   // doesn't decode to U+FFFD. Stateful CRLF normaliser so xterm.js
   // (under VS Code's Pseudoterminal) renders bash output without the
@@ -722,7 +912,9 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   console_.onData((bytes) => {
     const text = stdoutDecoder.decode(bytes, { stream: true });
     if (!text) return;
-    const visible = syncFrameParser.filter(text);
+    // Strip workspace-sync frames first (unchanged behaviour), then the
+    // issue #41 cargo-bench frames, so neither pollutes the visible terminal.
+    const visible = benchFrameParser.filter(syncFrameParser.filter(text));
     if (!visible) return;
     const chunk = normaliseCrlf(visible);
     // Feed the interactive-shell first-output watchdog (issue #37). Any
@@ -830,6 +1022,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     runGuestScript,
     primeGuestWorkspace,
     refreshGuestTarget,
+    runCargoBench,
     spawn,
     killSub,
     skipPrime,
@@ -905,6 +1098,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
         onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
         debug,
         diag: runtime.shellLoop,
+        recordTiming,
         firstOutputTimeoutMs: opts.shellFirstOutputTimeoutMs,
         onUnhealthy: ({ kind, detail }) => {
           // The interactive shell keeps dying immediately — the terminal
@@ -964,6 +1158,12 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
     // Exposed so the page-level shim / dumpRuntime() can report live
     // interactive-shell health (issue #37 diagnostics).
     runtime,
+    // Issue #41 diagnostics: opt-in cx.run timing ring buffer + the real
+    // in-VM cargo benchmark. `vmTimings.snapshot()` returns recorded calls;
+    // `runCargoBench()` runs the actual build and resolves with per-phase
+    // timing. Surfaced here so a page-level shim can wire them to the console.
+    vmTimings,
+    runCargoBench,
     stop() {
       stopShell();
       console_.dispose();
