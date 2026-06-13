@@ -125,6 +125,19 @@ jobs:
             printf "%s\n" "$edited_output"
             [[ "$edited_output" == *"edited smoke output from disk image"* ]] \
               || (echo "edited cargo run did not use updated src/main.rs" && exit 1)
+            # Issue #41 regression guard: the shipped fix links with lld
+            # instead of GNU ld (the measured −85% link-time syscall win).
+            # The edited `cargo run` above just relinked target/debug/hello,
+            # so assert that binary carries lld's signature: lld stamps
+            # "Linker: LLD <ver>" into .comment, GNU ld does not. This makes
+            # a future revert of the lld config fail CI loudly instead of
+            # silently shipping the slow linker again. readelf is provided
+            # by binutils, which gcc depends on — if it were missing the
+            # pre-bake builds above would already have failed to link.
+            comment=$(readelf -p .comment target/debug/hello 2>/dev/null || true)
+            printf "%s\n" "$comment"
+            printf "%s" "$comment" | grep -qi 'LLD' \
+              || (echo "target/debug/hello not linked with lld — issue #41 fix regressed" && exit 1)
             # Issue #41: the fast edit→feedback lever. `cargo check` must
             # succeed on the edited source without emitting a binary.
             check_output=$(cargo check 2>&1) || {

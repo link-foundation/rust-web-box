@@ -14,4 +14,4 @@ bump: minor
 
 ### Changed
 
-- The disk-image smoke test verifies the `cargo check` pre-bake and runs `cargo check` on the edited source; existing untouched workspaces are migrated to the `tasks.json` that includes the `cargo check (fast)` task.
+- The disk-image smoke test now asserts the baked binary is linked with `lld` (reads `Linker: LLD` from its `.comment`) so a future revert of the linker config fails CI loudly; it also verifies the `cargo check` pre-bake and runs `cargo check` on the edited source. Existing untouched workspaces are migrated to the `tasks.json` that includes the `cargo check (fast)` task.
