@@ -231,11 +231,27 @@ function formatTimeoutContext({ stage, snapshot, consoleHistory, errors, failedR
  * stage-1 timeout we attach a snapshot + console + network log to the
  * thrown error so CI logs surface the *cause* of the stall rather than
  * just `Timeout Xms exceeded`.
+ *
+ * Options:
+ *   - `bootTimeoutMs` — stage-1 (workspace shim) wait budget.
+ *   - `headless` — run Chromium headless (default true; RUST_WEB_BOX_E2E_HEADED=1 flips it).
+ *   - `skipPrime` / `skipBash` — default `true`. Set both to `false` to boot
+ *     a *real* interactive shell (the UI-driven terminal e2e needs this).
+ *     Only safe against a freshly built disk whose seed inodes all exist.
  */
 export async function withWorkbench(url, body, {
   commander: commanderMod,
   bootTimeoutMs = DEFAULT_BOOT_TIMEOUT_MS,
   headless = process.env.RUST_WEB_BOX_E2E_HEADED === '1' ? false : true,
+  // By default we skip the workspace prime AND the interactive bash loop
+  // (see the addInitScript note below). The UI-driven e2e suite needs the
+  // *real* terminal, so it opts back in with `skipPrime: false` +
+  // `skipBash: false`. That is only safe against a disk image whose seed
+  // inodes already exist (a freshly built rust-alpine.ext2), because the
+  // prime then only ever overwrites existing inodes — never allocates the
+  // fresh ones that trip the CheerpX 1.3.x OverlayDevice 'a1' wedge.
+  skipPrime = true,
+  skipBash = true,
 } = {}) {
   const { launchBrowser, makeBrowserCommander } = commanderMod;
   // CI builds and most container/sandbox dev environments cannot use
@@ -293,7 +309,7 @@ export async function withWorkbench(url, body, {
   // surfaced `bootHistory: []` even on runs that DID emit phases. Letting
   // any `vm.boot` event through is fine: the topic + kind discriminator is
   // unique enough.
-  await page.addInitScript(() => {
+  await page.addInitScript(({ skipPrime, skipBash }) => {
     globalThis.__rustWebBoxBootHistory = [];
     const origBC = globalThis.BroadcastChannel;
     if (typeof origBC === 'function') {
@@ -313,13 +329,18 @@ export async function withWorkbench(url, body, {
     // inode under /workspace can fire `TypeError: …reading 'a1'`,
     // `Program exited with code 71`, and wedge the runtime so every
     // subsequent `cx.run` errors with `function signature mismatch`.
-    // See web/glue/webvm-server.js for full notes. The e2e suite runs
+    // See web/glue/webvm-server.js for full notes. Most e2e tests run
     // against whichever rust-alpine disk image is currently published
     // (which already ships the seed paths the prime would touch), so
-    // skipping the prime is the safe choice that keeps boot deterministic.
-    globalThis.__RUST_WEB_BOX_SKIP_PRIME = true;
-    globalThis.__RUST_WEB_BOX_SKIP_BASH = true;
-  });
+    // skipping the prime is the safe default that keeps boot deterministic.
+    //
+    // Skipping the bash loop also means terminal keystrokes go nowhere —
+    // those suites drive the VM through `cx.run`/the bus instead. The
+    // UI-driven e2e suite (which types into the *real* integrated terminal)
+    // overrides both flags so `runShellLoop` brings up an interactive bash.
+    if (skipPrime) globalThis.__RUST_WEB_BOX_SKIP_PRIME = true;
+    if (skipBash) globalThis.__RUST_WEB_BOX_SKIP_BASH = true;
+  }, { skipPrime, skipBash });
 
   try {
     await commander.goto({ url, waitUntil: 'domcontentloaded', timeout: bootTimeoutMs });

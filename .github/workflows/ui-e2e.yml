@@ -1,0 +1,133 @@
+name: UI-driven e2e (issue #41)
+
+# On-demand ONLY. konard asked (PR #42) for "full e2e tests, that also are
+# runned as manual dispatch, that verify exactly all steps. First cargo run +
+# output, file change (using VS Code UI - editor), cargo run + verify output
+# (all using VS Code terminal)." This suite does exactly that against the REAL
+# integrated terminal and the REAL Monaco editor — so it is slow (a genuine
+# in-VM debug rebuild is minutes long, which is the very thing issue #41
+# measures) and has no push/PR/schedule trigger. Dispatch it with:
+#
+#   gh workflow run ui-e2e.yml --ref <branch>
+#   gh workflow run ui-e2e.yml --ref <branch> -f disk_source=release
+#
+# The steps verified end-to-end inside CheerpX:
+#   1. type `cargo run` in the integrated terminal → assert the seed greeting
+#   2. edit /workspace/src/main.rs in the Monaco editor + Ctrl+S (the real
+#      VS Code FileSystemProvider save path) with a unique per-run marker
+#   3. type `cargo run` again → assert the NEW marker AND "Compiling"
+#
+# Step 3's brand-new marker + "Compiling" are the anti-fake proof: a cached
+# or pre-baked binary cannot print a marker that did not exist until this run,
+# and "Compiling" proves CheerpX genuinely re-invoked rustc in the VM.
+on:
+  workflow_dispatch:
+    inputs:
+      disk_source:
+        description: 'Warm disk: "build" (build fresh — matches current code, prime-safe) or "release" (download disk-latest)'
+        required: false
+        default: 'build'
+      run1_timeout_ms:
+        description: 'Timeout for the first (pre-baked) `cargo run` in ms'
+        required: false
+        default: '180000'
+      rebuild_timeout_ms:
+        description: 'Timeout for the rebuilt `cargo run` in ms (default 7 min)'
+        required: false
+        default: '420000'
+      boot_ms:
+        description: 'CheerpX boot timeout in ms'
+        required: false
+        default: '180000'
+
+jobs:
+  ui-e2e:
+    name: UI-driven cargo run / edit / cargo run
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      # Building the disk fresh needs QEMU + e2fsprogs; downloading the
+      # published release does not. We only set those up for disk_source=build.
+      - name: Set up QEMU (for fresh disk build)
+        if: ${{ inputs.disk_source == 'build' }}
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx (for fresh disk build)
+        if: ${{ inputs.disk_source == 'build' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install e2fsprogs (for fresh disk build)
+        if: ${{ inputs.disk_source == 'build' }}
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq e2fsprogs
+
+      - name: Build fresh rust-alpine.ext2
+        if: ${{ inputs.disk_source == 'build' }}
+        run: ./web/disk/build.sh
+
+      - name: Build workbench
+        run: node web/build/build-workbench.mjs
+
+      - name: Stage warm disk (fresh build)
+        if: ${{ inputs.disk_source == 'build' }}
+        run: WARM_DISK_SOURCE_PATH=web/disk/rust-alpine.ext2 node web/build/stage-pages-disk.mjs
+
+      - name: Stage warm disk (published release)
+        if: ${{ inputs.disk_source != 'build' }}
+        run: |
+          WARM_DISK_SOURCE_URL="https://github.com/${{ github.repository }}/releases/download/disk-latest/rust-alpine.ext2" \
+            node web/build/stage-pages-disk.mjs
+
+      - name: Install browser-commander + Playwright
+        working-directory: web/tests
+        run: npm ci
+
+      - name: Install Playwright system deps
+        timeout-minutes: 5
+        working-directory: web/tests
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo -E npx playwright install-deps chromium
+
+      - name: Install Chromium browser for Playwright
+        timeout-minutes: 5
+        working-directory: web/tests
+        run: npx playwright install chromium
+
+      - name: Run UI-driven e2e
+        working-directory: web/tests
+        env:
+          RUST_WEB_BOX_E2E: '1'
+          RUST_WEB_BOX_E2E_NO_SANDBOX: '1'
+          RUST_WEB_BOX_E2E_BOOT_MS: ${{ inputs.boot_ms }}
+          RUST_WEB_BOX_UI_RUN1_MS: ${{ inputs.run1_timeout_ms }}
+          RUST_WEB_BOX_UI_REBUILD_MS: ${{ inputs.rebuild_timeout_ms }}
+          RUST_WEB_BOX_UI_ARTIFACT_DIR: ${{ github.workspace }}/docs/case-studies/issue-41/data/ui-e2e
+        run: node --test e2e/ui-driven-e2e.test.mjs
+
+      - name: Publish UI e2e summary
+        if: always()
+        run: |
+          {
+            echo "# UI-driven e2e (issue #41)"
+            echo
+            if [ -f "$GITHUB_WORKSPACE/docs/case-studies/issue-41/data/ui-e2e/ui-e2e-report.md" ]; then
+              cat "$GITHUB_WORKSPACE/docs/case-studies/issue-41/data/ui-e2e/ui-e2e-report.md"
+            else
+              echo "_No report produced — the suite likely failed before Step 3. See the job log and uploaded artifacts._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload UI e2e artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: issue-41-ui-e2e
+          path: docs/case-studies/issue-41/data/ui-e2e/**
+          if-no-files-found: warn
+          retention-days: 30

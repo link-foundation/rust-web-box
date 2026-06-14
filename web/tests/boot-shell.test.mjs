@@ -173,6 +173,20 @@ test('boot shell: workspace-fs seeds a root Cargo project', async () => {
   assert.doesNotMatch(wfs, /"command": "cd \/workspace\/hello && cargo run"/);
   assert.match(wfs, /LEGACY_SEED_FILES/);
   assert.match(wfs, /replaceIfUnchanged\(\s*'\/workspace\/\.vscode\/tasks\.json'/);
+  // Issue #41: the seeded tasks.json also offers the fast `cargo check`
+  // task, and untouched existing workspaces are migrated to it.
+  assert.match(wfs, /"label": "cargo check \(fast\)"/);
+  assert.match(wfs, /"command": "cargo check"/);
+  assert.match(
+    wfs,
+    /PREVIOUS_SEED_FILES\['\/workspace\/\.vscode\/tasks\.json'\]/,
+    'existing untouched tasks.json must migrate to add the cargo check task',
+  );
+});
+
+test('boot shell: terminal banner points users at the fast cargo check loop (issue #41)', async () => {
+  const ext = await read('extensions/webvm-host/extension.js');
+  assert.match(ext, /cargo check` is the fastest way to catch errors/);
 });
 
 test('boot shell: webvm-server mirrors workspace through a quiet DataDevice script', async () => {
@@ -255,6 +269,12 @@ test('boot shell: Dockerfile.disk uses Alpine and pre-bakes root hello-world', a
   assert.match(d, /files\.autoSave": "off"/);
   assert.doesNotMatch(d, /workspace\/hello/);
   assert.doesNotMatch(d, /\|\|\s*true/);
+  // Issue #41: pre-bake `cargo check` (the fast edit→feedback lever) so
+  // the first in-browser check reuses warm artifacts, and offer it as a
+  // VS Code task alongside the run tasks.
+  assert.match(d, /cargo build &&[\s\S]*cargo check/);
+  assert.match(d, /"label": "cargo check \(fast\)"/);
+  assert.match(d, /"command": "cargo check"/);
 
   const build = await read('disk/build.sh');
   assert.match(build, /resize2fs -M "\$IMG"/);
@@ -271,6 +291,9 @@ test('boot shell: disk-image workflow e2e verifies tree, cargo, and cargo run ou
   assert.match(wf, /tree --version/);
   assert.match(wf, /cargo --version/);
   assert.match(wf, /cargo run --release/);
+  // Issue #41: the fast check lever is pre-baked and smoke-tested.
+  assert.match(wf, /cargo check/);
+  assert.match(wf, /target\/debug\/\.fingerprint/);
   // Issue #33: the prebuilt program is the canonical cargo new output.
   assert.match(wf, /Hello, world!/);
   assert.doesNotMatch(wf, /This binary was compiled inside CheerpX/);

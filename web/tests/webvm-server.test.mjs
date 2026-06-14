@@ -15,6 +15,10 @@ import {
   WORKSPACE_SYNC_OSC_END,
   WORKSPACE_SYNC_OSC_PREFIX,
 } from '../glue/workspace-sync.js';
+import {
+  CARGO_BENCH_OSC_END,
+  CARGO_BENCH_OSC_PREFIX,
+} from '../glue/cargo-bench.js';
 
 function makeChannelPair() {
   const a = new EventTarget();
@@ -37,6 +41,10 @@ function b64(input) {
 
 function syncFrame(lines) {
   return `${WORKSPACE_SYNC_OSC_PREFIX}${b64(['RWB_SYNC_V1', ...lines, ''].join('\n'))}${WORKSPACE_SYNC_OSC_END}`;
+}
+
+function benchFrame(lines) {
+  return `${CARGO_BENCH_OSC_PREFIX}${b64(['RWB_BENCH_V1', ...lines, ''].join('\n'))}${CARGO_BENCH_OSC_END}`;
 }
 
 function makeFakeCx({ onRun } = {}) {
@@ -517,6 +525,156 @@ test('webvm-server: target readDirectory refreshes guest metadata on demand', as
   );
   assert.match(dataState.writes.at(-1).contents, /printf 'P\\t%s\\n'/);
   assert.equal(stolenOutput.join(''), '');
+});
+
+test('webvm-server: vm.benchCargo runs the real build script and returns parsed per-phase timing', async () => {
+  // Issue #41: the page asks the guest to run the REAL `cargo run` build and
+  // ship per-phase wall-clock back over an OSC frame. Here the fake cx detects
+  // the staged cargo-bench script and replays a frame the way the guest would,
+  // so we can assert the page-side parse/return path end-to-end.
+  let benchScript = null;
+  const { cx } = makeFakeCx({
+    onRun: async ({ cmd, args, state }) => {
+      if (cmd === '/bin/sh' && String(args?.[0] ?? '').includes('cargo-bench')) {
+        setTimeout(() => {
+          state.writer(enc.encode(benchFrame([
+            `E\tarch\t${b64('i686')}`,
+            `E\tnproc\t${b64('1')}`,
+            `E\trustc\t${b64('rustc 1.78.0 (9b00956e5 2024-04-29)')}`,
+            `E\tcargo\t${b64('cargo 1.78.0')}`,
+            `P\tnoop-run\t23.960\t0\t0\t${b64('cargo run (no change)')}\t${b64('cargo run')}\t${b64('Finished dev')}`,
+            `P\tedit-run\t364.120\t0\t1\t${b64('cargo run (one-line edit)')}\t${b64('cargo run')}\t${b64('Compiling hello')}`,
+            `T\tlink_binary\t0.049`,
+            `T\ttotal\t0.072`,
+          ])), 1);
+        }, 0);
+      }
+    },
+  });
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice, state: dataState } = makeFakeDataDevice();
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: { skipPrime: true, skipShellLoop: true },
+  });
+  await server.bootTask;
+
+  const result = await server.methods['vm.benchCargo']({ timeoutMs: 5000 });
+
+  // The staged script is the real cargo benchmark, not a workaround.
+  benchScript = dataState.writes.at(-1);
+  assert.equal(benchScript.filename, '/rust-web-box-cargo-bench.sh');
+  assert.match(benchScript.contents, /__rwb_phase edit-run "cargo run \(one-line edit\)" cargo run/);
+
+  // The frame decodes into structured, environment-proven timing.
+  assert.equal(result.env.arch, 'i686');
+  assert.equal(result.env.rustc, 'rustc 1.78.0 (9b00956e5 2024-04-29)');
+  const editRun = result.phases.find((p) => p.id === 'edit-run');
+  assert.ok(editRun, 'expected an edit-run phase');
+  assert.equal(editRun.seconds, 364.12);
+  assert.equal(editRun.compiled, true);
+  assert.equal(result.passes.link_binary, 0.049);
+  // Page-side wall-clock is attached as an independent cross-check.
+  assert.equal(typeof result.wallMs, 'number');
+});
+
+test('webvm-server: vm.benchCargo frame never leaks into the visible terminal stream', async () => {
+  // The bench OSC frame shares the `\x1b]777;rust-web-box-` prefix with the
+  // workspace-sync frame; the composed parser must strip it so none of the
+  // base64 payload reaches xterm.js as visible text.
+  const { cx } = makeFakeCx({
+    onRun: async ({ cmd, args, state }) => {
+      if (cmd === '/bin/sh' && String(args?.[0] ?? '').includes('cargo-bench')) {
+        setTimeout(() => {
+          state.writer(enc.encode(
+            `Compiling hello v0.1.0\n${benchFrame([
+              `E\tarch\t${b64('i686')}`,
+              `P\tedit-run\t5.000\t0\t1\t${b64('cargo run')}\t${b64('cargo run')}\t${b64('done')}`,
+            ])}    Finished dev\n`,
+          ), 1);
+        }, 0);
+      }
+    },
+  });
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: { skipPrime: true, skipShellLoop: true },
+  });
+  await server.bootTask;
+
+  const before = busServer.events.filter((e) => e.topic === 'proc.stdout').length;
+  const result = await server.methods['vm.benchCargo']({ timeoutMs: 5000 });
+  await Promise.resolve();
+
+  assert.equal(result.phases[0].seconds, 5);
+  const broadcast = busServer.events
+    .filter((e) => e.topic === 'proc.stdout')
+    .slice(before)
+    .map((e) => e.payload.chunk)
+    .join('');
+  // The human-visible compiler lines survive; the OSC frame does not.
+  assert.match(broadcast, /Compiling hello v0\.1\.0/);
+  assert.match(broadcast, /Finished dev/);
+  assert.equal(broadcast.includes('rust-web-box-bench'), false);
+  assert.equal(broadcast.includes('RWB_BENCH_V1'), false);
+});
+
+test('webvm-server: __RWB_DEBUG_VM_TIMING records per-cx.run timing, and nothing when off', async () => {
+  // Issue #41 asks for tracing of the exact in-VM bottleneck. The opt-in
+  // recorder times every cx.run (guest scripts + the bench), gated on a
+  // global flag so it costs nothing when off (mirrors __RWB_DEBUG_TERMINAL_STREAM).
+  const makeServer = () => {
+    const { cx } = makeFakeCx({
+      onRun: async ({ cmd, args, state }) => {
+        if (cmd === '/bin/sh' && String(args?.[0] ?? '').includes('cargo-bench')) {
+          setTimeout(() => {
+            state.writer(enc.encode(benchFrame([
+              `E\tarch\t${b64('i686')}`,
+              `P\tedit-run\t1.000\t0\t1\t${b64('cargo run')}\t${b64('cargo run')}\t${b64('ok')}`,
+            ])), 1);
+          }, 0);
+        }
+      },
+    });
+    const busServer = makeBusServerStub();
+    const { dataDevice } = makeFakeDataDevice();
+    return startWebVMServer({
+      cx, busServer, workspace: makeFakeWorkspace(), dataDevice, status: {},
+      // Quiet logger so the opt-in trace doesn't spam the test output.
+      opts: {
+        skipPrime: true,
+        skipShellLoop: true,
+        logger: { log() {}, info() {}, warn() {}, error() {} },
+      },
+    });
+  };
+
+  // OFF (default): no entries recorded.
+  const off = makeServer();
+  await off.bootTask;
+  await off.methods['vm.benchCargo']({ timeoutMs: 5000 });
+  assert.equal(off.vmTimings.snapshot().length, 0, 'no timing should be recorded when the flag is off');
+
+  // ON: the guest-script run and the bench run are both timed.
+  globalThis.__RWB_DEBUG_VM_TIMING = true;
+  try {
+    const on = makeServer();
+    await on.bootTask;
+    await on.methods['vm.benchCargo']({ timeoutMs: 5000 });
+    const entries = on.vmTimings.snapshot();
+    assert.ok(entries.length >= 2, `expected at least guest-script + bench entries (got ${entries.length})`);
+    assert.ok(entries.some((e) => e.kind === 'guest-script' && e.label === 'cargo-bench'));
+    assert.ok(entries.some((e) => e.kind === 'bench' && typeof e.elapsedMs === 'number'));
+    for (const e of entries) assert.equal(typeof e.at, 'number');
+  } finally {
+    delete globalThis.__RWB_DEBUG_VM_TIMING;
+  }
 });
 
 test('webvm-server: non-recursive empty directory delete uses guest rmdir', async () => {
