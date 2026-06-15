@@ -334,8 +334,10 @@ async function bringUpVM({ workspace, channel, busServer }) {
           notify(
             'warning',
             'The Linux shell did not start in this browser.',
-            'Terminal features may be unavailable — see the terminal for ' +
-              'details, then reload the tab or try a Chromium-based browser.',
+            'Terminal features may be unavailable — diagnostics have been ' +
+              'printed to the terminal. Reload the tab, try a Chromium-based ' +
+              'browser, or run the "WebVM: Show Diagnostics in Terminal" ' +
+              'command from the Command Palette.',
           );
         },
       },

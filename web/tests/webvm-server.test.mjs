@@ -880,7 +880,16 @@ test('webvm-server: silent shell spawn surfaces a visible terminal advisory (iss
     .map((e) => e.payload.chunk)
     .join('');
   assert.match(advisory, /produced no prompt/);
-  assert.match(advisory, /__rustWebBox\.dump\(\)/);
+  // Issue #43: instead of telling the user to "run __rustWebBox.dump() in the
+  // browser console" (a dead end on iPadOS Safari), the advisory must inline
+  // the diagnostics block straight into the terminal. The silent-spawn
+  // signals (silentSpawns>=1, outputBytes=0) are exactly what the user can
+  // act on, and they prove the diagnostics were taken from the live runtime.
+  assert.match(advisory, /rust-web-box diagnostics/);
+  assert.match(advisory, /silentSpawns=[1-9]/);
+  assert.match(advisory, /outputBytes=0/);
+  assert.doesNotMatch(advisory, /in the browser console/i);
+  assert.doesNotMatch(advisory, /__rustWebBox\.dump\(\)/);
 
   const shellEvents = busServer.events.filter((e) => e.topic === 'vm.shell');
   assert.ok(

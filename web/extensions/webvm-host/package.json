@@ -24,7 +24,8 @@
       { "command": "webvm-host.cargo.test", "title": "Cargo: Test", "category": "Rust" },
       { "command": "webvm-host.cargo.add", "title": "Cargo: Add Crate", "category": "Rust" },
       { "command": "webvm-host.cargo.new", "title": "Cargo: New Project", "category": "Rust" },
-      { "command": "webvm-host.openTerminal", "title": "WebVM: Open Terminal" }
+      { "command": "webvm-host.openTerminal", "title": "WebVM: Open Terminal" },
+      { "command": "webvm-host.showDiagnostics", "title": "WebVM: Show Diagnostics in Terminal", "category": "WebVM" }
     ],
     "taskDefinitions": [
       {

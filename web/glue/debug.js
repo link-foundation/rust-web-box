@@ -155,6 +155,13 @@ export function dumpRuntime(globalRef = globalThis) {
         exits: shell.exits ?? 0,
         errors: shell.errors ?? 0,
         fastCycles: shell.fastCycles ?? 0,
+        // The "bash spawned but never printed a prompt" signals — the
+        // *other* iPad-Safari signature (issue #37/#43). Surfaced so the
+        // terminal diagnostics dump explains a blank prompt on a device
+        // with no browser console.
+        outputBytes: shell.outputBytes ?? 0,
+        silentSpawns: shell.silentSpawns ?? 0,
+        slowFirstOutput: !!shell.slowFirstOutput,
         lastExitCode: safe(shell.lastExitCode) ?? null,
         lastError: safe(shell.lastError) ?? null,
       }
@@ -184,4 +191,61 @@ export function dumpRuntime(globalRef = globalThis) {
     shimAlive: !!r.shim,
     shellLoop,
   };
+}
+
+/**
+ * Render a {@link dumpRuntime} snapshot as a compact, human-readable block
+ * for the **VS Code integrated terminal**.
+ *
+ * Why this exists (issue #43): iPadOS Safari has no easy developer console,
+ * so telling the user to "run `__rustWebBox.dump()` in the browser console"
+ * is a dead end on the exact device the terminal fails on. Instead we print
+ * the same diagnostics directly into the terminal, where the user already
+ * is. The output is plain text plus optional ANSI dim styling (off by
+ * default so it's test-friendly).
+ *
+ * @param {object} dump   a {@link dumpRuntime} result.
+ * @param {object} [opts]
+ * @param {boolean} [opts.ansi=false]  wrap each line in ANSI dim styling.
+ * @param {string}  [opts.eol='\n']    line terminator (`'\r\n'` for a pty).
+ * @returns {string}
+ */
+export function formatDiagnosticsForTerminal(dump = {}, { ansi = false, eol = '\n' } = {}) {
+  const dim = (s) => (ansi ? `\x1b[2m${s}\x1b[0m` : s);
+  const yes = (v) => (v ? 'yes' : 'no');
+  const lines = [];
+  const push = (label, value) => lines.push(dim(`  ${label}: ${value}`));
+
+  lines.push(dim('--- rust-web-box diagnostics ---'));
+  push('time', dump.timestamp ?? 'n/a');
+  push('userAgent', dump.userAgent ?? 'n/a');
+  const tells = [
+    dump.browserId ?? 'unknown',
+    dump.isSafari ? 'Safari' : null,
+    dump.isIOS ? 'iOS' : null,
+    dump.isIPad ? 'iPad' : null,
+  ].filter(Boolean);
+  push('browser', tells.join(' / '));
+  push(
+    'isolation',
+    `crossOriginIsolated=${yes(dump.crossOriginIsolated)} ` +
+      `SharedArrayBuffer=${yes(dump.sharedArrayBuffer)} ` +
+      `serviceWorker=${yes(dump.serviceWorker)}`,
+  );
+  push('vmPhase', dump.vmPhase ?? 'n/a');
+  const s = dump.shellLoop;
+  if (s) {
+    push(
+      'shell',
+      `healthy=${yes(s.healthy)} spawns=${s.spawns} exits=${s.exits} ` +
+        `errors=${s.errors} fastCycles=${s.fastCycles} ` +
+        `silentSpawns=${s.silentSpawns} outputBytes=${s.outputBytes}`,
+    );
+    if (s.lastExitCode != null) push('shell.lastExitCode', s.lastExitCode);
+    if (s.lastError) push('shell.lastError', s.lastError);
+  } else {
+    push('shell', 'not started');
+  }
+  lines.push(dim('--------------------------------'));
+  return lines.join(eol) + eol;
 }

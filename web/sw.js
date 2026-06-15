@@ -1,23 +1,54 @@
 // Service Worker for rust-web-box.
 //
 // Responsibilities:
-//   1. Aggressively cache the static shell, the vendored VS Code Web
-//      bundle, and the CheerpX runtime so repeat visits load in <10 s
-//      (issue #1 acceptance criterion 10).
-//   2. Synthesize Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy
+//   1. Cache the vendored VS Code Web bundle and the CheerpX runtime so
+//      repeat visits load in <10 s (issue #1 acceptance criterion 10).
+//   2. Keep our own app shell (index.html + everything under `glue/` and
+//      `extensions/`) **fresh** on every visit, so a code fix actually
+//      reaches users on their next load (issue #43).
+//   3. Synthesize Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy
 //      response headers for same-origin assets so SharedArrayBuffer +
 //      WASM threads work on GitHub Pages, which doesn't set them itself.
 //
-// The cache version is bumped whenever the vendored bundle versions
-// change so old caches get evicted on activate.
+// ── Why two caching strategies (issue #43) ───────────────────────────────
+// The original worker served *every* same-origin request cache-first and
+// only evicted the cache when `CACHE_VERSION` changed — and that version
+// was bumped only when the vendored bundle versions changed. The result:
+// after #39 removed the custom error toast and v0.16.0/v0.17.0 shipped the
+// fix, an iPad that had visited during v0.15.0 kept serving the *stale*
+// cached `index.html` / `glue/boot.js` forever. The user reloaded, the fix
+// was live on the origin, yet the device still rendered the old toast and
+// the old "open the browser console" advisory — "still not working on iPad
+// Pro" (issue #43). The merged fix could never reach the device.
+//
+// The fix is to split assets by mutability:
+//   • **App shell** (our HTML + `glue/*` + `extensions/*`) is *mutable* —
+//     it changes on every release. Serve it **network-first**: fetch the
+//     live copy, update the cache, fall back to cache only when offline.
+//     A code fix now lands on the very next online load, no manual cache
+//     bump required. These files are tiny, so the network round-trip is
+//     cheap.
+//   • **Vendored bundles** (`vscode-web/*`, `cheerpx/*`, `disk/*`) are
+//     large and effectively *immutable* — their contents change only when
+//     their pinned version (encoded in `CACHE_VERSION`) changes. Serve
+//     them **cache-first** for the <10 s warm load, and rely on the
+//     `CACHE_VERSION` bump + `activate` eviction to roll them forward.
+//
+// `CACHE_VERSION` is still bumped whenever the vendored bundle versions
+// change (so old immutable assets get evicted), and additionally carries
+// an app-shell epoch (`-app{N}`) that we bump on any breaking change to the
+// shell-caching contract — bumping it forces a one-time eviction of every
+// device's stale cache, which is exactly what unsticks the iPads already
+// pinned to the pre-#39 shell.
 
-// Bump on every breaking change to the bundled assets so old caches
-// get evicted on activate.
-const CACHE_VERSION = 'rust-web-box-v3-vscode1.91.1-cheerpx1.3.3';
+// Bump the `-app{N}` suffix on any change to the shell-caching contract,
+// and the `cheerpx`/`vscode` tokens whenever the vendored bundles change,
+// so old caches get evicted on activate.
+const CACHE_VERSION = 'rust-web-box-v3-vscode1.91.1-cheerpx1.3.3-app2';
 
-// Static shell + glue. The VS Code Web bundle and CheerpX assets are
-// fetched lazily and cached on first hit (handled by the fetch listener),
-// so this list stays manageable.
+// Static shell + glue, pre-cached on install so the offline fallback has
+// something to serve. These are served network-first at runtime (see
+// `isShellAsset`), so pre-caching only matters for the offline path.
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -29,6 +60,21 @@ const SHELL_ASSETS = [
   './glue/webvm-server.js',
 ];
 
+// Our own app shell is mutable and must stay fresh. Everything that is NOT
+// a large vendored bundle is treated as shell. We allowlist the immutable
+// vendored prefixes and treat the rest of the same-origin space as shell
+// so a newly-added glue/extension file is fresh by default rather than
+// silently pinned to its first-seen version.
+const IMMUTABLE_PREFIXES = ['/vscode-web/', '/cheerpx/', '/disk/'];
+
+function isImmutableAsset(pathname) {
+  return IMMUTABLE_PREFIXES.some((prefix) => pathname.includes(prefix));
+}
+
+function isShellAsset(pathname) {
+  return !isImmutableAsset(pathname);
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -39,6 +85,8 @@ self.addEventListener('install', (event) => {
         // tests against a non-built tree.
       }),
   );
+  // Take over as soon as possible so the freshness fix applies on this
+  // navigation rather than the one after next.
   self.skipWaiting();
 });
 
@@ -76,6 +124,59 @@ function withCoopCoep(response) {
   });
 }
 
+// Cache-first: serve the cached copy if present, otherwise fetch and cache.
+// Used for the large, effectively-immutable vendored bundles.
+function cacheFirst(request) {
+  return caches.match(request).then((cached) => {
+    if (cached) return withCoopCoep(cached);
+    return fetch(request)
+      .then((response) => {
+        if (response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          caches
+            .open(CACHE_VERSION)
+            .then((cache) => cache.put(request, copy))
+            .catch(() => {});
+        }
+        return withCoopCoep(response);
+      })
+      .catch(
+        (err) =>
+          new Response(`fetch failed: ${err.message}`, {
+            status: 503,
+            statusText: 'Service Unavailable',
+          }),
+      );
+  });
+}
+
+// Network-first: fetch the live copy and refresh the cache, falling back to
+// the cached copy only when the network is unavailable. Used for our own
+// mutable app shell so a code fix reaches the user on the next online load
+// (issue #43) while still working offline.
+function networkFirst(request) {
+  return fetch(request)
+    .then((response) => {
+      if (response.ok && response.type === 'basic') {
+        const copy = response.clone();
+        caches
+          .open(CACHE_VERSION)
+          .then((cache) => cache.put(request, copy))
+          .catch(() => {});
+      }
+      return withCoopCoep(response);
+    })
+    .catch(() =>
+      caches.match(request).then((cached) => {
+        if (cached) return withCoopCoep(cached);
+        return new Response('offline and no cached copy available', {
+          status: 503,
+          statusText: 'Service Unavailable',
+        });
+      }),
+    );
+}
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   // Only handle same-origin requests; cross-origin (CDN) requests pass
@@ -89,28 +190,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return withCoopCoep(cached);
-      return fetch(event.request)
-        .then((response) => {
-          // Only cache successful basic responses.
-          if (response.ok && response.type === 'basic') {
-            const copy = response.clone();
-            caches
-              .open(CACHE_VERSION)
-              .then((cache) => cache.put(event.request, copy))
-              .catch(() => {});
-          }
-          return withCoopCoep(response);
-        })
-        .catch((err) => {
-          // Surface as a 503 so the page can show a graceful fallback.
-          return new Response(`fetch failed: ${err.message}`, {
-            status: 503,
-            statusText: 'Service Unavailable',
-          });
-        });
-    }),
-  );
+  // Mutable app shell → network-first (always fresh, offline-tolerant).
+  // Immutable vendored bundles → cache-first (fast warm load).
+  if (isShellAsset(url.pathname)) {
+    event.respondWith(networkFirst(event.request));
+  } else {
+    event.respondWith(cacheFirst(event.request));
+  }
 });

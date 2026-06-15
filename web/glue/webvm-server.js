@@ -31,6 +31,7 @@
 
 import { attachConsole } from './cheerpx-bridge.js';
 import { createLfToCrlfNormaliser } from './terminal-stream.js';
+import { dumpRuntime, formatDiagnosticsForTerminal } from './debug.js';
 import {
   applyWorkspaceSyncSnapshot,
   buildGuestTargetSnapshotScript,
@@ -559,6 +560,18 @@ export function fullServerMethods({
       vmTimingCount: runtime.vmTimings?.entries?.length ?? 0,
       ...status,
     }),
+    // Issue #43: a structured runtime snapshot delivered over the bus so
+    // the VS Code extension can surface diagnostics in the terminal (and
+    // anywhere else) without forcing the user to a browser console that
+    // iPadOS Safari doesn't expose. Includes a pre-rendered terminal block
+    // so the consumer doesn't need to know the formatting.
+    'vm.diagnostics': async () => {
+      const dump = diagnostics();
+      return {
+        dump,
+        terminalText: formatDiagnosticsForTerminal(dump, { ansi: true, eol: '\r\n' }),
+      };
+    },
     // Issue #41: run the real cargo build inside the live VM and report
     // per-phase wall-clock timing + the rustc time-passes split. This is a
     // measurement, not a workaround — it runs the user's actual `cargo run` /
@@ -677,6 +690,22 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   });
   const debug = opts.debug ?? (() => {});
   const logger = opts.logger ?? console;
+  // Issue #43: iPadOS Safari has no usable developer console, so the shell
+  // diagnostics must be printable *in the terminal*. Defaults to a snapshot
+  // that merges the live `runtime` (always populated, even in headless tests)
+  // with whatever boot.js has pinned to `globalThis.__rustWebBox` (browser
+  // tells, vmPhase, isolation flags). Overridable for tests.
+  const diagnostics = opts.diagnostics ?? (() => {
+    const live = globalThis.__rustWebBox || {};
+    const merged = {
+      ...globalThis,
+      __rustWebBox: {
+        ...live,
+        vmServer: live.vmServer ?? { runtime },
+      },
+    };
+    return dumpRuntime(merged);
+  });
   // Issue #41: opt-in per-cx.run timing (see createVmTimings). OFF unless
   // `globalThis.__RWB_DEBUG_VM_TIMING` is set, so it costs nothing normally.
   const vmTimings = createVmTimings({ logger });
@@ -1128,6 +1157,20 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
           busServer.emit('vm.shell', { healthy: false, kind, detail });
           if (!silentAdvisoryShown) {
             silentAdvisoryShown = true;
+            // Print the diagnostics *into the terminal* (issue #43): iPadOS
+            // Safari has no usable developer console, so a "run
+            // __rustWebBox.dump() in the browser console" hint is a dead end
+            // on the very device this fails on. The user is already looking
+            // at the terminal — put the debug data there.
+            let diagBlock = '';
+            try {
+              diagBlock = formatDiagnosticsForTerminal(diagnostics(), {
+                ansi: true,
+                eol: '\r\n',
+              });
+            } catch (err) {
+              diagBlock = `  (diagnostics unavailable: ${err?.message ?? err})\r\n`;
+            }
             const advisory =
               '\r\n\x1b[33m[rust-web-box]\x1b[0m The Linux shell started but ' +
               'produced no prompt.\r\n' +
@@ -1135,8 +1178,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
               'Safari/iPad (rust-web-box#37).\r\n' +
               'Workarounds: reload the tab, or open this site in a ' +
               'Chromium-based browser.\r\n' +
-              'Diagnostics: run \x1b[36m__rustWebBox.dump()\x1b[0m in the ' +
-              'browser console.\r\n';
+              diagBlock;
             busServer.emit('proc.stdout', { pid: 1, chunk: advisory });
           }
           try { opts.onShellUnhealthy?.({ kind, detail, diag: runtime.shellLoop }); } catch {}
