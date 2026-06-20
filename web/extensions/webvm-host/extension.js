@@ -563,6 +563,50 @@ function subscribeNotifications(vscode, bus) {
   return off;
 }
 
+// --- Terminal-based diagnostics (issue #43) ---------------------------
+//
+// iPadOS Safari does not expose an easy developer console, so the previous
+// "open the browser console and run `__rustWebBox.dump()`" advisory is a
+// dead end on the very device where the terminal-silent-hang first
+// surfaces. Instead the page-side server exposes `vm.diagnostics` over the
+// bus, returning a pre-rendered terminal block, and this helper opens a
+// throwaway VS Code pseudoterminal to print it. The terminal is the
+// surface the user is already looking at when something fails.
+
+function makeDiagnosticsPty(vscode, bus) {
+  const writeEmitter = new vscode.EventEmitter();
+  const closeEmitter = new vscode.EventEmitter();
+  return {
+    onDidWrite: writeEmitter.event,
+    onDidClose: closeEmitter.event,
+    async open() {
+      writeEmitter.fire('\r\nrust-web-box — gathering diagnostics…\r\n');
+      let text = '';
+      try {
+        const r = await bus.request('vm.diagnostics');
+        text = String(r?.terminalText ?? '').replace(/\n/g, '\r\n');
+      } catch (err) {
+        text = `\r\n[rust-web-box] diagnostics unavailable: ${err?.message ?? err}\r\n`;
+      }
+      writeEmitter.fire(text || '\r\n(no diagnostics returned)\r\n');
+      writeEmitter.fire(
+        '\r\nPaste the block above when reporting a bug at ' +
+          'https://github.com/link-foundation/rust-web-box/issues — close this terminal when done.\r\n',
+      );
+    },
+    close() {},
+    handleInput() {},
+  };
+}
+
+function showDiagnosticsInTerminal(vscode, bus) {
+  const term = vscode.window.createTerminal({
+    name: 'WebVM Diagnostics',
+    pty: makeDiagnosticsPty(vscode, bus),
+  });
+  term.show();
+}
+
 // --- activate ----------------------------------------------------------
 
 function activate(context) {
@@ -677,6 +721,14 @@ function activate(context) {
       });
       term.show();
     }),
+    // Issue #43: iPadOS Safari has no usable developer console, so the
+    // user can never run the old "open the browser console and call
+    // __rustWebBox.dump()" advisory. This command prints the same
+    // diagnostics straight into a terminal — the surface the user is
+    // already looking at when something fails.
+    vscode.commands.registerCommand('webvm-host.showDiagnostics', () =>
+      showDiagnosticsInTerminal(vscode, bus),
+    ),
     vscode.commands.registerCommand('webvm-host.openHelloWorld', () =>
       openHelloWorld(vscode),
     ),
