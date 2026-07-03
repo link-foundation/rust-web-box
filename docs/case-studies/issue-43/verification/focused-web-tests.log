@@ -1,0 +1,335 @@
+TAP version 13
+# Subtest: dumpRuntime surfaces the silent-shell signals from the shellLoop diag (issue \#43)
+ok 1 - dumpRuntime surfaces the silent-shell signals from the shellLoop diag (issue \#43)
+  ---
+  duration_ms: 5.056121
+  ...
+# Subtest: formatDiagnosticsForTerminal renders the iPad-Safari signature in plain text
+ok 2 - formatDiagnosticsForTerminal renders the iPad-Safari signature in plain text
+  ---
+  duration_ms: 0.491635
+  ...
+# Subtest: formatDiagnosticsForTerminal can emit ANSI dim + \\r\\n line endings for a pty
+ok 3 - formatDiagnosticsForTerminal can emit ANSI dim + \\r\\n line endings for a pty
+  ---
+  duration_ms: 0.195211
+  ...
+# Subtest: formatDiagnosticsForTerminal handles a missing shellLoop gracefully
+ok 4 - formatDiagnosticsForTerminal handles a missing shellLoop gracefully
+  ---
+  duration_ms: 0.159488
+  ...
+# Subtest: webvm-server: the silent-shell advisory no longer points at the browser console (issue \#43)
+ok 5 - webvm-server: the silent-shell advisory no longer points at the browser console (issue \#43)
+  ---
+  duration_ms: 7.270338
+  ...
+# Subtest: webvm-server: vm.diagnostics method returns a structured snapshot + terminal block
+ok 6 - webvm-server: vm.diagnostics method returns a structured snapshot + terminal block
+  ---
+  duration_ms: 1.72067
+  ...
+# Subtest: webvm-host extension contributes the "Show Diagnostics in Terminal" command
+ok 7 - webvm-host extension contributes the "Show Diagnostics in Terminal" command
+  ---
+  duration_ms: 4.255846
+  ...
+# Subtest: boot.js shell-unhealthy warning points at the new VS Code command, not the browser console
+ok 8 - boot.js shell-unhealthy warning points at the new VS Code command, not the browser console
+  ---
+  duration_ms: 1.368314
+  ...
+# Subtest: issue-39: index.html ships no custom boot-toast widget
+ok 9 - issue-39: index.html ships no custom boot-toast widget
+  ---
+  duration_ms: 7.950273
+  ...
+# Subtest: issue-39: boot.css ships no custom toast styles
+ok 10 - issue-39: boot.css ships no custom toast styles
+  ---
+  duration_ms: 1.928039
+  ...
+# Subtest: issue-39: boot.js uses the notification center, not a toast
+ok 11 - issue-39: boot.js uses the notification center, not a toast
+  ---
+  duration_ms: 5.238354
+  ...
+# Subtest: issue-39: notification center module exposes the bus contract
+ok 12 - issue-39: notification center module exposes the bus contract
+  ---
+  duration_ms: 1.147573
+  ...
+# Subtest: issue-39: extension surfaces vm.notify through native VS Code notifications
+ok 13 - issue-39: extension surfaces vm.notify through native VS Code notifications
+  ---
+  duration_ms: 0.938181
+  ...
+# Subtest: issue-39: inlined bus client can emit events (needed for vm.notify.sync)
+ok 14 - issue-39: inlined bus client can emit events (needed for vm.notify.sync)
+  ---
+  duration_ms: 0.689089
+  ...
+# Subtest: issue-43: pseudoterminal stays open when vm.shell is unhealthy
+ok 15 - issue-43: pseudoterminal stays open when vm.shell is unhealthy
+  ---
+  duration_ms: 0.880175
+  ...
+# Subtest: issue-39: server still streams a genuine terminal advisory + vm.shell event
+ok 16 - issue-39: server still streams a genuine terminal advisory + vm.shell event
+  ---
+  duration_ms: 1.635833
+  ...
+# Subtest: webvm-server: bare-LF stdout is normalised to CRLF on the wire
+ok 17 - webvm-server: bare-LF stdout is normalised to CRLF on the wire
+  ---
+  duration_ms: 11.521317
+  ...
+# Subtest: webvm-server: existing CRLF passed through, bare CR untouched
+ok 18 - webvm-server: existing CRLF passed through, bare CR untouched
+  ---
+  duration_ms: 5.656568
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# [rust-web-box] guest workspace sync failed: Error: guest write failed
+#     at Object.run (file:///tmp/gh-issue-solver-1783040887852/web/tests/webvm-server.test.mjs:444:15)
+#     at file:///tmp/gh-issue-solver-1783040887852/web/glue/webvm-server.js:436:34
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# Subtest: webvm-server: vt channel filtered (only stdout broadcast)
+ok 19 - webvm-server: vt channel filtered (only stdout broadcast)
+  ---
+  duration_ms: 5.835785
+  ...
+# Subtest: webvm-server: primes /workspace through a /data script, not terminal input
+ok 20 - webvm-server: primes /workspace through a /data script, not terminal input
+  ---
+  duration_ms: 2.067768
+  ...
+# Subtest: webvm-server: bash profile applies the lean cargo dev profile only on matching disks
+ok 21 - webvm-server: bash profile applies the lean cargo dev profile only on matching disks
+  ---
+  duration_ms: 0.777782
+  ...
+# Subtest: webvm-server: onPhase callback receives every emitted phase, including ready
+ok 22 - webvm-server: onPhase callback receives every emitted phase, including ready
+  ---
+  duration_ms: 0.599936
+  ...
+# Subtest: webvm-server: mirrors saved files through /data without typing into the terminal
+ok 23 - webvm-server: mirrors saved files through /data without typing into the terminal
+  ---
+  duration_ms: 1.224779
+  ...
+# Subtest: webvm-server: failed guest save rejects and leaves JS workspace unchanged
+ok 24 - webvm-server: failed guest save rejects and leaves JS workspace unchanged
+  ---
+  duration_ms: 2.657188
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# Subtest: webvm-server: target readDirectory refreshes guest metadata on demand
+ok 25 - webvm-server: target readDirectory refreshes guest metadata on demand
+  ---
+  duration_ms: 5.177122
+  ...
+# cargo bench (real in-VM build) — issue \#41
+#   vm: arch=i686 nproc=1 rustc 1.78.0 (9b00956e5 2024-04-29) / cargo 1.78.0
+#   cargo run (no change)        23.96s [fresh]
+#   cargo run (one-line edit)    6m04.1s (364.1s) [compiled]
+#   rustc -Z time-passes:
+#     link_binary          0.049s (68%)
+#     total                0.072s (100%)
+#   page-side wall-clock: 0.00s
+# Subtest: webvm-server: vm.benchCargo runs the real build script and returns parsed per-phase timing
+ok 26 - webvm-server: vm.benchCargo runs the real build script and returns parsed per-phase timing
+  ---
+  duration_ms: 3.998861
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# cargo bench (real in-VM build) — issue \#41
+#   vm: arch=i686 nproc=? rustc ? / cargo ?
+#   cargo run                    5.00s [compiled]
+#   page-side wall-clock: 0.00s
+# Subtest: webvm-server: vm.benchCargo frame never leaks into the visible terminal stream
+ok 27 - webvm-server: vm.benchCargo frame never leaks into the visible terminal stream
+  ---
+  duration_ms: 2.290951
+  ...
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# [rust-web-box] workspace prime skipped (opts.skipPrime=true)
+# [rust-web-box] interactive shell loop skipped (opts.skipShellLoop=true)
+# Subtest: webvm-server: __RWB_DEBUG_VM_TIMING records per-cx.run timing, and nothing when off
+ok 28 - webvm-server: __RWB_DEBUG_VM_TIMING records per-cx.run timing, and nothing when off
+  ---
+  duration_ms: 4.53988
+  ...
+# Subtest: webvm-server: non-recursive empty directory delete uses guest rmdir
+ok 29 - webvm-server: non-recursive empty directory delete uses guest rmdir
+  ---
+  duration_ms: 0.912913
+  ...
+# Subtest: webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+ok 30 - webvm-server: workspace.prime bus method is a no-op when skipPrime is set
+  ---
+  duration_ms: 0.516581
+  ...
+# Subtest: webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+ok 31 - webvm-server: workspace.prime bus method runs the prime when skipPrime is not set
+  ---
+  duration_ms: 0.588108
+  ...
+# [rust-web-box] workspace prime failed: Error: workspace prime timed out after 50ms (suspected CheerpX 1.3.x OverlayDevice 'a1' hang)
+#     at Timeout._onTimeout (file:///tmp/gh-issue-solver-1783040887852/web/glue/webvm-server.js:1023:28)
+#     at listOnTimeout (node:internal/timers:581:17)
+#     at process.processTimers (node:internal/timers:519:7)
+# Subtest: webvm-server: bootTask reaches "ready" even when workspace prime hangs
+ok 32 - webvm-server: bootTask reaches "ready" even when workspace prime hangs
+  ---
+  duration_ms: 53.185607
+  ...
+# Subtest: webvm-server: silent shell spawn surfaces a visible terminal advisory (issue \#37)
+ok 33 - webvm-server: silent shell spawn surfaces a visible terminal advisory (issue \#37)
+  ---
+  duration_ms: 92.073323
+  ...
+# Subtest: webvm-server: fast-exiting shell also prints diagnostics before vm.shell (issue \#43)
+ok 34 - webvm-server: fast-exiting shell also prints diagnostics before vm.shell (issue \#43)
+  ---
+  duration_ms: 21.514449
+  ...
+# Subtest: webvm-server: a shell that prints a prompt is not flagged as silent (issue \#37)
+ok 35 - webvm-server: a shell that prints a prompt is not flagged as silent (issue \#37)
+  ---
+  duration_ms: 97.700865
+  ...
+# Subtest: webvm-server: makeChannelPair sanity
+ok 36 - webvm-server: makeChannelPair sanity
+  ---
+  duration_ms: 0.911561
+  ...
+# [rust-web-box] interactive shell produced no output: no-output { elapsedMs: 15000, spawn: 1, cwd: '/workspace' } {
+#   healthy: true,
+#   running: true,
+#   spawns: 1,
+#   exits: 0,
+#   errors: 0,
+#   fastCycles: 0,
+#   outputBytes: 0,
+#   firstOutputAt: null,
+#   lastOutputAt: null,
+#   silentSpawns: 1,
+#   slowFirstOutput: true,
+#   lastSilentSpawnAt: 1783041385633,
+#   lastSpawnAt: 1783041370634,
+#   lastExitAt: null,
+#   lastExitCode: null,
+#   lastError: null,
+#   lastErrorAt: null
+# }
+# [rust-web-box] interactive shell produced no output: no-output { elapsedMs: 15000, spawn: 1, cwd: '/workspace' } {
+#   healthy: true,
+#   running: true,
+#   spawns: 1,
+#   exits: 0,
+#   errors: 0,
+#   fastCycles: 0,
+#   outputBytes: 0,
+#   firstOutputAt: null,
+#   lastOutputAt: null,
+#   silentSpawns: 1,
+#   slowFirstOutput: true,
+#   lastSilentSpawnAt: 1783041385640,
+#   lastSpawnAt: 1783041370640,
+#   lastExitAt: null,
+#   lastExitCode: null,
+#   lastError: null,
+#   lastErrorAt: null
+# }
+# [rust-web-box] interactive shell produced no output: no-output { elapsedMs: 15000, spawn: 1, cwd: '/workspace' } {
+#   healthy: true,
+#   running: true,
+#   spawns: 1,
+#   exits: 0,
+#   errors: 0,
+#   fastCycles: 0,
+#   outputBytes: 0,
+#   firstOutputAt: null,
+#   lastOutputAt: null,
+#   silentSpawns: 1,
+#   slowFirstOutput: true,
+#   lastSilentSpawnAt: 1783041385641,
+#   lastSpawnAt: 1783041370641,
+#   lastExitAt: null,
+#   lastExitCode: null,
+#   lastError: null,
+#   lastErrorAt: null
+# }
+# [rust-web-box] interactive shell produced no output: no-output { elapsedMs: 15000, spawn: 1, cwd: '/workspace' } {
+#   healthy: true,
+#   running: true,
+#   spawns: 1,
+#   exits: 0,
+#   errors: 0,
+#   fastCycles: 0,
+#   outputBytes: 0,
+#   firstOutputAt: null,
+#   lastOutputAt: null,
+#   silentSpawns: 1,
+#   slowFirstOutput: true,
+#   lastSilentSpawnAt: 1783041385643,
+#   lastSpawnAt: 1783041370642,
+#   lastExitAt: null,
+#   lastExitCode: null,
+#   lastError: null,
+#   lastErrorAt: null
+# }
+# [rust-web-box] interactive shell produced no output: no-output { elapsedMs: 15000, spawn: 1, cwd: '/workspace' } {
+#   healthy: true,
+#   running: true,
+#   spawns: 1,
+#   exits: 0,
+#   errors: 0,
+#   fastCycles: 0,
+#   outputBytes: 0,
+#   firstOutputAt: null,
+#   lastOutputAt: null,
+#   silentSpawns: 1,
+#   slowFirstOutput: true,
+#   lastSilentSpawnAt: 1783041385643,
+#   lastSpawnAt: 1783041370643,
+#   lastExitAt: null,
+#   lastExitCode: null,
+#   lastError: null,
+#   lastErrorAt: null
+# }
+# [rust-web-box] interactive shell produced no output: no-output { elapsedMs: 15000, spawn: 1, cwd: '/workspace' } {
+#   healthy: true,
+#   running: true,
+#   spawns: 1,
+#   exits: 0,
+#   errors: 0,
+#   fastCycles: 0,
+#   outputBytes: 0,
+#   firstOutputAt: null,
+#   lastOutputAt: null,
+#   silentSpawns: 1,
+#   slowFirstOutput: true,
+#   lastSilentSpawnAt: 1783041385665,
+#   lastSpawnAt: 1783041370665,
+#   lastExitAt: null,
+#   lastExitCode: null,
+#   lastError: null,
+#   lastErrorAt: null
+# }
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 30120.849344

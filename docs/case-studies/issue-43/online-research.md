@@ -5,12 +5,19 @@ what is — and is not — publicly documented about the two failure modes.
 
 ## 1. Service-worker cache pinning on GitHub Pages
 
-* MDN, *Using Service Workers* — explicitly notes that a cache-first
-  strategy cannot deliver an updated asset without a `CACHE_VERSION`
-  change *or* a network-first revalidation pass. Confirms our RC‑1.
-* web.dev, *Offline cookbook* — recommends “network-falling-back-to-cache”
-  for the **app shell**, paired with “cache-first” for hashed/static
-  assets. This is the split this PR adopts.
+* Chrome Developers, *Strategies for service worker caching*
+  (<https://developer.chrome.com/docs/workbox/caching-strategies-overview>)
+  — describes caching as a fetch-event strategy and explicitly calls out
+  that different request classes should use different strategies.
+* web.dev, *Offline cookbook*
+  (<https://web.dev/articles/offline-cookbook>) — documents
+  "network falling back to cache" and cache-first patterns and recommends
+  composing strategies by URL/context. This is the split this PR adopts.
+* web.dev, *Service worker caching and HTTP caching*
+  (<https://web.dev/articles/service-worker-caching-and-http-caching>) —
+  shows the cache-first pattern and the fact that service workers
+  intercept HTTP requests before the network cache decision reaches the
+  page. Confirms our RC‑1.
 * GitHub Pages docs — confirms there is no way to set custom response
   headers (`Clear-Site-Data`, `Cache-Control: no-store`, etc.) per file,
   which rules out a header-only fix.
@@ -21,9 +28,15 @@ what is — and is not — publicly documented about the two failure modes.
 
 ## 2. iPadOS Safari has no easy developer console
 
-* Apple Safari documentation — “Web Inspector requires a Mac running
-  macOS X 10.13 or later and a USB connection.”  Confirms the
-  user-reported constraint from #43: no Mac → no console.
+* Apple Developer Documentation, *Inspecting iOS and iPadOS*
+  (<https://developer.apple.com/documentation/safari-developer-tools/inspecting-ios>)
+  — documents inspection of iOS/iPadOS webpages from a connected Mac.
+  Confirms the user-reported constraint from #43: without a nearby Mac,
+  the browser console is not a practical support surface.
+* Apple Developer Documentation, *Web Inspector*
+  (<https://developer.apple.com/documentation/safari-developer-tools/web-inspector>)
+  — identifies Web Inspector as the Safari tool for inspecting webpages,
+  service workers, and JavaScript activity.
 * WebKit bug tracker — multiple reports (search: “iOS console”,
   “WKWebView console”) of the inability to open a usable console on
   iPad/iPhone without a tethered Mac. The pattern is unchanged for
@@ -53,10 +66,17 @@ what is — and is not — publicly documented about the two failure modes.
 
 ## 4. VS Code-Web notification API
 
-* `vscode-extension-samples/notification-sample` — confirms the canonical
-  API is `vscode.window.showErrorMessage` / `showWarningMessage` /
-  `showInformationMessage`. The notification center module in this
-  repo (`web/glue/notifications.js`) speaks exactly that grammar.
+* VS Code Extension API, *Common Capabilities*
+  (<https://code.visualstudio.com/api/extension-capabilities/common-capabilities>)
+  — documents the native notification methods
+  `window.showInformationMessage`, `window.showWarningMessage`, and
+  `window.showErrorMessage`. The notification center module in this repo
+  (`web/glue/notifications.js`) speaks exactly that grammar.
+* VS Code UX Guidelines, *Notifications*
+  (<https://code.visualstudio.com/api/ux-guidelines/notifications>) —
+  describes VS Code notifications as information, warning, and error
+  messages surfaced by the workbench. That matches requirement #43's
+  "only notifications inside VSCode itself" constraint.
 * The same API surface is used by GitHub Codespaces, `vscode.dev`, and
   Stackblitz’s Codeflow IDE — so the “only VS Code notifications” rule
   in #43 is the same rule those products follow.

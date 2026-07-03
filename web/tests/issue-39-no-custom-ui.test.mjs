@@ -3,8 +3,8 @@
 //   1. The terminal failure on iPad/Safari must be handled — never a
 //      silent blank pane. The page-side shell loop already emits a
 //      `vm.shell {healthy:false}` event and a visible terminal advisory
-//      (issue #37); the extension must turn that into a GENUINE terminal
-//      failure (non-zero exit) so VS Code marks the terminal as failed.
+//      (issue #37); the extension keeps that terminal open as the
+//      diagnostic surface (issue #43).
 //
 //   2. "We should not invent our own UI elements, and use VS Code
 //      notifications for errors and warnings." The old bottom-right red
@@ -93,9 +93,9 @@ test('issue-39: inlined bus client can emit events (needed for vm.notify.sync)',
   assert.match(client, /return \{ request, on, emit \}/);
 });
 
-// --- 4. The terminal GENUINELY fails on an unhealthy shell ------------
+// --- 4. The terminal stays open for diagnostics on an unhealthy shell -
 
-test('issue-39: pseudoterminal fails (non-zero exit) when vm.shell is unhealthy', async () => {
+test('issue-43: pseudoterminal stays open when vm.shell is unhealthy', async () => {
   const ext = await read('extensions/webvm-host/extension.js');
   const start = ext.indexOf('function makePseudoterminal');
   const end = ext.indexOf('// --- Cargo tasks', start);
@@ -104,8 +104,16 @@ test('issue-39: pseudoterminal fails (non-zero exit) when vm.shell is unhealthy'
   // Subscribes to the page-side shell-health signal...
   assert.match(fn, /bus\.on\('vm\.shell'/);
   assert.match(fn, /payload\.healthy !== false/);
-  // ...and closes the terminal with a non-zero exit code.
-  assert.match(fn, /closeEmitter\.fire\(1\)/);
+  // ...but does not close the diagnostic terminal. The June 22 issue #43
+  // screenshot shows why: VS Code's terminal-failed state hides the useful
+  // scrollback on iPad.
+  const listenerStart = fn.indexOf("shellDispose = bus.on('vm.shell'");
+  const listenerEnd = fn.indexOf("try {\n        const r = await bus.request('proc.spawn'", listenerStart);
+  assert.ok(listenerStart >= 0 && listenerEnd > listenerStart, 'vm.shell listener not found');
+  const listener = fn.slice(listenerStart, listenerEnd);
+  assert.doesNotMatch(listener, /closeEmitter\.fire/);
+  assert.match(listener, /terminalUnavailable = true/);
+  assert.match(fn, /Shell input is disabled because the interactive shell did not start/);
   // The shell listener must be cleaned up like the others (issue #27).
   assert.match(fn, /shellDispose/);
 });
