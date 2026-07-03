@@ -1105,6 +1105,39 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
   // sets this flag so the boot reaches `vmPhase: 'ready'` without
   // tripping the wedge. End users still get a populated /workspace
   // because Cargo.toml + src/main.rs ship in the disk image.
+  let shellAdvisoryShown = false;
+  function emitShellUnavailableAdvisory(kind, detail) {
+    if (shellAdvisoryShown) return;
+    shellAdvisoryShown = true;
+    const reason =
+      kind === 'no-output'
+        ? 'The Linux shell started but produced no prompt.'
+        : kind === 'error'
+          ? 'The Linux shell failed repeatedly before it could become interactive.'
+          : 'The Linux shell exited repeatedly before it could become interactive.';
+    let diagBlock = '';
+    try {
+      diagBlock = formatDiagnosticsForTerminal(diagnostics(), {
+        ansi: true,
+        eol: '\r\n',
+      });
+    } catch (err) {
+      diagBlock = `  (diagnostics unavailable: ${err?.message ?? err})\r\n`;
+    }
+    const detailLine = detail
+      ? `details: ${JSON.stringify(detail)}\r\n`
+      : '';
+    const advisory =
+      `\r\n\x1b[33m[rust-web-box]\x1b[0m ${reason}\r\n` +
+      detailLine +
+      'This is the known CheerpX/WebVM terminal issue on ' +
+      'Safari/iPad (rust-web-box#37).\r\n' +
+      'Workarounds: reload the tab, or open this site in a ' +
+      'Chromium-based browser.\r\n' +
+      diagBlock;
+    busServer.emit('proc.stdout', { pid: 1, chunk: advisory });
+  }
+
   const bootTask = (async () => {
     emitPhase('syncing-workspace');
     if (!skipPrime) {
@@ -1121,7 +1154,6 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
       runtime.workspacePrimeError = 'skipped';
     }
     if (!skipShellLoop) {
-      let silentAdvisoryShown = false;
       stopShell = runShellLoop(cx, {
         cwd: runtime.primed ? '/workspace' : '/root',
         onExit: () => busServer.emit('proc.exit', { pid: 1, exitCode: 0 }),
@@ -1139,6 +1171,7 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
             detail,
             runtime.shellLoop,
           );
+          emitShellUnavailableAdvisory(kind, detail);
           busServer.emit('vm.shell', { healthy: false, kind, detail });
           try { opts.onShellUnhealthy?.({ kind, detail, diag: runtime.shellLoop }); } catch {}
         },
@@ -1154,33 +1187,8 @@ export function startWebVMServer({ cx, busServer, status, workspace, dataDevice,
             detail,
             runtime.shellLoop,
           );
+          emitShellUnavailableAdvisory(kind, detail);
           busServer.emit('vm.shell', { healthy: false, kind, detail });
-          if (!silentAdvisoryShown) {
-            silentAdvisoryShown = true;
-            // Print the diagnostics *into the terminal* (issue #43): iPadOS
-            // Safari has no usable developer console, so a "run
-            // __rustWebBox.dump() in the browser console" hint is a dead end
-            // on the very device this fails on. The user is already looking
-            // at the terminal — put the debug data there.
-            let diagBlock = '';
-            try {
-              diagBlock = formatDiagnosticsForTerminal(diagnostics(), {
-                ansi: true,
-                eol: '\r\n',
-              });
-            } catch (err) {
-              diagBlock = `  (diagnostics unavailable: ${err?.message ?? err})\r\n`;
-            }
-            const advisory =
-              '\r\n\x1b[33m[rust-web-box]\x1b[0m The Linux shell started but ' +
-              'produced no prompt.\r\n' +
-              'This is the known CheerpX/WebVM terminal issue on ' +
-              'Safari/iPad (rust-web-box#37).\r\n' +
-              'Workarounds: reload the tab, or open this site in a ' +
-              'Chromium-based browser.\r\n' +
-              diagBlock;
-            busServer.emit('proc.stdout', { pid: 1, chunk: advisory });
-          }
           try { opts.onShellUnhealthy?.({ kind, detail, diag: runtime.shellLoop }); } catch {}
         },
       });

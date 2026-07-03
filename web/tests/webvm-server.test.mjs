@@ -900,6 +900,72 @@ test('webvm-server: silent shell spawn surfaces a visible terminal advisory (iss
   server.stop();
 });
 
+test('webvm-server: fast-exiting shell also prints diagnostics before vm.shell (issue #43)', async () => {
+  // The June 22 issue #43 screenshot showed VS Code reporting "terminal
+  // process terminated with exit code: 1" before the user could see debug
+  // output. This reproduces the sibling shell-health path: bash starts and
+  // exits immediately a few times. The server must print the diagnostics
+  // block into proc.stdout before telling the extension the shell is
+  // unhealthy, so the terminal can remain a useful report surface.
+  const state = { writer: null, runCalls: [], bashRuns: 0 };
+  const cx = {
+    setCustomConsole(fn) {
+      state.writer = fn;
+      return () => {};
+    },
+    setConsoleSize() {},
+    async run(cmd, args, opts) {
+      state.runCalls.push({ cmd, args, opts });
+      if (cmd === '/bin/bash') {
+        state.bashRuns += 1;
+        if (state.bashRuns <= 3) return 71;
+        await new Promise(() => {});
+      }
+    },
+  };
+  const workspace = makeFakeWorkspace();
+  const busServer = makeBusServerStub();
+  const { dataDevice } = makeFakeDataDevice();
+  const unhealthy = [];
+
+  const server = startWebVMServer({
+    cx, busServer, workspace, dataDevice, status: {},
+    opts: {
+      skipPrime: true,
+      shellFirstOutputTimeoutMs: 0,
+      onShellUnhealthy: (info) => unhealthy.push(info),
+      logger: { warn() {}, error() {}, log() {} },
+    },
+  });
+  await server.bootTask;
+  await new Promise((r) => setTimeout(r, 20));
+
+  assert.ok(
+    unhealthy.some((u) => u.kind === 'exit'),
+    `expected a fast-exit notification (got ${JSON.stringify(unhealthy.map((u) => u.kind))})`,
+  );
+  assert.equal(server.runtime.shellLoop.fastCycles >= 3, true);
+
+  const stdoutEvents = busServer.events.filter((e) => e.topic === 'proc.stdout');
+  const shellEvents = busServer.events.filter((e) => e.topic === 'vm.shell');
+  const advisory = stdoutEvents.map((e) => e.payload.chunk).join('');
+  assert.match(advisory, /exited repeatedly before it could become interactive/);
+  assert.match(advisory, /rust-web-box diagnostics/);
+  assert.match(advisory, /shell: healthy=no/);
+  assert.match(advisory, /fastCycles=[3-9]/);
+  assert.doesNotMatch(advisory, /in the browser console/i);
+  assert.ok(
+    shellEvents.some((e) => e.payload?.kind === 'exit' && e.payload?.healthy === false),
+    'expected a vm.shell {healthy:false, kind:"exit"} event',
+  );
+  assert.ok(
+    busServer.events.indexOf(stdoutEvents[0]) < busServer.events.indexOf(shellEvents[0]),
+    'diagnostic stdout must be emitted before vm.shell so the terminal has scrollback to preserve',
+  );
+
+  server.stop();
+});
+
 test('webvm-server: a shell that prints a prompt is not flagged as silent (issue #37)', async () => {
   // Guard against the watchdog crying wolf: a working shell that emits a
   // prompt before the window must never produce the silent-spawn advisory.

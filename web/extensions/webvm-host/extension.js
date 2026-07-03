@@ -205,6 +205,8 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
   let shellDispose = null;
   let dimsPending = null;
   let opened = false;
+  let terminalUnavailable = false;
+  let unavailableInputHintShown = false;
   let inputTail = Promise.resolve();
 
   // Issue #27: dispose any pre-existing bus subscriptions before attaching
@@ -335,15 +337,16 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         writeEmitter.fire(`\r\n${DIM}[bash exited — respawning…]${RESET}\r\n`);
       });
 
-      // Issue #39: when the page-side shell loop reports the interactive
+      // Issue #43: when the page-side shell loop reports the interactive
       // shell is unhealthy (the CheerpX/WebVM silent-hang on Safari/iPad),
-      // the terminal must GENUINELY fail rather than sit on a blank
-      // cursor. The server first streams a visible advisory on
-      // `proc.stdout`; we then close the pty with a non-zero exit code so
-      // VS Code marks the terminal as failed. A short defer lets the
-      // queued advisory render before the close.
+      // keep the pty alive as a diagnostic surface. Closing with a
+      // non-zero exit hides the scrollback behind VS Code's terminal-failed
+      // state on iPad, which is exactly where the user cannot reach a
+      // browser console.
       shellDispose = bus.on('vm.shell', (payload) => {
         if (!payload || payload.healthy !== false) return;
+        if (terminalUnavailable) return;
+        terminalUnavailable = true;
         const reason =
           payload.kind === 'no-output'
             ? 'the shell started but produced no prompt'
@@ -351,7 +354,10 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
         writeEmitter.fire(
           `\r\n[rust-web-box] Terminal unavailable — ${reason}.\r\n`,
         );
-        setTimeout(() => closeEmitter.fire(1), 50);
+        writeEmitter.fire(
+          '[rust-web-box] Diagnostics are printed in this terminal. ' +
+            'Run "WebVM: Show Diagnostics in Terminal" to refresh them.\r\n',
+        );
       });
 
       try {
@@ -390,6 +396,16 @@ function makePseudoterminal(vscode, bus, { vmReadyPromise }) {
 
     handleInput(data) {
       if (!opened || sub == null) return;
+      if (terminalUnavailable) {
+        if (!unavailableInputHintShown && inputSubmitsCommand(data)) {
+          unavailableInputHintShown = true;
+          status(
+            'Shell input is disabled because the interactive shell did not start. ' +
+              'Reload the tab or run "WebVM: Show Diagnostics in Terminal".',
+          );
+        }
+        return;
+      }
       if (inputSubmitsCommand(data)) {
         saveBeforeCommandInput(data);
         return;
