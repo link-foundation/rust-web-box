@@ -11,7 +11,7 @@
 //! Usage: rust-script scripts/publish-crate.rs [--token <token>] [--rust-root <path>]
 //!
 //! Environment variables (checked in order of priority):
-//!   - CARGO_REGISTRY_TOKEN: Cargo's native crates.io token (preferred)
+//!   - CARGO_REGISTRY_TOKEN: short-lived token from crates-io-auth-action (preferred)
 //!   - CARGO_TOKEN: Alternative token name for backwards compatibility
 //!
 //! Outputs (written to GITHUB_OUTPUT):
@@ -88,29 +88,18 @@ fn main() {
 
     println!("Package: {}@{}", name, version);
 
-    if name == "example-sum-package-name" {
-        println!("Skipping publish: package name is the template default 'example-sum-package-name'");
-        println!("Rename the package in Cargo.toml before publishing to crates.io");
-        set_output("publish_result", "skipped");
-        return;
+    // Only the product crate may be published by this repository.
+    if name != "rust-web-box" {
+        eprintln!("Refusing to publish unexpected package: {}", name);
+        set_output("publish_result", "failed");
+        exit(1);
     }
 
-    println!();
-    println!("=== Attempting to publish to crates.io ===");
-
+    println!("=== Publishing rust-web-box to crates.io ===");
     if token.is_none() {
-        println!("::warning::Neither CARGO_REGISTRY_TOKEN nor CARGO_TOKEN is set, attempting publish without explicit token");
-        println!();
-        println!("To fix this, ensure one of the following secrets is configured:");
-        println!("  - CARGO_REGISTRY_TOKEN (Cargo's native env var, preferred)");
-        println!("  - CARGO_TOKEN (alternative for backwards compatibility)");
-        println!();
-        println!("For organization secrets, you may need to map the secret name in your workflow:");
-        println!("  env:");
-        println!("    CARGO_REGISTRY_TOKEN: ${{{{ secrets.CARGO_TOKEN }}}}");
-        println!();
-    } else {
-        println!("Using provided authentication token");
+        eprintln!("Missing crates.io authentication. Configure Trusted Publishing for link-foundation/rust-web-box, workflow release.yml, and pass the OIDC action's temporary token. See docs/ci-cd/trusted-publishing.md.");
+        set_output("publish_result", "auth_failed");
+        exit(1);
     }
 
     // Build the cargo publish command
@@ -156,17 +145,8 @@ fn main() {
             eprintln!();
             eprintln!("Failed to publish due to missing or invalid authentication token.");
             eprintln!();
-            eprintln!("SOLUTION: Configure one of these secrets in your repository or organization:");
-            eprintln!("  1. CARGO_REGISTRY_TOKEN - Cargo's native environment variable (preferred)");
-            eprintln!("  2. CARGO_TOKEN - Alternative name for backwards compatibility");
-            eprintln!();
-            eprintln!("If using organization secrets with a different name, map it in your workflow:");
-            eprintln!("  - name: Publish to Crates.io");
-            eprintln!("    env:");
-            eprintln!("      CARGO_REGISTRY_TOKEN: ${{{{ secrets.YOUR_SECRET_NAME }}}}");
-            eprintln!();
-            eprintln!("See: https://doc.rust-lang.org/cargo/reference/publishing.html");
-            eprintln!();
+            eprintln!("Check the crates.io Trusted Publishing configuration for link-foundation/rust-web-box and workflow release.yml.");
+            eprintln!("See docs/ci-cd/trusted-publishing.md; later releases use OIDC temporary tokens, not registry secrets.");
             set_output("publish_result", "auth_failed");
             exit(1);
         } else {

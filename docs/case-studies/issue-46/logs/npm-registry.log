@@ -1,0 +1,32 @@
+$ npm view example-sum-package-name --registry=https://registry.npmjs.org
+exit: 1
+npm error code E404
+npm error 404 Not Found - GET https://registry.npmjs.org/example-sum-package-name - Not found
+npm error 404
+npm error 404  The requested resource 'example-sum-package-name@*' could not be found or you do not have permission to access it.
+npm error 404
+npm error 404 Note that you can also install from a
+npm error 404 tarball, folder, http url, or git url.
+npm error A complete log of this run can be found in: /home/box/.npm/_logs/2026-11-15T23_32_44_658Z-debug-0.log
+
+$ npm view rust-analyzer-web --registry=https://registry.npmjs.org
+exit: 1
+npm error code E404
+npm error 404 Not Found - GET https://registry.npmjs.org/rust-analyzer-web - Not found
+npm error 404
+npm error 404  The requested resource 'rust-analyzer-web@*' could not be found or you do not have permission to access it.
+npm error 404
+npm error 404 Note that you can also install from a
+npm error 404 tarball, folder, http url, or git url.
+npm error A complete log of this run can be found in: /home/box/.npm/_logs/2026-11-15T23_32_45_394Z-debug-0.log
+
+$ npm view webvm-host --registry=https://registry.npmjs.org
+exit: 1
+npm error code E404
+npm error 404 Not Found - GET https://registry.npmjs.org/webvm-host - Not found
+npm error 404
+npm error 404  The requested resource 'webvm-host@*' could not be found or you do not have permission to access it.
+npm error 404
+npm error 404 Note that you can also install from a
+npm error 404 tarball, folder, http url, or git url.
+npm error A complete log of this run can be found in: /home/box/.npm/_logs/2026-11-15T23_32_46_125Z-debug-0.log

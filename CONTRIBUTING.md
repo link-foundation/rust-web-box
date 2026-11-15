@@ -1,4 +1,4 @@
-# Contributing to rust-ai-driven-development-pipeline-template
+# Contributing to rust-web-box
 
 Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to this project.
 
@@ -7,8 +7,8 @@ Thank you for your interest in contributing! This document provides guidelines a
 1. **Fork and clone the repository**
 
    ```bash
-   git clone https://github.com/YOUR-USERNAME/rust-ai-driven-development-pipeline-template.git
-   cd rust-ai-driven-development-pipeline-template
+   git clone https://github.com/YOUR-USERNAME/rust-web-box.git
+   cd rust-web-box
    ```
 
 2. **Install Rust**

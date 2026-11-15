@@ -1,5 +1,6 @@
 {
   "name": "rust-analyzer-web",
+  "private": true,
   "displayName": "rust-analyzer (web)",
   "description": "Client-side Rust language server powered by rust-analyzer compiled to WebAssembly.",
   "version": "0.1.0",

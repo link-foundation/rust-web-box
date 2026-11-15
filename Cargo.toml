@@ -1,22 +1,24 @@
 [package]
-name = "example-sum-package-name"
+name = "rust-web-box"
 version = "0.19.0"
 edition = "2021"
-description = "A Rust package template for AI-driven development"
+description = "Rust Web Box: browser-based Rust development with an example CLI"
 readme = "README.md"
 license = "Unlicense"
-keywords = ["template", "rust", "ai-driven"]
+keywords = ["rust", "web", "development", "cli"]
 categories = ["development-tools"]
-repository = "https://github.com/link-foundation/rust-ai-driven-development-pipeline-template"
-documentation = "https://github.com/link-foundation/rust-ai-driven-development-pipeline-template"
+repository = "https://github.com/link-foundation/rust-web-box"
+documentation = "https://docs.rs/rust-web-box"
 rust-version = "1.70"
+# Ship the Rust package without browser bundles, case-study images, or CI logs.
+include = ["src/**", "examples/**", "tests/**", "scripts/rust-paths.rs", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE"]
 
 [lib]
-name = "example_sum_package_name"
+name = "rust_web_box"
 path = "src/lib.rs"
 
 [[bin]]
-name = "example-sum-package-name"
+name = "rust-web-box"
 path = "src/main.rs"
 
 [dependencies]

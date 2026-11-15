@@ -1,6 +1,6 @@
 # CI/CD Troubleshooting Guide
 
-This guide covers common CI/CD issues and their solutions for Rust projects using this template.
+This guide covers common CI/CD issues and their solutions for Rust projects in rust-web-box.
 
 ## Table of Contents
 
@@ -58,7 +58,7 @@ The release workflow says "version already released" but the package is not actu
 The workflow was checking git tags instead of crates.io. Git tags can exist without the package being published (e.g., from previous GitHub-only releases).
 
 ### Solution
-This template now checks crates.io directly using the API:
+The release pipeline now checks crates.io directly using the API:
 ```javascript
 const response = await fetch(
   `https://crates.io/api/v1/crates/${crateName}/${version}`
@@ -82,74 +82,30 @@ curl -s "https://crates.io/api/v1/crates/YOUR_CRATE_NAME" | jq
 ### Symptom
 The "Publish to Crates.io" step fails with an error.
 
-### Common Errors
+### Authentication and registry setup
 
-#### "please provide a non-empty token"
-**Cause:** The `CARGO_REGISTRY_TOKEN` environment variable is empty or not set.
+Both release jobs authenticate using OIDC. Check the preceding **Authenticate to
+crates.io with OIDC** step, `id-token: write` permission, and the crate's trusted
+publisher settings: owner `link-foundation`, repository `rust-web-box`, workflow
+`release.yml`, no environment. See [the setup guide](trusted-publishing.md) for
+the one-time initial publication constraint. Later releases do not require a
+long-lived registry token or GitHub registry secret.
 
-**Solution:**
-1. Ensure you have a secret configured (either `CARGO_REGISTRY_TOKEN` or `CARGO_TOKEN`)
-2. Map the secret correctly in your workflow:
-```yaml
-- name: Publish to Crates.io
-  env:
-    CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-  run: node scripts/publish-crate.mjs
-```
+An authentication failure must fail the release. Do not bypass it or silently
+skip publishing. Manual publishing jobs only run from `main`.
 
-#### "already uploaded" or "already exists"
-**Cause:** This version was already published to crates.io.
+### Version already uploaded
 
-**Note:** This is handled gracefully by the script and is not a failure.
-
-#### "unauthorized" or authentication errors
-**Cause:** Invalid or expired token.
-
-**Solution:**
-1. Generate a new token at https://crates.io/settings/tokens
-2. Update the secret in your repository or organization settings
-
-### Reference
-- [browser-commander Issue #33](https://github.com/link-foundation/browser-commander/issues/33)
-- [Cargo Publishing Documentation](https://doc.rust-lang.org/cargo/reference/publishing.html)
-
----
+The publish helper reports `already_exists` and fails if the version is already
+published. Check version bumping and registry state before retrying; creating a
+GitHub release alone does not verify a crates.io publication.
 
 ## Secret Configuration Issues
 
-### Required Secrets
-
-| Secret Name | Purpose | Where to Get |
-|------------|---------|--------------|
-| `CARGO_REGISTRY_TOKEN` or `CARGO_TOKEN` | Publish to crates.io | https://crates.io/settings/tokens |
-| `GITHUB_TOKEN` | Create GitHub releases | Automatic (provided by GitHub) |
-
-### Organization vs Repository Secrets
-
-If using organization secrets with different names, map them in your workflow:
-```yaml
-env:
-  # Map organization secret to the expected variable name
-  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-```
-
-### Checking Secret Values
-
-Secrets are masked in logs, but you can verify they're set:
-```yaml
-- name: Debug secrets
-  run: |
-    if [ -n "$CARGO_REGISTRY_TOKEN" ]; then
-      echo "CARGO_REGISTRY_TOKEN is set (value masked)"
-    else
-      echo "WARNING: CARGO_REGISTRY_TOKEN is NOT set"
-    fi
-  env:
-    CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-```
-
-### Reference
-- [GitHub Actions Secrets Documentation](https://docs.github.com/actions/security-guides/using-secrets-in-github-actions)
+`GITHUB_TOKEN` is provided automatically for release commits, tags, and GitHub
+releases. Registry authentication comes from the OIDC action's temporary token,
+passed as `CARGO_REGISTRY_TOKEN` only to the publish step. No registry secret
+needs to be configured in GitHub. Do not print tokens while debugging.
 
 ---
 
@@ -159,17 +115,17 @@ Secrets are masked in logs, but you can verify they're set:
 Scripts fail to find `Cargo.toml` or run in the wrong directory.
 
 ### Solution
-This template auto-detects the repository structure:
+The release pipeline auto-detects the repository structure:
 - **Single-language:** `Cargo.toml` in repository root
 - **Multi-language:** `Cargo.toml` in `rust/` subfolder
 
 If auto-detection fails, you can explicitly configure the Rust root:
 ```bash
 # Via environment variable
-RUST_ROOT=rust node scripts/publish-crate.mjs
+RUST_ROOT=rust rust-script scripts/publish-crate.rs
 
 # Via CLI argument
-node scripts/publish-crate.mjs --rust-root rust
+rust-script scripts/publish-crate.rs --rust-root rust
 ```
 
 ### Workflow Configuration
@@ -182,7 +138,7 @@ defaults:
 steps:
   - name: Publish to Crates.io
     working-directory: .  # Override for scripts that handle paths themselves
-    run: node rust/scripts/publish-crate.mjs
+    run: rust-script rust/scripts/publish-crate.rs
 ```
 
 ### Reference

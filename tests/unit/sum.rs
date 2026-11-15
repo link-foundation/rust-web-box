@@ -1,4 +1,4 @@
-use example_sum_package_name::sum;
+use rust_web_box::sum;
 
 #[test]
 fn test_sum_positive_numbers() {

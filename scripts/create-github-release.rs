@@ -136,14 +136,6 @@ fn main() {
     let rust_root = get_rust_root();
     let cargo_toml = get_cargo_toml_path(&rust_root);
 
-    if let Some(ref crate_name) = get_crate_name_from_toml(&cargo_toml) {
-        if crate_name == "example-sum-package-name" {
-            println!("Skipping GitHub release: package name is the template default 'example-sum-package-name'");
-            println!("Rename the package in Cargo.toml before creating releases");
-            return;
-        }
-    }
-
     let tag = format!("{}{}", tag_prefix, version);
     println!("Creating GitHub release for {}...", tag);
 
