@@ -121,7 +121,8 @@ jobs:
     # deploy. This catches regressions on PRs where the live-e2e job
     # below cannot run (no Pages deploy on PRs).
     name: Local e2e (built artifact)
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 does not provide Chromium for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     needs: build
     steps:
       - uses: actions/checkout@v5
@@ -213,7 +214,8 @@ jobs:
     # directly, not only local e2e tests."
     name: Post-deploy e2e (live Pages site)
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 does not provide Chromium for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     needs: deploy
     steps:
       - uses: actions/checkout@v5

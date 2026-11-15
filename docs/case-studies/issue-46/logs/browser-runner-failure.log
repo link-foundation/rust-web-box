@@ -1,0 +1,7 @@
+Local e2e (built artifact)	Install Chromium browser for Playwright	﻿2026-11-15T23:49:13.3734593Z ##[group]Run npx playwright install chromium
+Local e2e (built artifact)	Install Chromium browser for Playwright	2026-11-15T23:49:13.3735052Z ^[[36;1mnpx playwright install chromium^[[0m
+Local e2e (built artifact)	Install Chromium browser for Playwright	2026-11-15T23:49:13.3792914Z shell: /usr/bin/bash -e {0}
+Local e2e (built artifact)	Install Chromium browser for Playwright	2026-11-15T23:49:13.3793246Z ##[endgroup]
+Local e2e (built artifact)	Install Chromium browser for Playwright	2026-11-15T23:49:13.8994836Z Failed to install browsers
+Local e2e (built artifact)	Install Chromium browser for Playwright	2026-11-15T23:49:13.8995593Z Error: ERROR: Playwright does not support chromium on ubuntu26.04-x64
+Local e2e (built artifact)	Install Chromium browser for Playwright	2026-11-15T23:49:13.9109277Z ##[error]Process completed with exit code 1.

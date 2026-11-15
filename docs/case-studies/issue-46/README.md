@@ -54,3 +54,18 @@ exercise packaging without credentials. Successful PR CI cannot establish the
 actual publication criterion. Keep the PR unmerged and that criterion open
 until an authorized registry owner completes setup and a release from main is
 verified. No unrelated registry package is removed.
+
+## CI runner compatibility
+
+Current-commit Pages run [43775616495](https://github.com/link-foundation/rust-web-box/actions/runs/43775616495)
+failed before the browser test started. Downloaded log
+`ci-logs/pages-43775616495.log`, line 12122, reports
+`Playwright does not support chromium on ubuntu26.04-x64`. The runner's
+`ubuntu-latest` image had moved beyond the OS supported by locked Playwright
+1.59.1. The corresponding dependency-install warning appears at lines
+12117–12118. The full log is preserved locally; a focused excerpt is committed.
+
+Pin the Pages local and post-deploy browser jobs to Ubuntu 24.04, which is
+supported by [Playwright 1.59.1's registry](https://github.com/microsoft/playwright/blob/v1.59.1/packages/playwright-core/src/server/registry/index.ts).
+The existing browser integration check reproduces the failure and verifies
+the correction in CI; no browser assertions or timeouts are relaxed.
