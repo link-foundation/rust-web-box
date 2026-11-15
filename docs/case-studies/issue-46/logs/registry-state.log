@@ -1,0 +1,4 @@
+2026-11-15T23:34:17.677938+00:00
+GET https://crates.io/api/v1/crates/rust-web-box
+HTTP 404
+{"errors":[{"detail":"crate `rust-web-box` does not exist"}]}
