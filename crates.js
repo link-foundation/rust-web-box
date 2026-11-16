@@ -1,2 +1,2 @@
-window.ALL_CRATES = ["example_sum_package_name"];
-//{"start":21,"fragment_lengths":[26]}
+window.ALL_CRATES = ["rust_web_box"];
+//{"start":21,"fragment_lengths":[14]}
