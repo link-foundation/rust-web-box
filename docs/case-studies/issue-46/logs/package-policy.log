@@ -1,0 +1,10 @@
+✔ only rust-web-box is a public package (2.397032ms)
+✔ both release paths use temporary OIDC credentials on main (5.064328ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.832733

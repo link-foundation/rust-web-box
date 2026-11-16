@@ -1,0 +1,52 @@
+ Downloading crates ...
+  Downloaded aho-corasick v1.1.4
+  Downloaded clap_lex v1.1.0
+  Downloaded anstream v0.6.21
+  Downloaded anstyle-parse v0.2.7
+  Downloaded clap_derive v4.5.55
+  Downloaded quote v1.0.42
+  Downloaded unicode-ident v1.0.22
+  Downloaded clap v4.5.60
+  Downloaded serde_derive v1.0.228
+  Downloaded serde_core v1.0.228
+  Downloaded proc-macro2 v1.0.103
+  Downloaded serde v1.0.228
+  Downloaded memchr v2.8.0
+  Downloaded regex v1.12.3
+  Downloaded clap_builder v4.5.60
+  Downloaded syn v2.0.111
+  Downloaded regex-syntax v0.8.10
+  Downloaded regex-automata v0.4.14
+   Compiling proc-macro2 v1.0.103
+   Compiling unicode-ident v1.0.22
+   Compiling quote v1.0.42
+   Compiling syn v2.0.111
+   Compiling anstyle-parse v0.2.7
+   Compiling serde_core v1.0.228
+   Compiling anstream v0.6.21
+   Compiling serde v1.0.228
+   Compiling clap_lex v1.1.0
+   Compiling clap_builder v4.5.60
+   Compiling clap_derive v4.5.55
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v1.0.69
+   Compiling thiserror v1.0.69
+   Compiling clap v4.5.60
+   Compiling memchr v2.8.0
+   Compiling lino-arguments v0.3.0
+   Compiling aho-corasick v1.1.4
+   Compiling regex-syntax v0.8.10
+   Compiling regex-automata v0.4.14
+   Compiling rust-web-box v0.19.0 (/tmp/gh-issue-solver-1794785196413)
+   Compiling regex v1.12.3
+    Finished `test` profile [unoptimized] target(s) in 35.03s
+     Running tests/integration/mod.rs (target/debug/deps/integration-3a6feebb3cd9475e)
+
+running 4 tests
+test sum::test_cli_negative_numbers ... ok
+test sum::test_cli_default_args ... ok
+test sum::test_cli_sum_two_numbers ... ok
+test sum::test_cli_product_identity ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

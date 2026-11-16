@@ -42,9 +42,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -Dwarnings
-  # Support both CARGO_REGISTRY_TOKEN (cargo's native env var) and CARGO_TOKEN (for backwards compatibility)
-  CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN || secrets.CARGO_TOKEN }}
-  CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
 
 jobs:
   # === DETECT CHANGES - determines which jobs should run ===
@@ -276,10 +273,17 @@ jobs:
             ${{ runner.os }}-cargo-build-
 
       - name: Build release
-        run: cargo build --release --verbose
+        run: cargo build --release --locked --verbose
 
-      - name: Check package
-        run: cargo package --list --allow-dirty
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Check package policy
+        run: node --test web/tests/package-policy.test.mjs
+
+      - name: Verify publishable package
+        run: cargo publish --dry-run --locked -p rust-web-box
 
   # === AUTO RELEASE ===
   # Automatic release on push to main using changelog fragments
@@ -296,6 +300,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Pipeline context (issue #23)
         run: |
@@ -336,6 +341,17 @@ jobs:
           HAS_FRAGMENTS: ${{ steps.bump_type.outputs.has_fragments }}
         run: rust-script scripts/check-release-needed.rs
 
+      - name: Authenticate to crates.io with OIDC
+        if: steps.check.outputs.should_release == 'true'
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Explain trusted publishing setup on failure
+        if: failure() && steps.auth.outcome == 'failure'
+        run: |
+          echo "::error::Configure crates.io Trusted Publishing for link-foundation/rust-web-box, workflow release.yml, with no environment. The crate must exist first; see docs/ci-cd/trusted-publishing.md for initial publication. No long-lived registry secret is used."
+          exit 1
+
       - name: Collect changelog and bump version
         id: version
         if: steps.check.outputs.should_release == 'true' && steps.check.outputs.skip_bump != 'true'
@@ -356,8 +372,7 @@ jobs:
         if: steps.check.outputs.should_release == 'true'
         id: publish-crate
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN || secrets.CARGO_TOKEN }}
-          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: rust-script scripts/publish-crate.rs
 
       - name: Create GitHub Release
@@ -383,10 +398,12 @@ jobs:
       always() && !cancelled() &&
       github.event_name == 'workflow_dispatch' &&
       github.event.inputs.release_mode == 'instant' &&
+      github.ref == 'refs/heads/main' &&
       needs.build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -401,6 +418,16 @@ jobs:
 
       - name: Configure git
         run: rust-script scripts/git-config.rs
+
+      - name: Authenticate to crates.io with OIDC
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Explain trusted publishing setup on failure
+        if: failure() && steps.auth.outcome == 'failure'
+        run: |
+          echo "::error::Configure crates.io Trusted Publishing for link-foundation/rust-web-box, workflow release.yml, with no environment. The crate must exist first; see docs/ci-cd/trusted-publishing.md for initial publication. No long-lived registry secret is used."
+          exit 1
 
       - name: Collect changelog fragments
         run: rust-script scripts/collect-changelog.rs
@@ -420,8 +447,7 @@ jobs:
         if: steps.version.outputs.version_committed == 'true' || steps.version.outputs.already_released == 'true'
         id: publish-crate
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN || secrets.CARGO_TOKEN }}
-          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: rust-script scripts/publish-crate.rs
 
       - name: Create GitHub Release

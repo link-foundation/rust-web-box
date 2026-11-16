@@ -1,4 +1,4 @@
-use example_sum_package_name::sum;
+use rust_web_box::sum;
 
 fn main() {
     println!("2 + 3 = {}", sum(2, 3));

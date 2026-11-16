@@ -1,0 +1,9 @@
+    Updating crates.io index
+   Packaging rust-web-box v0.19.0 (/tmp/gh-issue-solver-1794785196413)
+    Updating crates.io index
+    Packaged 52 files, 364.1KiB (120.8KiB compressed)
+   Verifying rust-web-box v0.19.0 (/tmp/gh-issue-solver-1794785196413)
+   Compiling rust-web-box v0.19.0 (/tmp/gh-issue-solver-1794785196413/target/package/rust-web-box-0.19.0)
+    Finished `dev` profile [unoptimized] target(s) in 1.51s
+   Uploading rust-web-box v0.19.0 (/tmp/gh-issue-solver-1794785196413)
+warning: aborting upload due to dry run
