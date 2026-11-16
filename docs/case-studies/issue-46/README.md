@@ -69,3 +69,19 @@ Pin the Pages local and post-deploy browser jobs to Ubuntu 24.04, which is
 supported by [Playwright 1.59.1's registry](https://github.com/microsoft/playwright/blob/v1.59.1/packages/playwright-core/src/server/registry/index.ts).
 The existing browser integration check reproduces the failure and verifies
 the correction in CI; no browser assertions or timeouts are relaxed.
+
+## Lockfile normalization
+
+[Package build 43777011540](https://github.com/link-foundation/rust-web-box/actions/runs/43777011540)
+passed release compilation and both package-policy tests, then failed its
+publish dry-run because the checkout contained a modified `Cargo.lock`
+(downloaded log lines 4718–4722). The package rename had left the root entry
+at the old template name's alphabetical position. An unlocked Cargo invocation
+reordered it, without changing dependency versions; local locked tests had
+not written that normalization.
+
+`cargo metadata --offline --format-version 1 --filter-platform x86_64-unknown-linux-gnu`
+reproduced the reorder without compiling. Commit Cargo's canonical ordering
+and use `cargo build --release --locked --verbose` in CI. The existing
+`cargo publish --dry-run --locked -p rust-web-box` check verifies that the
+build leaves a clean, publishable checkout.

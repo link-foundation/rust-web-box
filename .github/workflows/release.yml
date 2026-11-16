@@ -273,7 +273,7 @@ jobs:
             ${{ runner.os }}-cargo-build-
 
       - name: Build release
-        run: cargo build --release --verbose
+        run: cargo build --release --locked --verbose
 
       - uses: actions/setup-node@v6
         with:
